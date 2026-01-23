@@ -3,7 +3,7 @@
  * Plugin Name: DW Product Catalog
  * Plugin URI: https://github.com/dasomweb/DW-Product-Catalog
  * Description: Domain-change friendly product catalog plugin
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: Dasom Web
  * Author URI: https://github.com/dasomweb
  * License: GPL v2 or later
@@ -35,7 +35,7 @@ function pc_get_plugin_config() {
 		
 		// Plugin Information
 		'plugin_slug'       => 'dw-product-catalog',
-		'plugin_version'    => '1.0.0',
+		'plugin_version'    => '1.0.1',
 		'plugin_name'       => 'DW Product Catalog',
 		'plugin_text_domain' => 'dw-product-catalog',
 		
@@ -78,6 +78,7 @@ function pc_get_plugin_file() {
 // Load includes
 require_once pc_get_plugin_path() . 'includes/class-pc-url-helper.php';
 require_once pc_get_plugin_path() . 'includes/class-pc-github-updater.php';
+require_once pc_get_plugin_path() . 'includes/class-pc-post-type.php';
 
 // Initialize GitHub Updater
 add_action( 'plugins_loaded', 'pc_init_github_updater', 10 );
@@ -92,6 +93,12 @@ function pc_init_github_updater() {
 	);
 }
 
+// Initialize Post Type
+add_action( 'plugins_loaded', 'pc_init_post_type', 10 );
+function pc_init_post_type() {
+	new PC_Post_Type();
+}
+
 // Plugin activation hook
 register_activation_hook( __FILE__, 'pc_activate' );
 function pc_activate() {
@@ -103,7 +110,10 @@ function pc_activate() {
 	update_option( 'pc_plugin_version', $config['plugin_version'] );
 	update_option( 'pc_plugin_activated', time() );
 	
-	// Flush rewrite rules if needed (domain agnostic)
+	// Register post type and taxonomies for rewrite rules flush
+	$post_type = new PC_Post_Type();
+	
+	// Flush rewrite rules after post type registration (domain agnostic)
 	flush_rewrite_rules();
 }
 
