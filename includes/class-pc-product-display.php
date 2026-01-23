@@ -21,13 +21,26 @@ if ( ! defined( 'ABSPATH' ) ) {
 class PC_Product_Display {
 
 	/**
+	 * Get product meta value (helper function)
+	 * 
+	 * @param int    $post_id Post ID
+	 * @param string $meta_key Meta key
+	 * @param mixed  $default Default value
+	 * @return mixed Meta value
+	 */
+	public static function get_product_meta( $post_id, $meta_key, $default = '' ) {
+		$value = get_post_meta( $post_id, $meta_key, true );
+		return ! empty( $value ) ? $value : $default;
+	}
+
+	/**
 	 * Get product name
 	 * 
 	 * @param int $post_id Post ID
 	 * @return string Product name
 	 */
 	public static function get_product_name( $post_id ) {
-		return PC_Meta_Box::get_product_meta( $post_id, '_pc_product_name' );
+		return self::get_product_meta( $post_id, '_pc_product_name' );
 	}
 
 	/**
@@ -107,7 +120,7 @@ class PC_Product_Display {
 	 * @return string Temperature
 	 */
 	public static function get_temperature( $post_id ) {
-		$value = PC_Meta_Box::get_product_meta( $post_id, '_pc_temperature' );
+		$value = self::get_product_meta( $post_id, '_pc_temperature' );
 		
 		// Convert to readable label
 		$labels = array(
@@ -137,7 +150,7 @@ class PC_Product_Display {
 	 * @return array Array of allergens
 	 */
 	public static function get_allergen_array( $post_id ) {
-		$allergen = PC_Meta_Box::get_product_meta( $post_id, '_pc_allergen' );
+		$allergen = self::get_product_meta( $post_id, '_pc_allergen' );
 		
 		if ( empty( $allergen ) ) {
 			return array();
@@ -155,7 +168,7 @@ class PC_Product_Display {
 	 * @return string Allergen string
 	 */
 	public static function get_allergen( $post_id ) {
-		return PC_Meta_Box::get_product_meta( $post_id, '_pc_allergen' );
+		return self::get_product_meta( $post_id, '_pc_allergen' );
 	}
 
 	/**
