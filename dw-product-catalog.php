@@ -3,7 +3,7 @@
  * Plugin Name: DW Product Catalog
  * Plugin URI: https://github.com/dasomweb/DW-Product-Catalog
  * Description: Domain-change friendly product catalog plugin
- * Version: 1.0.1
+ * Version: 1.1.0
  * Author: Dasom Web
  * Author URI: https://github.com/dasomweb
  * License: GPL v2 or later
@@ -35,7 +35,7 @@ function pc_get_plugin_config() {
 		
 		// Plugin Information
 		'plugin_slug'       => 'dw-product-catalog',
-		'plugin_version'    => '1.0.1',
+		'plugin_version'    => '1.1.0',
 		'plugin_name'       => 'DW Product Catalog',
 		'plugin_text_domain' => 'dw-product-catalog',
 		
@@ -79,6 +79,9 @@ function pc_get_plugin_file() {
 require_once pc_get_plugin_path() . 'includes/class-pc-url-helper.php';
 require_once pc_get_plugin_path() . 'includes/class-pc-github-updater.php';
 require_once pc_get_plugin_path() . 'includes/class-pc-post-type.php';
+require_once pc_get_plugin_path() . 'includes/class-pc-meta-box.php';
+require_once pc_get_plugin_path() . 'includes/class-pc-product-display.php';
+require_once pc_get_plugin_path() . 'includes/class-pc-admin-columns.php';
 
 // Initialize GitHub Updater
 add_action( 'plugins_loaded', 'pc_init_github_updater', 10 );
@@ -97,6 +100,18 @@ function pc_init_github_updater() {
 add_action( 'plugins_loaded', 'pc_init_post_type', 10 );
 function pc_init_post_type() {
 	new PC_Post_Type();
+}
+
+// Initialize Meta Box
+add_action( 'plugins_loaded', 'pc_init_meta_box', 10 );
+function pc_init_meta_box() {
+	new PC_Meta_Box();
+}
+
+// Initialize Admin Columns
+add_action( 'plugins_loaded', 'pc_init_admin_columns', 10 );
+function pc_init_admin_columns() {
+	new PC_Admin_Columns();
 }
 
 // Plugin activation hook
