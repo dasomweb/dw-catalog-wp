@@ -1,0 +1,79 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Triggers on version tags like v1.0.0, v1.2.3, etc.
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version from tag
+        id: tag_version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      - name: Create plugin zip file
+        run: |
+          # Create zip file with plugin name
+          PLUGIN_NAME="dw-product-catalog"
+          ZIP_NAME="${PLUGIN_NAME}-${VERSION}.zip"
+          
+          # Create zip excluding git files and unnecessary files
+          zip -r "$ZIP_NAME" . \
+            -x "*.git*" \
+            -x "*.github*" \
+            -x "*.DS_Store" \
+            -x "*.log" \
+            -x "node_modules/*" \
+            -x ".gitignore" \
+            -x "README.md" \
+            -x "DOMAIN-CHANGE-GUIDE.md" \
+            -x "IMPLEMENTATION-SUMMARY.md" \
+            -x "verify-domain-agnostic.php"
+          
+          echo "zip_file=$ZIP_NAME" >> $GITHUB_OUTPUT
+          echo "Created: $ZIP_NAME"
+        env:
+          VERSION: ${{ steps.tag_version.outputs.version }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dw-product-catalog-*.zip
+          name: Release v${{ steps.tag_version.outputs.version }}
+          body: |
+            ## DW Product Catalog v${{ steps.tag_version.outputs.version }}
+            
+            ### 설치 방법 (Installation)
+            
+            1. WordPress 관리자 페이지로 이동
+            2. 플러그인 > 새로 추가
+            3. 플러그인 업로드 클릭
+            4. 아래 ZIP 파일을 업로드
+            
+            ### 업데이트 방법 (Update)
+            
+            플러그인이 자동으로 GitHub에서 업데이트를 확인합니다.
+            WordPress 관리자 > 플러그인 페이지에서 업데이트 알림을 확인하세요.
+            
+            ### 변경사항 (Changelog)
+            
+            자세한 변경사항은 [GitHub Releases](https://github.com/${{ github.repository }}/releases)를 확인하세요.
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
