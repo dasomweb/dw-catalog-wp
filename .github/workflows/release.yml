@@ -30,18 +30,34 @@ jobs:
           PLUGIN_NAME="dw-product-catalog"
           ZIP_NAME="${PLUGIN_NAME}-${VERSION}.zip"
           
-          # Create zip excluding git files and unnecessary files
-          zip -r "$ZIP_NAME" . \
-            -x "*.git*" \
-            -x "*.github*" \
-            -x "*.DS_Store" \
-            -x "*.log" \
-            -x "node_modules/*" \
-            -x ".gitignore" \
-            -x "README.md" \
-            -x "DOMAIN-CHANGE-GUIDE.md" \
-            -x "IMPLEMENTATION-SUMMARY.md" \
-            -x "verify-domain-agnostic.php"
+          # Create temporary directory for plugin files
+          mkdir -p temp_plugin
+          
+          # Copy plugin files (excluding git and documentation)
+          rsync -av --exclude='.git*' \
+            --exclude='.github' \
+            --exclude='*.DS_Store' \
+            --exclude='*.log' \
+            --exclude='node_modules' \
+            --exclude='.gitignore' \
+            --exclude='README.md' \
+            --exclude='DEPLOYMENT-GUIDE.md' \
+            --exclude='DOMAIN-CHANGE-GUIDE.md' \
+            --exclude='IMPLEMENTATION-SUMMARY.md' \
+            --exclude='GITHUB-DEPLOYMENT-SUMMARY.md' \
+            --exclude='verify-domain-agnostic.php' \
+            --exclude='create-release.sh' \
+            --exclude='temp_plugin' \
+            --exclude='*.zip' \
+            ./ temp_plugin/
+          
+          # Create zip from temp directory (ensures proper structure)
+          cd temp_plugin
+          zip -r "../$ZIP_NAME" .
+          cd ..
+          
+          # Cleanup
+          rm -rf temp_plugin
           
           echo "zip_file=$ZIP_NAME" >> $GITHUB_OUTPUT
           echo "Created: $ZIP_NAME"

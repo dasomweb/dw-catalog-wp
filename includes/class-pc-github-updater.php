@@ -282,17 +282,92 @@ class PC_GitHub_Updater {
 	public function post_install( $response, $hook_extra, $result ) {
 		global $wp_filesystem;
 
-		$install_directory = plugin_dir_path( $this->plugin_file );
-		$wp_filesystem->move( $result['destination'], $install_directory );
-		$result['destination'] = $install_directory;
-
 		if ( is_wp_error( $response ) ) {
 			return $response;
 		}
 
-		activate_plugin( plugin_basename( $this->plugin_file ) );
+		// Check if this is our plugin
+		$plugin_basename = plugin_basename( $this->plugin_file );
+		if ( ! isset( $hook_extra['plugin'] ) || $hook_extra['plugin'] !== $plugin_basename ) {
+			return $response;
+		}
+
+		$install_directory = plugin_dir_path( $this->plugin_file );
+		$source = $result['destination'];
+
+		// If source is a subdirectory (common with GitHub zipballs), move contents up
+		if ( is_dir( $source ) ) {
+			$files = $wp_filesystem->dirlist( $source );
+			
+			if ( $files ) {
+				// Check if there's a single subdirectory (GitHub zipball structure)
+				$subdirs = array_filter( $files, function( $file ) {
+					return $file['type'] === 'd';
+				});
+				
+				if ( count( $subdirs ) === 1 ) {
+					// Move into the subdirectory
+					$subdir_name = key( $subdirs );
+					$source = trailingslashit( $source ) . $subdir_name;
+				}
+				
+				// Move all files from source to install directory
+				$moved = $wp_filesystem->move( $source, $install_directory, true );
+				
+				if ( ! $moved ) {
+					// Fallback: copy files
+					$this->copy_directory( $source, $install_directory );
+				}
+			}
+		}
+
+		$result['destination'] = $install_directory;
+
+		// Reactivate plugin if it was active
+		if ( is_plugin_active( $plugin_basename ) ) {
+			activate_plugin( $plugin_basename );
+		}
 
 		return $response;
+	}
+
+	/**
+	 * Copy directory recursively
+	 * 
+	 * @param string $source Source directory
+	 * @param string $destination Destination directory
+	 * @return bool Success
+	 */
+	private function copy_directory( $source, $destination ) {
+		global $wp_filesystem;
+
+		if ( ! $wp_filesystem->is_dir( $source ) ) {
+			return false;
+		}
+
+		// Create destination directory if it doesn't exist
+		if ( ! $wp_filesystem->is_dir( $destination ) ) {
+			$wp_filesystem->mkdir( $destination, FS_CHMOD_DIR );
+		}
+
+		$files = $wp_filesystem->dirlist( $source );
+		
+		if ( ! $files ) {
+			return false;
+		}
+
+		foreach ( $files as $file ) {
+			$source_path = trailingslashit( $source ) . $file['name'];
+			$dest_path = trailingslashit( $destination ) . $file['name'];
+
+			if ( $file['type'] === 'd' ) {
+				$this->copy_directory( $source_path, $dest_path );
+			} else {
+				$wp_filesystem->copy( $source_path, $dest_path, true );
+			}
+		}
+
+		return true;
 	}
 }
 
