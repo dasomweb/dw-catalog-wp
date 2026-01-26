@@ -357,18 +357,32 @@ class PC_Bulk_Import {
 	 * @return array Result array
 	 */
 	private function import_product( $data, $default_status, $skip_duplicates ) {
+		// Get Product Name
+		$product_name = isset( $data['_pc_product_name'] ) ? trim( $data['_pc_product_name'] ) : '';
+		
+		// Get Title
+		$post_title = isset( $data['post_title'] ) ? trim( $data['post_title'] ) : '';
+		
+		// If Product Name is provided, use it as Title (Product Name takes priority)
+		if ( ! empty( $product_name ) ) {
+			$post_title = $product_name;
+		}
+		
 		// Validate required fields
-		if ( empty( $data['post_title'] ) ) {
+		if ( empty( $post_title ) ) {
 			return array(
 				'success' => false,
 				'skipped' => false,
-				'error'   => __( 'Title is required', 'dw-product-catalog' ),
+				'error'   => __( 'Title or Product Name is required', 'dw-product-catalog' ),
 			);
 		}
+		
+		// Update data with the title
+		$data['post_title'] = $post_title;
 
 		// Check for duplicates
 		if ( $skip_duplicates ) {
-			$existing = get_page_by_title( $data['post_title'], OBJECT, $this->post_type );
+			$existing = get_page_by_title( $post_title, OBJECT, $this->post_type );
 			if ( $existing ) {
 				return array(
 					'success' => false,

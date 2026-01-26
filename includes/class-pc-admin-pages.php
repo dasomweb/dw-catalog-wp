@@ -623,6 +623,25 @@ class PC_Admin_Pages {
 				</div>
 			</form>
 		</div>
+		<script type="text/javascript">
+		jQuery(document).ready(function($) {
+			var $productName = $('#pc_product_name');
+			var $title = $('#post_title');
+			
+			// Sync Product Name to Title when Product Name changes
+			$productName.on('input', function() {
+				var productNameValue = $(this).val();
+				if (productNameValue) {
+					$title.val(productNameValue);
+				}
+			});
+			
+			// If Product Name is filled but Title is empty, sync on page load
+			if ($productName.val() && !$title.val()) {
+				$title.val($productName.val());
+			}
+		});
+		</script>
 		<?php
 	}
 
@@ -643,16 +662,26 @@ class PC_Admin_Pages {
 			wp_die( __( 'You do not have permission to perform this action.', 'dw-product-catalog' ) );
 		}
 
+		// Get Product Name first
+		$product_name = isset( $_POST['pc_product_name'] ) ? sanitize_text_field( $_POST['pc_product_name'] ) : '';
+		
 		// Prepare post data
+		$post_title = isset( $_POST['post_title'] ) ? sanitize_text_field( $_POST['post_title'] ) : '';
+		
+		// If Product Name is provided, use it as Title (Product Name takes priority)
+		if ( ! empty( $product_name ) ) {
+			$post_title = $product_name;
+		}
+		
 		$post_data = array(
 			'post_type'    => $this->post_type,
-			'post_title'   => isset( $_POST['post_title'] ) ? sanitize_text_field( $_POST['post_title'] ) : '',
+			'post_title'   => $post_title,
 			'post_content' => isset( $_POST['post_content'] ) ? wp_kses_post( $_POST['post_content'] ) : '',
 			'post_status'  => isset( $_POST['post_status'] ) ? sanitize_text_field( $_POST['post_status'] ) : 'publish',
 		);
 
 		if ( empty( $post_data['post_title'] ) ) {
-			wp_die( __( 'Title is required.', 'dw-product-catalog' ) );
+			wp_die( __( 'Title is required. Please enter Product Name.', 'dw-product-catalog' ) );
 		}
 
 		// Update or insert
@@ -790,6 +819,32 @@ class PC_Admin_Pages {
 				array(),
 				$config['plugin_version']
 			);
+		}
+		
+		// Add JavaScript to sync Product Name to Title
+		if ( strpos( $hook, 'pc-products-edit' ) !== false ) {
+			?>
+			<script type="text/javascript">
+			jQuery(document).ready(function($) {
+				var $productName = $('#pc_product_name');
+				var $title = $('#post_title');
+				var titleInitialValue = $title.val();
+				
+				// Sync Product Name to Title when Product Name changes
+				$productName.on('input', function() {
+					var productNameValue = $(this).val();
+					if (productNameValue) {
+						$title.val(productNameValue);
+					}
+				});
+				
+				// If Product Name is filled but Title is empty, sync on page load
+				if ($productName.val() && !$title.val()) {
+					$title.val($productName.val());
+				}
+			});
+			</script>
+			<?php
 		}
 	}
 }
