@@ -3,7 +3,7 @@
  * Plugin Name: DW Product Catalog
  * Plugin URI: https://github.com/dasomweb/DW-Product-Catalog
  * Description: Domain-change friendly product catalog plugin
- * Version: 1.2.2
+ * Version: 1.3.0
  * Author: Dasom Web
  * Author URI: https://github.com/dasomweb
  * License: GPL v2 or later
@@ -35,7 +35,7 @@ function pc_get_plugin_config() {
 		
 		// Plugin Information
 		'plugin_slug'       => 'dw-product-catalog',
-		'plugin_version'    => '1.2.2',
+		'plugin_version'    => '1.3.0',
 		'plugin_name'       => 'DW Product Catalog',
 		'plugin_text_domain' => 'dw-product-catalog',
 		
@@ -83,6 +83,8 @@ require_once pc_get_plugin_path() . 'includes/class-pc-meta-box.php';
 require_once pc_get_plugin_path() . 'includes/class-pc-product-display.php';
 require_once pc_get_plugin_path() . 'includes/class-pc-admin-columns.php';
 require_once pc_get_plugin_path() . 'includes/class-pc-admin-pages.php';
+require_once pc_get_plugin_path() . 'includes/class-pc-field-reference.php';
+require_once pc_get_plugin_path() . 'includes/class-pc-bulk-import.php';
 
 // Initialize GitHub Updater
 add_action( 'plugins_loaded', 'pc_init_github_updater', 10 );
@@ -119,6 +121,18 @@ function pc_init_admin_columns() {
 add_action( 'plugins_loaded', 'pc_init_admin_pages', 10 );
 function pc_init_admin_pages() {
 	new PC_Admin_Pages();
+}
+
+// Initialize Field Reference
+add_action( 'plugins_loaded', 'pc_init_field_reference', 10 );
+function pc_init_field_reference() {
+	new PC_Field_Reference();
+}
+
+// Initialize Bulk Import
+add_action( 'plugins_loaded', 'pc_init_bulk_import', 10 );
+function pc_init_bulk_import() {
+	new PC_Bulk_Import();
 }
 
 // Plugin activation hook
