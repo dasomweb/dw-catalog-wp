@@ -476,7 +476,7 @@ class PC_Admin_Pages {
 											<tr>
 												<th scope="row">
 													<label for="pc_allergen"><?php _e( 'Allergen', 'dw-product-catalog' ); ?></label>
-													<span class="description"><?php _e( '(쉼표로 구분)', 'dw-product-catalog' ); ?></span>
+													<span class="description"><?php _e( '(comma-separated)', 'dw-product-catalog' ); ?></span>
 												</th>
 												<td>
 													<textarea 
@@ -484,10 +484,10 @@ class PC_Admin_Pages {
 														name="pc_allergen" 
 														rows="3" 
 														class="large-text"
-														placeholder="<?php esc_attr_e( '알레르기 유발 성분을 입력하세요 (쉼표로 구분)', 'dw-product-catalog' ); ?>"
+														placeholder="<?php esc_attr_e( 'Enter allergens (comma-separated)', 'dw-product-catalog' ); ?>"
 													><?php echo esc_textarea( $allergen ); ?></textarea>
 													<p class="description">
-														<?php _e( '여러 항목을 입력할 경우 쉼표(,)로 구분하세요.', 'dw-product-catalog' ); ?>
+														<?php _e( 'Separate multiple items with commas.', 'dw-product-catalog' ); ?>
 													</p>
 												</td>
 											</tr>
@@ -513,6 +513,121 @@ class PC_Admin_Pages {
 									</div>
 								</div>
 							</div>
+
+							<?php
+							// Categories meta box
+							if ( $is_edit ) {
+								$categories = get_terms( array(
+									'taxonomy'   => 'product_category',
+									'hide_empty' => false,
+								) );
+								$selected_categories = wp_get_post_terms( $product_id, 'product_category', array( 'fields' => 'ids' ) );
+								?>
+								<div class="postbox">
+									<div class="postbox-header">
+										<h2 class="hndle"><?php _e( 'Categories', 'dw-product-catalog' ); ?></h2>
+									</div>
+									<div class="inside">
+										<div id="taxonomy-product_category" class="categorydiv">
+											<div id="product_category-all" class="tabs-panel">
+												<?php if ( ! empty( $categories ) ) : ?>
+													<ul id="product_categorychecklist" class="categorychecklist form-no-clear">
+														<?php
+														wp_terms_checklist(
+															$product_id,
+															array(
+																'taxonomy'      => 'product_category',
+																'selected_cats' => $selected_categories,
+															)
+														);
+														?>
+													</ul>
+												<?php else : ?>
+													<p><?php _e( 'No categories found.', 'dw-product-catalog' ); ?></p>
+													<p>
+														<a href="<?php echo esc_url( admin_url( 'edit-tags.php?taxonomy=product_category&post_type=' . $this->post_type ) ); ?>">
+															<?php _e( 'Add Category', 'dw-product-catalog' ); ?>
+														</a>
+													</p>
+												<?php endif; ?>
+											</div>
+										</div>
+									</div>
+								</div>
+								<?php
+							} else {
+								// For new products, show simple category selection
+								$categories = get_terms( array(
+									'taxonomy'   => 'product_category',
+									'hide_empty' => false,
+								) );
+								?>
+								<div class="postbox">
+									<div class="postbox-header">
+										<h2 class="hndle"><?php _e( 'Categories', 'dw-product-catalog' ); ?></h2>
+									</div>
+									<div class="inside">
+										<?php if ( ! empty( $categories ) ) : ?>
+											<ul id="product_categorychecklist" class="categorychecklist form-no-clear">
+												<?php foreach ( $categories as $category ) : ?>
+													<li id="product_category-<?php echo esc_attr( $category->term_id ); ?>">
+														<label class="selectit">
+															<input 
+																type="checkbox" 
+																name="tax_input[product_category][]" 
+																value="<?php echo esc_attr( $category->term_id ); ?>"
+															/>
+															<?php echo esc_html( $category->name ); ?>
+														</label>
+													</li>
+												<?php endforeach; ?>
+											</ul>
+										<?php else : ?>
+											<p><?php _e( 'No categories found.', 'dw-product-catalog' ); ?></p>
+											<p>
+												<a href="<?php echo esc_url( admin_url( 'edit-tags.php?taxonomy=product_category&post_type=' . $this->post_type ) ); ?>">
+													<?php _e( 'Add Category', 'dw-product-catalog' ); ?>
+												</a>
+											</p>
+										<?php endif; ?>
+									</div>
+								</div>
+								<?php
+							}
+
+							// Tags meta box
+							$product_tags = $is_edit ? wp_get_post_terms( $product_id, 'product_tag', array( 'fields' => 'names' ) ) : array();
+							$tags_string = ! empty( $product_tags ) ? implode( ', ', $product_tags ) : '';
+							?>
+							<div class="postbox">
+								<div class="postbox-header">
+									<h2 class="hndle"><?php _e( 'Tags', 'dw-product-catalog' ); ?></h2>
+								</div>
+								<div class="inside">
+									<div id="taxonomy-product_tag" class="tagsdiv">
+										<div class="jaxtag">
+											<label for="product_tag_input" class="screen-reader-text">
+												<?php _e( 'Tags', 'dw-product-catalog' ); ?>
+											</label>
+											<input 
+												type="text" 
+												id="product_tag_input" 
+												name="product_tags" 
+												class="newtag form-input-tip" 
+												size="40" 
+												autocomplete="off" 
+												value="<?php echo esc_attr( $tags_string ); ?>"
+												placeholder="<?php esc_attr_e( 'Separate tags with commas', 'dw-product-catalog' ); ?>"
+											/>
+										</div>
+										<p class="howto">
+											<?php _e( 'Separate tags with commas', 'dw-product-catalog' ); ?>
+										</p>
+									</div>
+								</div>
+							</div>
+							<?php
+							?>
 
 							<?php if ( $is_edit ) : ?>
 								<div class="postbox">
@@ -583,6 +698,31 @@ class PC_Admin_Pages {
 		}
 
 		$product_id = $result;
+
+		// Save taxonomies (categories and tags)
+		if ( isset( $_POST['tax_input'] ) ) {
+			// Save categories
+			if ( isset( $_POST['tax_input']['product_category'] ) ) {
+				$categories = array_map( 'intval', $_POST['tax_input']['product_category'] );
+				wp_set_object_terms( $product_id, $categories, 'product_category' );
+			} else {
+				// If no categories selected, remove all
+				wp_set_object_terms( $product_id, array(), 'product_category' );
+			}
+		}
+
+		// Handle tags (comma-separated string)
+		if ( isset( $_POST['product_tags'] ) ) {
+			$tags_string = sanitize_text_field( $_POST['product_tags'] );
+			if ( ! empty( $tags_string ) ) {
+				$tags = array_map( 'trim', explode( ',', $tags_string ) );
+				$tags = array_filter( $tags );
+				wp_set_object_terms( $product_id, $tags, 'product_tag' );
+			} else {
+				// If empty, remove all tags
+				wp_set_object_terms( $product_id, array(), 'product_tag' );
+			}
+		}
 
 		// Save meta fields
 		$fields = array(
