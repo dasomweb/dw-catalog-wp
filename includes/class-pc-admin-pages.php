@@ -62,8 +62,8 @@ class PC_Admin_Pages {
 	public function add_admin_menu() {
 		// Main menu
 		add_menu_page(
-			__( '제품 카탈로그', 'dw-product-catalog' ),
-			__( '제품 카탈로그', 'dw-product-catalog' ),
+			__( 'Product Catalog', 'dw-product-catalog' ),
+			__( 'Product Catalog', 'dw-product-catalog' ),
 			'edit_posts',
 			'pc-products',
 			array( $this, 'render_list_page' ),
@@ -74,8 +74,8 @@ class PC_Admin_Pages {
 		// List submenu
 		add_submenu_page(
 			'pc-products',
-			__( '모든 제품', 'dw-product-catalog' ),
-			__( '모든 제품', 'dw-product-catalog' ),
+			__( 'All Products', 'dw-product-catalog' ),
+			__( 'All Products', 'dw-product-catalog' ),
 			'edit_posts',
 			'pc-products',
 			array( $this, 'render_list_page' )
@@ -84,8 +84,8 @@ class PC_Admin_Pages {
 		// Add new submenu
 		add_submenu_page(
 			'pc-products',
-			__( '새 제품 추가', 'dw-product-catalog' ),
-			__( '새로 추가', 'dw-product-catalog' ),
+			__( 'Add New Product', 'dw-product-catalog' ),
+			__( 'Add New', 'dw-product-catalog' ),
 			'edit_posts',
 			'pc-products-new',
 			array( $this, 'render_edit_page' )
@@ -94,8 +94,8 @@ class PC_Admin_Pages {
 		// Edit submenu (hidden, but accessible via URL)
 		add_submenu_page(
 			null, // Hidden from menu
-			__( '제품 편집', 'dw-product-catalog' ),
-			__( '제품 편집', 'dw-product-catalog' ),
+			__( 'Edit Product', 'dw-product-catalog' ),
+			__( 'Edit Product', 'dw-product-catalog' ),
 			'edit_posts',
 			'pc-products-edit',
 			array( $this, 'render_edit_page' )
@@ -122,7 +122,7 @@ class PC_Admin_Pages {
 	public function render_list_page() {
 		// Check permissions
 		if ( ! current_user_can( 'edit_posts' ) ) {
-			wp_die( __( '권한이 없습니다.', 'dw-product-catalog' ) );
+			wp_die( __( 'You do not have permission to access this page.', 'dw-product-catalog' ) );
 		}
 
 		// Handle bulk actions
@@ -131,7 +131,7 @@ class PC_Admin_Pages {
 			foreach ( $_POST['product_ids'] as $product_id ) {
 				wp_delete_post( intval( $product_id ), true );
 			}
-			echo '<div class="notice notice-success"><p>' . esc_html__( '제품이 삭제되었습니다.', 'dw-product-catalog' ) . '</p></div>';
+			echo '<div class="notice notice-success"><p>' . esc_html__( 'Products deleted successfully.', 'dw-product-catalog' ) . '</p></div>';
 		}
 
 		// Get products
@@ -146,9 +146,9 @@ class PC_Admin_Pages {
 		$products = new WP_Query( $args );
 		?>
 		<div class="wrap">
-			<h1 class="wp-heading-inline"><?php _e( '제품 카탈로그', 'dw-product-catalog' ); ?></h1>
+			<h1 class="wp-heading-inline"><?php _e( 'Product Catalog', 'dw-product-catalog' ); ?></h1>
 			<a href="<?php echo esc_url( admin_url( 'admin.php?page=pc-products-new' ) ); ?>" class="page-title-action">
-				<?php _e( '새로 추가', 'dw-product-catalog' ); ?>
+				<?php _e( 'Add New', 'dw-product-catalog' ); ?>
 			</a>
 			<hr class="wp-header-end">
 
@@ -158,10 +158,10 @@ class PC_Admin_Pages {
 					<div class="tablenav top">
 						<div class="alignleft actions bulkactions">
 							<select name="action">
-								<option value="-1"><?php _e( '일괄 작업', 'dw-product-catalog' ); ?></option>
-								<option value="delete"><?php _e( '삭제', 'dw-product-catalog' ); ?></option>
+								<option value="-1"><?php _e( 'Bulk Actions', 'dw-product-catalog' ); ?></option>
+								<option value="delete"><?php _e( 'Delete', 'dw-product-catalog' ); ?></option>
 							</select>
-							<input type="submit" class="button action" value="<?php esc_attr_e( '적용', 'dw-product-catalog' ); ?>">
+							<input type="submit" class="button action" value="<?php esc_attr_e( 'Apply', 'dw-product-catalog' ); ?>">
 						</div>
 					</div>
 
@@ -171,14 +171,14 @@ class PC_Admin_Pages {
 								<td class="manage-column column-cb check-column">
 									<input type="checkbox" id="cb-select-all">
 								</td>
-								<th class="manage-column"><?php _e( '제목', 'dw-product-catalog' ); ?></th>
+								<th class="manage-column"><?php _e( 'Title', 'dw-product-catalog' ); ?></th>
 								<th class="manage-column"><?php _e( 'Product Name', 'dw-product-catalog' ); ?></th>
 								<th class="manage-column"><?php _e( 'Brand', 'dw-product-catalog' ); ?></th>
 								<th class="manage-column"><?php _e( 'Item Code', 'dw-product-catalog' ); ?></th>
 								<th class="manage-column"><?php _e( 'UPC', 'dw-product-catalog' ); ?></th>
 								<th class="manage-column"><?php _e( 'Temperature', 'dw-product-catalog' ); ?></th>
-								<th class="manage-column"><?php _e( '상태', 'dw-product-catalog' ); ?></th>
-								<th class="manage-column"><?php _e( '작업', 'dw-product-catalog' ); ?></th>
+								<th class="manage-column"><?php _e( 'Status', 'dw-product-catalog' ); ?></th>
+								<th class="manage-column"><?php _e( 'Actions', 'dw-product-catalog' ); ?></th>
 							</tr>
 						</thead>
 						<tbody>
@@ -198,7 +198,7 @@ class PC_Admin_Pages {
 									<td>
 										<strong>
 											<a href="<?php echo esc_url( admin_url( 'admin.php?page=pc-products-edit&product_id=' . $post_id ) ); ?>">
-												<?php echo esc_html( get_the_title() ? get_the_title() : __( '(제목 없음)', 'dw-product-catalog' ) ); ?>
+												<?php echo esc_html( get_the_title() ? get_the_title() : __( '(No Title)', 'dw-product-catalog' ) ); ?>
 											</a>
 										</strong>
 									</td>
@@ -211,21 +211,21 @@ class PC_Admin_Pages {
 										<?php
 										$status = get_post_status( $post_id );
 										$status_labels = array(
-											'publish' => __( '발행됨', 'dw-product-catalog' ),
-											'draft'   => __( '초안', 'dw-product-catalog' ),
-											'private' => __( '비공개', 'dw-product-catalog' ),
+											'publish' => __( 'Published', 'dw-product-catalog' ),
+											'draft'   => __( 'Draft', 'dw-product-catalog' ),
+											'private' => __( 'Private', 'dw-product-catalog' ),
 										);
 										echo isset( $status_labels[ $status ] ) ? esc_html( $status_labels[ $status ] ) : esc_html( $status );
 										?>
 									</td>
 									<td>
 										<a href="<?php echo esc_url( admin_url( 'admin.php?page=pc-products-edit&product_id=' . $post_id ) ); ?>">
-											<?php _e( '편집', 'dw-product-catalog' ); ?>
+											<?php _e( 'Edit', 'dw-product-catalog' ); ?>
 										</a>
 										|
 										<a href="<?php echo esc_url( admin_url( 'admin-post.php?action=pc_delete_product&product_id=' . $post_id . '&_wpnonce=' . wp_create_nonce( 'pc_delete_' . $post_id ) ) ); ?>" 
-										   onclick="return confirm('<?php esc_attr_e( '정말 삭제하시겠습니까?', 'dw-product-catalog' ); ?>');">
-											<?php _e( '삭제', 'dw-product-catalog' ); ?>
+										   onclick="return confirm('<?php esc_attr_e( 'Are you sure you want to delete this product?', 'dw-product-catalog' ); ?>');">
+											<?php _e( 'Delete', 'dw-product-catalog' ); ?>
 										</a>
 									</td>
 								</tr>
@@ -247,9 +247,9 @@ class PC_Admin_Pages {
 					?>
 				</form>
 			<?php else : ?>
-				<p><?php _e( '등록된 제품이 없습니다.', 'dw-product-catalog' ); ?></p>
+				<p><?php _e( 'No products found.', 'dw-product-catalog' ); ?></p>
 				<a href="<?php echo esc_url( admin_url( 'admin.php?page=pc-products-new' ) ); ?>" class="button button-primary">
-					<?php _e( '첫 제품 추가하기', 'dw-product-catalog' ); ?>
+					<?php _e( 'Add Your First Product', 'dw-product-catalog' ); ?>
 				</a>
 			<?php endif; ?>
 		</div>
@@ -263,7 +263,7 @@ class PC_Admin_Pages {
 	public function render_edit_page() {
 		// Check permissions
 		if ( ! current_user_can( 'edit_posts' ) ) {
-			wp_die( __( '권한이 없습니다.', 'dw-product-catalog' ) );
+			wp_die( __( 'You do not have permission to access this page.', 'dw-product-catalog' ) );
 		}
 
 		$product_id = isset( $_GET['product_id'] ) ? intval( $_GET['product_id'] ) : 0;
@@ -272,7 +272,7 @@ class PC_Admin_Pages {
 		if ( $is_edit ) {
 			$product = get_post( $product_id );
 			if ( ! $product || $product->post_type !== $this->post_type ) {
-				wp_die( __( '제품을 찾을 수 없습니다.', 'dw-product-catalog' ) );
+				wp_die( __( 'Product not found.', 'dw-product-catalog' ) );
 			}
 			$title = $product->post_title;
 			$content = $product->post_content;
@@ -292,15 +292,15 @@ class PC_Admin_Pages {
 		$allergen = $is_edit ? PC_Product_Display::get_allergen( $product_id ) : '';
 
 		$temperature_options = array(
-			''           => __( '선택하세요', 'dw-product-catalog' ),
-			'room'       => __( '상온', 'dw-product-catalog' ),
-			'cold'       => __( '냉장', 'dw-product-catalog' ),
-			'frozen'     => __( '냉동', 'dw-product-catalog' ),
-			'freezer'    => __( '프리저', 'dw-product-catalog' ),
+			''           => __( 'Select', 'dw-product-catalog' ),
+			'room'       => __( 'Room Temperature', 'dw-product-catalog' ),
+			'cold'       => __( 'Refrigerated', 'dw-product-catalog' ),
+			'frozen'     => __( 'Frozen', 'dw-product-catalog' ),
+			'freezer'    => __( 'Freezer', 'dw-product-catalog' ),
 		);
 		?>
 		<div class="wrap">
-			<h1><?php echo $is_edit ? __( '제품 편집', 'dw-product-catalog' ) : __( '새 제품 추가', 'dw-product-catalog' ); ?></h1>
+			<h1><?php echo $is_edit ? __( 'Edit Product', 'dw-product-catalog' ) : __( 'Add New Product', 'dw-product-catalog' ); ?></h1>
 
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" id="pc-product-form">
 				<?php wp_nonce_field( 'pc_save_product_' . ( $is_edit ? $product_id : 'new' ), 'pc_product_nonce' ); ?>
@@ -312,14 +312,14 @@ class PC_Admin_Pages {
 						<div id="post-body-content">
 							<div class="postbox">
 								<div class="postbox-header">
-									<h2 class="hndle"><?php _e( '기본 정보', 'dw-product-catalog' ); ?></h2>
+									<h2 class="hndle"><?php _e( 'Basic Information', 'dw-product-catalog' ); ?></h2>
 								</div>
 								<div class="inside">
 									<table class="form-table">
 										<tbody>
 											<tr>
 												<th scope="row">
-													<label for="post_title"><?php _e( '제목', 'dw-product-catalog' ); ?> <span class="required">*</span></label>
+													<label for="post_title"><?php _e( 'Title', 'dw-product-catalog' ); ?> <span class="required">*</span></label>
 												</th>
 												<td>
 													<input 
@@ -329,13 +329,13 @@ class PC_Admin_Pages {
 														value="<?php echo esc_attr( $title ); ?>" 
 														class="large-text" 
 														required
-														placeholder="<?php esc_attr_e( '제품 제목을 입력하세요', 'dw-product-catalog' ); ?>"
+														placeholder="<?php esc_attr_e( 'Enter product title', 'dw-product-catalog' ); ?>"
 													/>
 												</td>
 											</tr>
 											<tr>
 												<th scope="row">
-													<label for="post_content"><?php _e( '설명', 'dw-product-catalog' ); ?></label>
+													<label for="post_content"><?php _e( 'Description', 'dw-product-catalog' ); ?></label>
 												</th>
 												<td>
 													<?php
@@ -354,13 +354,13 @@ class PC_Admin_Pages {
 											</tr>
 											<tr>
 												<th scope="row">
-													<label for="post_status"><?php _e( '상태', 'dw-product-catalog' ); ?></label>
+													<label for="post_status"><?php _e( 'Status', 'dw-product-catalog' ); ?></label>
 												</th>
 												<td>
 													<select name="post_status" id="post_status">
-														<option value="publish" <?php selected( $status, 'publish' ); ?>><?php _e( '발행됨', 'dw-product-catalog' ); ?></option>
-														<option value="draft" <?php selected( $status, 'draft' ); ?>><?php _e( '초안', 'dw-product-catalog' ); ?></option>
-														<option value="private" <?php selected( $status, 'private' ); ?>><?php _e( '비공개', 'dw-product-catalog' ); ?></option>
+														<option value="publish" <?php selected( $status, 'publish' ); ?>><?php _e( 'Published', 'dw-product-catalog' ); ?></option>
+														<option value="draft" <?php selected( $status, 'draft' ); ?>><?php _e( 'Draft', 'dw-product-catalog' ); ?></option>
+														<option value="private" <?php selected( $status, 'private' ); ?>><?php _e( 'Private', 'dw-product-catalog' ); ?></option>
 													</select>
 												</td>
 											</tr>
@@ -371,7 +371,7 @@ class PC_Admin_Pages {
 
 							<div class="postbox">
 								<div class="postbox-header">
-									<h2 class="hndle"><?php _e( '제품 상세 정보', 'dw-product-catalog' ); ?></h2>
+									<h2 class="hndle"><?php _e( 'Product Details', 'dw-product-catalog' ); ?></h2>
 								</div>
 								<div class="inside">
 									<table class="form-table">
@@ -482,13 +482,13 @@ class PC_Admin_Pages {
 						<div id="postbox-container-1" class="postbox-container">
 							<div class="postbox">
 								<div class="postbox-header">
-									<h2 class="hndle"><?php _e( '발행', 'dw-product-catalog' ); ?></h2>
+									<h2 class="hndle"><?php _e( 'Publish', 'dw-product-catalog' ); ?></h2>
 								</div>
 								<div class="inside">
 									<div class="submitbox">
 										<div id="major-publishing-actions">
 											<div id="publishing-action">
-												<?php submit_button( $is_edit ? __( '업데이트', 'dw-product-catalog' ) : __( '발행', 'dw-product-catalog' ), 'primary', 'submit', false ); ?>
+												<?php submit_button( $is_edit ? __( 'Update', 'dw-product-catalog' ) : __( 'Publish', 'dw-product-catalog' ), 'primary', 'submit', false ); ?>
 											</div>
 											<div class="clear"></div>
 										</div>
@@ -499,16 +499,16 @@ class PC_Admin_Pages {
 							<?php if ( $is_edit ) : ?>
 								<div class="postbox">
 									<div class="postbox-header">
-										<h2 class="hndle"><?php _e( '제품 정보', 'dw-product-catalog' ); ?></h2>
+										<h2 class="hndle"><?php _e( 'Product Information', 'dw-product-catalog' ); ?></h2>
 									</div>
 									<div class="inside">
 										<p>
-											<strong><?php _e( '생성일:', 'dw-product-catalog' ); ?></strong><br>
+											<strong><?php _e( 'Created:', 'dw-product-catalog' ); ?></strong><br>
 											<?php echo esc_html( get_the_date( 'Y-m-d H:i', $product_id ) ); ?>
 										</p>
 										<?php if ( get_the_modified_date( 'Y-m-d H:i', $product_id ) !== get_the_date( 'Y-m-d H:i', $product_id ) ) : ?>
 											<p>
-												<strong><?php _e( '수정일:', 'dw-product-catalog' ); ?></strong><br>
+												<strong><?php _e( 'Modified:', 'dw-product-catalog' ); ?></strong><br>
 												<?php echo esc_html( get_the_modified_date( 'Y-m-d H:i', $product_id ) ); ?>
 											</p>
 										<?php endif; ?>
@@ -532,12 +532,12 @@ class PC_Admin_Pages {
 		$nonce_action = 'pc_save_product_' . ( $product_id > 0 ? $product_id : 'new' );
 		
 		if ( ! isset( $_POST['pc_product_nonce'] ) || ! wp_verify_nonce( $_POST['pc_product_nonce'], $nonce_action ) ) {
-			wp_die( __( '보안 검증에 실패했습니다.', 'dw-product-catalog' ) );
+			wp_die( __( 'Security verification failed.', 'dw-product-catalog' ) );
 		}
 
 		// Check permissions
 		if ( ! current_user_can( 'edit_posts' ) ) {
-			wp_die( __( '권한이 없습니다.', 'dw-product-catalog' ) );
+			wp_die( __( 'You do not have permission to perform this action.', 'dw-product-catalog' ) );
 		}
 
 		// Prepare post data
@@ -549,7 +549,7 @@ class PC_Admin_Pages {
 		);
 
 		if ( empty( $post_data['post_title'] ) ) {
-			wp_die( __( '제목은 필수입니다.', 'dw-product-catalog' ) );
+			wp_die( __( 'Title is required.', 'dw-product-catalog' ) );
 		}
 
 		// Update or insert
@@ -625,17 +625,17 @@ class PC_Admin_Pages {
 		$product_id = isset( $_GET['product_id'] ) ? intval( $_GET['product_id'] ) : 0;
 
 		if ( ! $product_id ) {
-			wp_die( __( '제품 ID가 필요합니다.', 'dw-product-catalog' ) );
+			wp_die( __( 'Product ID is required.', 'dw-product-catalog' ) );
 		}
 
 		// Verify nonce
 		if ( ! isset( $_GET['_wpnonce'] ) || ! wp_verify_nonce( $_GET['_wpnonce'], 'pc_delete_' . $product_id ) ) {
-			wp_die( __( '보안 검증에 실패했습니다.', 'dw-product-catalog' ) );
+			wp_die( __( 'Security verification failed.', 'dw-product-catalog' ) );
 		}
 
 		// Check permissions
 		if ( ! current_user_can( 'delete_posts' ) ) {
-			wp_die( __( '권한이 없습니다.', 'dw-product-catalog' ) );
+			wp_die( __( 'You do not have permission to perform this action.', 'dw-product-catalog' ) );
 		}
 
 		// Delete product

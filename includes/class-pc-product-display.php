@@ -124,10 +124,10 @@ class PC_Product_Display {
 		
 		// Convert to readable label
 		$labels = array(
-			'room'    => __( '상온', 'dw-product-catalog' ),
-			'cold'    => __( '냉장', 'dw-product-catalog' ),
-			'frozen'  => __( '냉동', 'dw-product-catalog' ),
-			'freezer' => __( '프리저', 'dw-product-catalog' ),
+			'room'    => __( 'Room Temperature', 'dw-product-catalog' ),
+			'cold'    => __( 'Refrigerated', 'dw-product-catalog' ),
+			'frozen'  => __( 'Frozen', 'dw-product-catalog' ),
+			'freezer' => __( 'Freezer', 'dw-product-catalog' ),
 		);
 		
 		return isset( $labels[ $value ] ) ? $labels[ $value ] : $value;

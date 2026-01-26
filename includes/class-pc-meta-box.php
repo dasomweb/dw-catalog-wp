@@ -42,7 +42,7 @@ class PC_Meta_Box {
 	public function add_meta_boxes() {
 		add_meta_box(
 			'pc_product_details',
-			__( '제품 상세 정보', 'dw-product-catalog' ),
+			__( 'Product Details', 'dw-product-catalog' ),
 			array( $this, 'render_product_details_meta_box' ),
 			$this->post_type,
 			'normal',
@@ -69,11 +69,11 @@ class PC_Meta_Box {
 
 		// Temperature options
 		$temperature_options = array(
-			''           => __( '선택하세요', 'dw-product-catalog' ),
-			'room'       => __( '상온', 'dw-product-catalog' ),
-			'cold'       => __( '냉장', 'dw-product-catalog' ),
-			'frozen'     => __( '냉동', 'dw-product-catalog' ),
-			'freezer'    => __( '프리저', 'dw-product-catalog' ),
+			''           => __( 'Select', 'dw-product-catalog' ),
+			'room'       => __( 'Room Temperature', 'dw-product-catalog' ),
+			'cold'       => __( 'Refrigerated', 'dw-product-catalog' ),
+			'frozen'     => __( 'Frozen', 'dw-product-catalog' ),
+			'freezer'    => __( 'Freezer', 'dw-product-catalog' ),
 		);
 		?>
 		<div class="pc-product-fields">
