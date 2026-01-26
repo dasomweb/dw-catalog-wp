@@ -103,6 +103,14 @@ class PC_Field_Reference {
 				'required'    => false,
 				'example'     => 'Milk, Eggs, Nuts',
 			),
+			array(
+				'label'       => __( 'Featured Image', 'dw-product-catalog' ),
+				'meta_key'    => 'featured_image_url',
+				'type'        => 'url',
+				'description' => __( 'Featured image URL (for bulk import - will be downloaded and set as featured image)', 'dw-product-catalog' ),
+				'required'    => false,
+				'example'     => 'https://example.com/product-image.jpg',
+			),
 		);
 	}
 
@@ -197,8 +205,11 @@ $temperature = PC_Product_Display::get_temperature( $post_id );</code></pre>
 						<li><code>post_title</code> - <?php _e( 'Product Title (required)', 'dw-product-catalog' ); ?></li>
 						<li><code>post_content</code> - <?php _e( 'Product Description', 'dw-product-catalog' ); ?></li>
 						<li><code>post_status</code> - <?php _e( 'Status: publish, draft, or private', 'dw-product-catalog' ); ?></li>
+						<li><code>featured_image_url</code> - <?php _e( 'Featured Image URL (will be downloaded and set as featured image)', 'dw-product-catalog' ); ?></li>
 						<?php foreach ( $fields as $field ) : ?>
-							<li><code><?php echo esc_html( $field['meta_key'] ); ?></code> - <?php echo esc_html( $field['label'] ); ?></li>
+							<?php if ( $field['meta_key'] !== 'featured_image_url' ) : ?>
+								<li><code><?php echo esc_html( $field['meta_key'] ); ?></code> - <?php echo esc_html( $field['label'] ); ?></li>
+							<?php endif; ?>
 						<?php endforeach; ?>
 					</ul>
 				</div>

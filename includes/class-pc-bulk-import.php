@@ -126,6 +126,7 @@ class PC_Bulk_Import {
 						<ul>
 							<li><code>post_content</code> - <?php _e( 'Product description', 'dw-product-catalog' ); ?></li>
 							<li><code>post_status</code> - <?php _e( 'publish, draft, or private', 'dw-product-catalog' ); ?></li>
+							<li><code>featured_image_url</code> - <?php _e( 'Featured image URL (will be downloaded and set as featured image)', 'dw-product-catalog' ); ?></li>
 							<li><code>_pc_product_name</code> - <?php _e( 'Product Name', 'dw-product-catalog' ); ?></li>
 							<li><code>_pc_brand</code> - <?php _e( 'Brand', 'dw-product-catalog' ); ?></li>
 							<li><code>_pc_item_code</code> - <?php _e( 'Item Code', 'dw-product-catalog' ); ?></li>
@@ -143,9 +144,9 @@ class PC_Bulk_Import {
 				</ol>
 
 				<h3><?php _e( 'Sample CSV Format', 'dw-product-catalog' ); ?></h3>
-				<pre style="background: #f5f5f5; padding: 10px; overflow-x: auto;"><code>post_title,post_content,_pc_product_name,_pc_brand,_pc_item_code,_pc_upc,_pc_temperature,_pc_allergen
-"Product 1","Description 1","Product Name 1","Brand A","ITEM-001","123456789012","room","Milk, Eggs"
-"Product 2","Description 2","Product Name 2","Brand B","ITEM-002","123456789013","cold","Nuts"</code></pre>
+				<pre style="background: #f5f5f5; padding: 10px; overflow-x: auto;"><code>post_title,post_content,featured_image_url,_pc_product_name,_pc_brand,_pc_item_code,_pc_upc,_pc_temperature,_pc_allergen
+"Product 1","Description 1","https://example.com/image1.jpg","Product Name 1","Brand A","ITEM-001","123456789012","room","Milk, Eggs"
+"Product 2","Description 2","https://example.com/image2.jpg","Product Name 2","Brand B","ITEM-002","123456789013","cold","Nuts"</code></pre>
 			</div>
 
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" enctype="multipart/form-data" id="pc-import-form">
@@ -397,6 +398,16 @@ class PC_Bulk_Import {
 			);
 		}
 
+		// Handle featured image
+		if ( isset( $data['featured_image_url'] ) && ! empty( $data['featured_image_url'] ) ) {
+			$image_url = esc_url_raw( $data['featured_image_url'] );
+			$attachment_id = $this->import_image_from_url( $image_url, $post_id, $data['post_title'] );
+			
+			if ( $attachment_id && ! is_wp_error( $attachment_id ) ) {
+				set_post_thumbnail( $post_id, $attachment_id );
+			}
+		}
+
 		// Save meta fields
 		$meta_fields = array(
 			'_pc_product_name',
@@ -433,6 +444,56 @@ class PC_Bulk_Import {
 			'skipped' => false,
 			'error'   => '',
 		);
+	}
+
+	/**
+	 * Import image from URL
+	 * 
+	 * @param string $image_url Image URL
+	 * @param int    $post_id   Post ID to attach image to
+	 * @param string $title     Image title
+	 * @return int|WP_Error Attachment ID or error
+	 */
+	private function import_image_from_url( $image_url, $post_id, $title = '' ) {
+		// Check if image already exists
+		$attachment_id = attachment_url_to_postid( $image_url );
+		if ( $attachment_id ) {
+			return $attachment_id;
+		}
+
+		// Download image
+		require_once( ABSPATH . 'wp-admin/includes/file.php' );
+		require_once( ABSPATH . 'wp-admin/includes/media.php' );
+		require_once( ABSPATH . 'wp-admin/includes/image.php' );
+
+		$tmp = download_url( $image_url );
+
+		if ( is_wp_error( $tmp ) ) {
+			return $tmp;
+		}
+
+		// Get file extension
+		$file_array = array(
+			'name'     => basename( $image_url ),
+			'tmp_name' => $tmp,
+		);
+
+		// If error storing temporarily, unlink
+		if ( is_wp_error( $tmp ) ) {
+			@unlink( $file_array['tmp_name'] );
+			return $tmp;
+		}
+
+		// Do the validation and storage stuff
+		$attachment_id = media_handle_sideload( $file_array, $post_id, $title );
+
+		// If error storing permanently, unlink
+		if ( is_wp_error( $attachment_id ) ) {
+			@unlink( $file_array['tmp_name'] );
+			return $attachment_id;
+		}
+
+		return $attachment_id;
 	}
 }
 
