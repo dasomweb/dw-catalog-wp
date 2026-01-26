@@ -100,6 +100,24 @@ class PC_Admin_Pages {
 			'pc-products-edit',
 			array( $this, 'render_edit_page' )
 		);
+
+		// Categories submenu
+		add_submenu_page(
+			'pc-products',
+			__( 'Product Categories', 'dw-product-catalog' ),
+			__( 'Categories', 'dw-product-catalog' ),
+			'manage_categories',
+			'edit-tags.php?taxonomy=product_category&post_type=' . $this->post_type
+		);
+
+		// Tags submenu
+		add_submenu_page(
+			'pc-products',
+			__( 'Product Tags', 'dw-product-catalog' ),
+			__( 'Tags', 'dw-product-catalog' ),
+			'manage_categories',
+			'edit-tags.php?taxonomy=product_tag&post_type=' . $this->post_type
+		);
 	}
 
 	/**
