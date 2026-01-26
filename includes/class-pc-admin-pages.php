@@ -194,7 +194,6 @@ class PC_Admin_Pages {
 								<th class="manage-column"><?php _e( 'Brand', 'dw-product-catalog' ); ?></th>
 								<th class="manage-column"><?php _e( 'Item Code', 'dw-product-catalog' ); ?></th>
 								<th class="manage-column"><?php _e( 'UPC', 'dw-product-catalog' ); ?></th>
-								<th class="manage-column"><?php _e( 'Temperature', 'dw-product-catalog' ); ?></th>
 								<th class="manage-column"><?php _e( 'Status', 'dw-product-catalog' ); ?></th>
 								<th class="manage-column"><?php _e( 'Actions', 'dw-product-catalog' ); ?></th>
 							</tr>
@@ -207,7 +206,6 @@ class PC_Admin_Pages {
 								$brand = PC_Product_Display::get_brand( $post_id );
 								$item_code = PC_Product_Display::get_item_code( $post_id );
 								$upc = PC_Product_Display::get_upc( $post_id );
-								$temperature = PC_Product_Display::get_temperature( $post_id );
 								?>
 								<tr>
 									<th scope="row" class="check-column">
@@ -224,7 +222,6 @@ class PC_Admin_Pages {
 									<td><?php echo $brand ? esc_html( $brand ) : '—'; ?></td>
 									<td><?php echo $item_code ? esc_html( $item_code ) : '—'; ?></td>
 									<td><?php echo $upc ? esc_html( $upc ) : '—'; ?></td>
-									<td><?php echo $temperature ? esc_html( $temperature ) : '—'; ?></td>
 									<td>
 										<?php
 										$status = get_post_status( $post_id );
@@ -306,16 +303,7 @@ class PC_Admin_Pages {
 		$brand = $is_edit ? PC_Product_Display::get_brand( $product_id ) : '';
 		$item_code = $is_edit ? PC_Product_Display::get_item_code( $product_id ) : '';
 		$upc = $is_edit ? PC_Product_Display::get_upc( $product_id ) : '';
-		$temperature = $is_edit ? PC_Product_Display::get_product_meta( $product_id, '_pc_temperature' ) : '';
 		$allergen = $is_edit ? PC_Product_Display::get_allergen( $product_id ) : '';
-
-		$temperature_options = array(
-			''           => __( 'Select', 'dw-product-catalog' ),
-			'room'       => __( 'Room Temperature', 'dw-product-catalog' ),
-			'cold'       => __( 'Refrigerated', 'dw-product-catalog' ),
-			'frozen'     => __( 'Frozen', 'dw-product-catalog' ),
-			'freezer'    => __( 'Freezer', 'dw-product-catalog' ),
-		);
 		?>
 		<div class="wrap">
 			<h1><?php echo $is_edit ? __( 'Edit Product', 'dw-product-catalog' ) : __( 'Add New Product', 'dw-product-catalog' ); ?></h1>
@@ -453,24 +441,6 @@ class PC_Admin_Pages {
 														class="regular-text"
 														placeholder="<?php esc_attr_e( 'UPC 코드를 입력하세요', 'dw-product-catalog' ); ?>"
 													/>
-												</td>
-											</tr>
-											<tr>
-												<th scope="row">
-													<label for="pc_temperature"><?php _e( 'Temperature', 'dw-product-catalog' ); ?></label>
-												</th>
-												<td>
-													<select 
-														id="pc_temperature" 
-														name="pc_temperature" 
-														class="regular-text"
-													>
-														<?php foreach ( $temperature_options as $value => $label ) : ?>
-															<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $temperature, $value ); ?>>
-																<?php echo esc_html( $label ); ?>
-															</option>
-														<?php endforeach; ?>
-													</select>
 												</td>
 											</tr>
 											<tr>
@@ -730,7 +700,6 @@ class PC_Admin_Pages {
 			'pc_brand'        => '_pc_brand',
 			'pc_item_code'    => '_pc_item_code',
 			'pc_upc'          => '_pc_upc',
-			'pc_temperature'  => '_pc_temperature',
 			'pc_allergen'     => '_pc_allergen',
 		);
 
@@ -739,22 +708,10 @@ class PC_Admin_Pages {
 				$value = $_POST[ $field_name ];
 				
 				// Sanitize based on field type
-				switch ( $field_name ) {
-					case 'pc_temperature':
-						$value = sanitize_text_field( $value );
-						$allowed_values = array( '', 'room', 'cold', 'frozen', 'freezer' );
-						if ( ! in_array( $value, $allowed_values, true ) ) {
-							$value = '';
-						}
-						break;
-					
-					case 'pc_allergen':
-						$value = sanitize_textarea_field( $value );
-						break;
-					
-					default:
-						$value = sanitize_text_field( $value );
-						break;
+				if ( $field_name === 'pc_allergen' ) {
+					$value = sanitize_textarea_field( $value );
+				} else {
+					$value = sanitize_text_field( $value );
 				}
 				
 				update_post_meta( $product_id, $meta_key, $value );

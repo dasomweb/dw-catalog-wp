@@ -64,17 +64,7 @@ class PC_Meta_Box {
 		$brand        = get_post_meta( $post->ID, '_pc_brand', true );
 		$item_code    = get_post_meta( $post->ID, '_pc_item_code', true );
 		$upc          = get_post_meta( $post->ID, '_pc_upc', true );
-		$temperature  = get_post_meta( $post->ID, '_pc_temperature', true );
 		$allergen     = get_post_meta( $post->ID, '_pc_allergen', true );
-
-		// Temperature options
-		$temperature_options = array(
-			''           => __( 'Select', 'dw-product-catalog' ),
-			'room'       => __( 'Room Temperature', 'dw-product-catalog' ),
-			'cold'       => __( 'Refrigerated', 'dw-product-catalog' ),
-			'frozen'     => __( 'Frozen', 'dw-product-catalog' ),
-			'freezer'    => __( 'Freezer', 'dw-product-catalog' ),
-		);
 		?>
 		<div class="pc-product-fields">
 			<table class="form-table">
@@ -139,26 +129,8 @@ class PC_Meta_Box {
 								placeholder="<?php esc_attr_e( 'UPC 코드를 입력하세요', 'dw-product-catalog' ); ?>"
 							/>
 						</td>
-					</tr>
-					<tr>
-						<th scope="row">
-							<label for="pc_temperature"><?php _e( 'Temperature', 'dw-product-catalog' ); ?></label>
-						</th>
-						<td>
-							<select 
-								id="pc_temperature" 
-								name="pc_temperature" 
-								class="regular-text"
-							>
-								<?php foreach ( $temperature_options as $value => $label ) : ?>
-									<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $temperature, $value ); ?>>
-										<?php echo esc_html( $label ); ?>
-									</option>
-								<?php endforeach; ?>
-							</select>
-						</td>
-					</tr>
-					<tr>
+											</tr>
+											<tr>
 						<th scope="row">
 							<label for="pc_allergen"><?php _e( 'Allergen', 'dw-product-catalog' ); ?></label>
 							<span class="description"><?php _e( '(쉼표로 구분)', 'dw-product-catalog' ); ?></span>
@@ -220,7 +192,6 @@ class PC_Meta_Box {
 			'pc_brand'        => '_pc_brand',
 			'pc_item_code'    => '_pc_item_code',
 			'pc_upc'          => '_pc_upc',
-			'pc_temperature'  => '_pc_temperature',
 			'pc_allergen'     => '_pc_allergen',
 		);
 
@@ -229,25 +200,12 @@ class PC_Meta_Box {
 				$value = $_POST[ $field_name ];
 				
 				// Sanitize based on field type
-				switch ( $field_name ) {
-					case 'pc_temperature':
-						// Sanitize select field
-						$value = sanitize_text_field( $value );
-						$allowed_values = array( '', 'room', 'cold', 'frozen', 'freezer' );
-						if ( ! in_array( $value, $allowed_values, true ) ) {
-							$value = '';
-						}
-						break;
-					
-					case 'pc_allergen':
-						// Sanitize textarea (comma-separated)
-						$value = sanitize_textarea_field( $value );
-						break;
-					
-					default:
-						// Sanitize text fields
-						$value = sanitize_text_field( $value );
-						break;
+				if ( $field_name === 'pc_allergen' ) {
+					// Sanitize textarea (comma-separated)
+					$value = sanitize_textarea_field( $value );
+				} else {
+					// Sanitize text fields
+					$value = sanitize_text_field( $value );
 				}
 				
 				// Save meta (domain agnostic - only stores values, not URLs)

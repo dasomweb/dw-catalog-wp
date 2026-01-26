@@ -114,36 +114,6 @@ class PC_Product_Display {
 	}
 
 	/**
-	 * Get temperature
-	 * 
-	 * @param int $post_id Post ID
-	 * @return string Temperature
-	 */
-	public static function get_temperature( $post_id ) {
-		$value = self::get_product_meta( $post_id, '_pc_temperature' );
-		
-		// Convert to readable label
-		$labels = array(
-			'room'    => __( 'Room Temperature', 'dw-product-catalog' ),
-			'cold'    => __( 'Refrigerated', 'dw-product-catalog' ),
-			'frozen'  => __( 'Frozen', 'dw-product-catalog' ),
-			'freezer' => __( 'Freezer', 'dw-product-catalog' ),
-		);
-		
-		return isset( $labels[ $value ] ) ? $labels[ $value ] : $value;
-	}
-
-	/**
-	 * Display temperature (escaped)
-	 * 
-	 * @param int $post_id Post ID
-	 * @return void
-	 */
-	public static function display_temperature( $post_id ) {
-		echo esc_html( self::get_temperature( $post_id ) );
-	}
-
-	/**
 	 * Get allergen (as array)
 	 * 
 	 * @param int $post_id Post ID

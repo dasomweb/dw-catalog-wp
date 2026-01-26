@@ -81,21 +81,6 @@ class PC_Field_Reference {
 				'example'     => '123456789012',
 			),
 			array(
-				'label'       => __( 'Temperature', 'dw-product-catalog' ),
-				'meta_key'    => '_pc_temperature',
-				'type'        => 'select',
-				'description' => __( 'Storage temperature requirement', 'dw-product-catalog' ),
-				'required'    => false,
-				'options'     => array(
-					''        => __( 'Select', 'dw-product-catalog' ),
-					'room'    => __( 'Room Temperature', 'dw-product-catalog' ),
-					'cold'    => __( 'Refrigerated', 'dw-product-catalog' ),
-					'frozen'  => __( 'Frozen', 'dw-product-catalog' ),
-					'freezer' => __( 'Freezer', 'dw-product-catalog' ),
-				),
-				'example'     => 'room',
-			),
-			array(
 				'label'       => __( 'Allergen', 'dw-product-catalog' ),
 				'meta_key'    => '_pc_allergen',
 				'type'        => 'textarea',
@@ -186,7 +171,7 @@ $brand = get_post_meta( $post_id, '_pc_brand', true );</code></pre>
 					<h3><?php _e( 'Using Helper Functions', 'dw-product-catalog' ); ?></h3>
 					<pre><code>$product_name = PC_Product_Display::get_product_name( $post_id );
 $brand = PC_Product_Display::get_brand( $post_id );
-$temperature = PC_Product_Display::get_temperature( $post_id );</code></pre>
+$item_code = PC_Product_Display::get_item_code( $post_id );</code></pre>
 
 					<h3><?php _e( 'Kadence Blocks Pro Dynamic Field', 'dw-product-catalog' ); ?></h3>
 					<p><?php _e( 'Use the meta key directly in Kadence Blocks Pro Dynamic Field:', 'dw-product-catalog' ); ?></p>
@@ -195,7 +180,6 @@ $temperature = PC_Product_Display::get_temperature( $post_id );</code></pre>
 						<li><code>_pc_brand</code></li>
 						<li><code>_pc_item_code</code></li>
 						<li><code>_pc_upc</code></li>
-						<li><code>_pc_temperature</code></li>
 						<li><code>_pc_allergen</code></li>
 					</ul>
 
