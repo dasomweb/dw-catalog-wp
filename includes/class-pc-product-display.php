@@ -94,82 +94,83 @@ class PC_Product_Display {
 	}
 
 	/**
-	 * Get UPC
+	 * Get cut type
 	 * 
 	 * @param int $post_id Post ID
-	 * @return string UPC
+	 * @return string Cut type
 	 */
-	public static function get_upc( $post_id ) {
-		return PC_Meta_Box::get_product_meta( $post_id, '_pc_upc' );
+	public static function get_cut_type( $post_id ) {
+		return self::get_product_meta( $post_id, '_pc_cut_type' );
 	}
 
 	/**
-	 * Display UPC (escaped)
+	 * Display cut type (escaped)
 	 * 
 	 * @param int $post_id Post ID
 	 * @return void
 	 */
-	public static function display_upc( $post_id ) {
-		PC_Meta_Box::display_product_meta( $post_id, '_pc_upc' );
+	public static function display_cut_type( $post_id ) {
+		PC_Meta_Box::display_product_meta( $post_id, '_pc_cut_type' );
 	}
 
 	/**
-	 * Get allergen (as array)
+	 * Get size/weight
 	 * 
 	 * @param int $post_id Post ID
-	 * @return array Array of allergens
+	 * @return string Size/weight
 	 */
-	public static function get_allergen_array( $post_id ) {
-		$allergen = self::get_product_meta( $post_id, '_pc_allergen' );
-		
-		if ( empty( $allergen ) ) {
-			return array();
-		}
-		
-		// Split by comma and trim
-		$allergens = array_map( 'trim', explode( ',', $allergen ) );
-		return array_filter( $allergens );
+	public static function get_size_weight( $post_id ) {
+		return self::get_product_meta( $post_id, '_pc_size_weight' );
 	}
 
 	/**
-	 * Get allergen (as string)
-	 * 
-	 * @param int $post_id Post ID
-	 * @return string Allergen string
-	 */
-	public static function get_allergen( $post_id ) {
-		return self::get_product_meta( $post_id, '_pc_allergen' );
-	}
-
-	/**
-	 * Display allergen (escaped)
+	 * Display size/weight (escaped)
 	 * 
 	 * @param int $post_id Post ID
 	 * @return void
 	 */
-	public static function display_allergen( $post_id ) {
-		$allergen = self::get_allergen( $post_id );
-		echo esc_html( $allergen );
+	public static function display_size_weight( $post_id ) {
+		PC_Meta_Box::display_product_meta( $post_id, '_pc_size_weight' );
 	}
 
 	/**
-	 * Display allergen as list (escaped)
+	 * Get packing unit
+	 * 
+	 * @param int $post_id Post ID
+	 * @return string Packing unit
+	 */
+	public static function get_packing_unit( $post_id ) {
+		return self::get_product_meta( $post_id, '_pc_packing_unit' );
+	}
+
+	/**
+	 * Display packing unit (escaped)
 	 * 
 	 * @param int $post_id Post ID
 	 * @return void
 	 */
-	public static function display_allergen_list( $post_id ) {
-		$allergens = self::get_allergen_array( $post_id );
-		
-		if ( empty( $allergens ) ) {
-			return;
-		}
-		
-		echo '<ul class="pc-allergen-list">';
-		foreach ( $allergens as $allergen ) {
-			echo '<li>' . esc_html( $allergen ) . '</li>';
-		}
-		echo '</ul>';
+	public static function display_packing_unit( $post_id ) {
+		PC_Meta_Box::display_product_meta( $post_id, '_pc_packing_unit' );
+	}
+
+	/**
+	 * Get origin
+	 * 
+	 * @param int $post_id Post ID
+	 * @return string Origin
+	 */
+	public static function get_origin( $post_id ) {
+		return self::get_product_meta( $post_id, '_pc_origin' );
+	}
+
+	/**
+	 * Display origin (escaped)
+	 * 
+	 * @param int $post_id Post ID
+	 * @return void
+	 */
+	public static function display_origin( $post_id ) {
+		PC_Meta_Box::display_product_meta( $post_id, '_pc_origin' );
 	}
 }
 

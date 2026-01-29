@@ -189,11 +189,12 @@ class PC_Admin_Pages {
 								<td class="manage-column column-cb check-column">
 									<input type="checkbox" id="cb-select-all">
 								</td>
-								<th class="manage-column"><?php _e( 'Title', 'dw-product-catalog' ); ?></th>
 								<th class="manage-column"><?php _e( 'Product Name', 'dw-product-catalog' ); ?></th>
 								<th class="manage-column"><?php _e( 'Brand', 'dw-product-catalog' ); ?></th>
+								<th class="manage-column"><?php _e( 'Cut / Form', 'dw-product-catalog' ); ?></th>
+								<th class="manage-column"><?php _e( 'Size / Weight', 'dw-product-catalog' ); ?></th>
+								<th class="manage-column"><?php _e( 'Origin', 'dw-product-catalog' ); ?></th>
 								<th class="manage-column"><?php _e( 'Item Code', 'dw-product-catalog' ); ?></th>
-								<th class="manage-column"><?php _e( 'UPC', 'dw-product-catalog' ); ?></th>
 								<th class="manage-column"><?php _e( 'Status', 'dw-product-catalog' ); ?></th>
 								<th class="manage-column"><?php _e( 'Actions', 'dw-product-catalog' ); ?></th>
 							</tr>
@@ -203,9 +204,15 @@ class PC_Admin_Pages {
 								<?php
 								$post_id = get_the_ID();
 								$product_name = PC_Product_Display::get_product_name( $post_id );
+								// If product_name is empty, use post_title as fallback
+								if ( empty( $product_name ) ) {
+									$product_name = get_the_title( $post_id );
+								}
 								$brand = PC_Product_Display::get_brand( $post_id );
+								$cut_type = get_post_meta( $post_id, '_pc_cut_type', true );
+								$size_weight = get_post_meta( $post_id, '_pc_size_weight', true );
+								$origin = get_post_meta( $post_id, '_pc_origin', true );
 								$item_code = PC_Product_Display::get_item_code( $post_id );
-								$upc = PC_Product_Display::get_upc( $post_id );
 								?>
 								<tr>
 									<th scope="row" class="check-column">
@@ -214,14 +221,15 @@ class PC_Admin_Pages {
 									<td>
 										<strong>
 											<a href="<?php echo esc_url( admin_url( 'admin.php?page=pc-products-edit&product_id=' . $post_id ) ); ?>">
-												<?php echo esc_html( get_the_title() ? get_the_title() : __( '(No Title)', 'dw-product-catalog' ) ); ?>
+												<?php echo $product_name ? esc_html( $product_name ) : esc_html__( '(No Product Name)', 'dw-product-catalog' ); ?>
 											</a>
 										</strong>
 									</td>
-									<td><?php echo $product_name ? esc_html( $product_name ) : '—'; ?></td>
 									<td><?php echo $brand ? esc_html( $brand ) : '—'; ?></td>
+									<td><?php echo $cut_type ? esc_html( $cut_type ) : '—'; ?></td>
+									<td><?php echo $size_weight ? esc_html( $size_weight ) : '—'; ?></td>
+									<td><?php echo $origin ? esc_html( $origin ) : '—'; ?></td>
 									<td><?php echo $item_code ? esc_html( $item_code ) : '—'; ?></td>
-									<td><?php echo $upc ? esc_html( $upc ) : '—'; ?></td>
 									<td>
 										<?php
 										$status = get_post_status( $post_id );
@@ -299,11 +307,22 @@ class PC_Admin_Pages {
 		}
 
 		// Get existing meta values
-		$product_name = $is_edit ? PC_Product_Display::get_product_name( $product_id ) : '';
+		// For edit mode, use product_name from meta, otherwise use post_title
+		if ( $is_edit ) {
+			$product_name = PC_Product_Display::get_product_name( $product_id );
+			// If product_name is empty, use post_title as fallback
+			if ( empty( $product_name ) ) {
+				$product_name = $title;
+			}
+		} else {
+			$product_name = '';
+		}
 		$brand = $is_edit ? PC_Product_Display::get_brand( $product_id ) : '';
 		$item_code = $is_edit ? PC_Product_Display::get_item_code( $product_id ) : '';
-		$upc = $is_edit ? PC_Product_Display::get_upc( $product_id ) : '';
-		$allergen = $is_edit ? PC_Product_Display::get_allergen( $product_id ) : '';
+		$cut_type = $is_edit ? get_post_meta( $product_id, '_pc_cut_type', true ) : '';
+		$size_weight = $is_edit ? get_post_meta( $product_id, '_pc_size_weight', true ) : '';
+		$packing_unit = $is_edit ? get_post_meta( $product_id, '_pc_packing_unit', true ) : '';
+		$origin = $is_edit ? get_post_meta( $product_id, '_pc_origin', true ) : '';
 		?>
 		<div class="wrap">
 			<h1><?php echo $is_edit ? __( 'Edit Product', 'dw-product-catalog' ) : __( 'Add New Product', 'dw-product-catalog' ); ?></h1>
@@ -325,18 +344,21 @@ class PC_Admin_Pages {
 										<tbody>
 											<tr>
 												<th scope="row">
-													<label for="post_title"><?php _e( 'Title', 'dw-product-catalog' ); ?> <span class="required">*</span></label>
+													<label for="pc_product_name"><?php _e( 'Product Name', 'dw-product-catalog' ); ?> <span class="required">*</span></label>
 												</th>
 												<td>
 													<input 
 														type="text" 
-														id="post_title" 
-														name="post_title" 
-														value="<?php echo esc_attr( $title ); ?>" 
+														id="pc_product_name" 
+														name="pc_product_name" 
+														value="<?php echo esc_attr( $product_name ); ?>" 
 														class="large-text" 
 														required
-														placeholder="<?php esc_attr_e( 'Enter product title', 'dw-product-catalog' ); ?>"
+														placeholder="<?php esc_attr_e( 'Enter product name (actual product name used in transactions)', 'dw-product-catalog' ); ?>"
 													/>
+													<p class="description">
+														<?php _e( 'This will be saved as the product title.', 'dw-product-catalog' ); ?>
+													</p>
 												</td>
 											</tr>
 											<tr>
@@ -384,22 +406,6 @@ class PC_Admin_Pages {
 										<tbody>
 											<tr>
 												<th scope="row">
-													<label for="pc_product_name"><?php _e( 'Product Name', 'dw-product-catalog' ); ?></label>
-													<span class="description"><?php _e( '(표시명)', 'dw-product-catalog' ); ?></span>
-												</th>
-												<td>
-													<input 
-														type="text" 
-														id="pc_product_name" 
-														name="pc_product_name" 
-														value="<?php echo esc_attr( $product_name ); ?>" 
-														class="regular-text"
-														placeholder="<?php esc_attr_e( '제품명을 입력하세요', 'dw-product-catalog' ); ?>"
-													/>
-												</td>
-											</tr>
-											<tr>
-												<th scope="row">
 													<label for="pc_brand"><?php _e( 'Brand', 'dw-product-catalog' ); ?></label>
 												</th>
 												<td>
@@ -409,8 +415,83 @@ class PC_Admin_Pages {
 														name="pc_brand" 
 														value="<?php echo esc_attr( $brand ); ?>" 
 														class="regular-text"
-														placeholder="<?php esc_attr_e( '브랜드명을 입력하세요', 'dw-product-catalog' ); ?>"
+														placeholder="<?php esc_attr_e( 'Enter manufacturer or distributor brand', 'dw-product-catalog' ); ?>"
 													/>
+													<p class="description">
+														<?php _e( 'Manufacturer or distributor brand', 'dw-product-catalog' ); ?>
+													</p>
+												</td>
+											</tr>
+											<tr>
+												<th scope="row">
+													<label for="pc_cut_type"><?php _e( 'Cut / Form', 'dw-product-catalog' ); ?></label>
+												</th>
+												<td>
+													<input 
+														type="text" 
+														id="pc_cut_type" 
+														name="pc_cut_type" 
+														value="<?php echo esc_attr( $cut_type ); ?>" 
+														class="regular-text"
+														placeholder="<?php esc_attr_e( 'e.g., Whole, Loin, Fillet, SAKU', 'dw-product-catalog' ); ?>"
+													/>
+													<p class="description">
+														<?php _e( 'Cut or form type (e.g., Whole, Loin, Fillet, SAKU)', 'dw-product-catalog' ); ?>
+													</p>
+												</td>
+											</tr>
+											<tr>
+												<th scope="row">
+													<label for="pc_size_weight"><?php _e( 'Size / Weight', 'dw-product-catalog' ); ?></label>
+												</th>
+												<td>
+													<input 
+														type="text" 
+														id="pc_size_weight" 
+														name="pc_size_weight" 
+														value="<?php echo esc_attr( $size_weight ); ?>" 
+														class="regular-text"
+														placeholder="<?php esc_attr_e( 'e.g., 1lb, 200g, 400/600, 21–25', 'dw-product-catalog' ); ?>"
+													/>
+													<p class="description">
+														<?php _e( 'Weight per unit or capacity, size range (e.g., 1lb, 200g, 400/600, 21–25)', 'dw-product-catalog' ); ?>
+													</p>
+												</td>
+											</tr>
+											<tr>
+												<th scope="row">
+													<label for="pc_packing_unit"><?php _e( 'Packing Unit', 'dw-product-catalog' ); ?></label>
+												</th>
+												<td>
+													<input 
+														type="text" 
+														id="pc_packing_unit" 
+														name="pc_packing_unit" 
+														value="<?php echo esc_attr( $packing_unit ); ?>" 
+														class="regular-text"
+														placeholder="<?php esc_attr_e( 'e.g., 10pc/cs, 1/15lb/cs', 'dw-product-catalog' ); ?>"
+													/>
+													<p class="description">
+														<?php _e( 'Packing standard (e.g., 10pc/cs, 1/15lb/cs)', 'dw-product-catalog' ); ?>
+													</p>
+												</td>
+											</tr>
+											<tr>
+												<th scope="row">
+													<label for="pc_origin"><?php _e( 'Origin', 'dw-product-catalog' ); ?></label>
+												</th>
+												<td>
+													<input 
+														type="text" 
+														id="pc_origin" 
+														name="pc_origin" 
+														value="<?php echo esc_attr( $origin ); ?>" 
+														class="regular-text"
+														placeholder="<?php esc_attr_e( 'Enter country or region', 'dw-product-catalog' ); ?>"
+													/>
+													<p class="description">
+														<?php _e( 'Country or region information', 'dw-product-catalog' ); ?>
+													</p>
 												</td>
 											</tr>
 											<tr>
@@ -424,40 +505,10 @@ class PC_Admin_Pages {
 														name="pc_item_code" 
 														value="<?php echo esc_attr( $item_code ); ?>" 
 														class="regular-text"
-														placeholder="<?php esc_attr_e( '아이템 코드를 입력하세요', 'dw-product-catalog' ); ?>"
+														placeholder="<?php esc_attr_e( 'Enter internal product code', 'dw-product-catalog' ); ?>"
 													/>
-												</td>
-											</tr>
-											<tr>
-												<th scope="row">
-													<label for="pc_upc"><?php _e( 'UPC', 'dw-product-catalog' ); ?></label>
-												</th>
-												<td>
-													<input 
-														type="text" 
-														id="pc_upc" 
-														name="pc_upc" 
-														value="<?php echo esc_attr( $upc ); ?>" 
-														class="regular-text"
-														placeholder="<?php esc_attr_e( 'UPC 코드를 입력하세요', 'dw-product-catalog' ); ?>"
-													/>
-												</td>
-											</tr>
-											<tr>
-												<th scope="row">
-													<label for="pc_allergen"><?php _e( 'Allergen', 'dw-product-catalog' ); ?></label>
-													<span class="description"><?php _e( '(comma-separated)', 'dw-product-catalog' ); ?></span>
-												</th>
-												<td>
-													<textarea 
-														id="pc_allergen" 
-														name="pc_allergen" 
-														rows="3" 
-														class="large-text"
-														placeholder="<?php esc_attr_e( 'Enter allergens (comma-separated)', 'dw-product-catalog' ); ?>"
-													><?php echo esc_textarea( $allergen ); ?></textarea>
 													<p class="description">
-														<?php _e( 'Separate multiple items with commas.', 'dw-product-catalog' ); ?>
+														<?php _e( 'Internal management product code', 'dw-product-catalog' ); ?>
 													</p>
 												</td>
 											</tr>
@@ -623,25 +674,6 @@ class PC_Admin_Pages {
 				</div>
 			</form>
 		</div>
-		<script type="text/javascript">
-		jQuery(document).ready(function($) {
-			var $productName = $('#pc_product_name');
-			var $title = $('#post_title');
-			
-			// Sync Product Name to Title when Product Name changes
-			$productName.on('input', function() {
-				var productNameValue = $(this).val();
-				if (productNameValue) {
-					$title.val(productNameValue);
-				}
-			});
-			
-			// If Product Name is filled but Title is empty, sync on page load
-			if ($productName.val() && !$title.val()) {
-				$title.val($productName.val());
-			}
-		});
-		</script>
 		<?php
 	}
 
@@ -662,27 +694,20 @@ class PC_Admin_Pages {
 			wp_die( __( 'You do not have permission to perform this action.', 'dw-product-catalog' ) );
 		}
 
-		// Get Product Name first
+		// Get Product Name first (required field)
 		$product_name = isset( $_POST['pc_product_name'] ) ? sanitize_text_field( $_POST['pc_product_name'] ) : '';
 		
-		// Prepare post data
-		$post_title = isset( $_POST['post_title'] ) ? sanitize_text_field( $_POST['post_title'] ) : '';
-		
-		// If Product Name is provided, use it as Title (Product Name takes priority)
-		if ( ! empty( $product_name ) ) {
-			$post_title = $product_name;
+		if ( empty( $product_name ) ) {
+			wp_die( __( 'Product Name is required.', 'dw-product-catalog' ) );
 		}
 		
+		// Product Name becomes the Title
 		$post_data = array(
 			'post_type'    => $this->post_type,
-			'post_title'   => $post_title,
+			'post_title'   => $product_name,
 			'post_content' => isset( $_POST['post_content'] ) ? wp_kses_post( $_POST['post_content'] ) : '',
 			'post_status'  => isset( $_POST['post_status'] ) ? sanitize_text_field( $_POST['post_status'] ) : 'publish',
 		);
-
-		if ( empty( $post_data['post_title'] ) ) {
-			wp_die( __( 'Title is required. Please enter Product Name.', 'dw-product-catalog' ) );
-		}
 
 		// Update or insert
 		if ( $product_id > 0 ) {
@@ -727,22 +752,16 @@ class PC_Admin_Pages {
 		$fields = array(
 			'pc_product_name' => '_pc_product_name',
 			'pc_brand'        => '_pc_brand',
+			'pc_cut_type'     => '_pc_cut_type',
+			'pc_size_weight'  => '_pc_size_weight',
+			'pc_packing_unit' => '_pc_packing_unit',
+			'pc_origin'       => '_pc_origin',
 			'pc_item_code'    => '_pc_item_code',
-			'pc_upc'          => '_pc_upc',
-			'pc_allergen'     => '_pc_allergen',
 		);
 
 		foreach ( $fields as $field_name => $meta_key ) {
 			if ( isset( $_POST[ $field_name ] ) ) {
-				$value = $_POST[ $field_name ];
-				
-				// Sanitize based on field type
-				if ( $field_name === 'pc_allergen' ) {
-					$value = sanitize_textarea_field( $value );
-				} else {
-					$value = sanitize_text_field( $value );
-				}
-				
+				$value = sanitize_text_field( $_POST[ $field_name ] );
 				update_post_meta( $product_id, $meta_key, $value );
 			} else {
 				delete_post_meta( $product_id, $meta_key );

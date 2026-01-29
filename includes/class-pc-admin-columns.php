@@ -50,10 +50,11 @@ class PC_Admin_Columns {
 			$new_columns[ $key ] = $value;
 			
 			if ( 'title' === $key ) {
-				$new_columns['pc_product_name'] = __( 'Product Name', 'dw-product-catalog' );
 				$new_columns['pc_brand']        = __( 'Brand', 'dw-product-catalog' );
-				$new_columns['pc_item_code']   = __( 'Item Code', 'dw-product-catalog' );
-				$new_columns['pc_upc']          = __( 'UPC', 'dw-product-catalog' );
+				$new_columns['pc_cut_type']     = __( 'Cut / Form', 'dw-product-catalog' );
+				$new_columns['pc_size_weight'] = __( 'Size / Weight', 'dw-product-catalog' );
+				$new_columns['pc_origin']       = __( 'Origin', 'dw-product-catalog' );
+				$new_columns['pc_item_code']    = __( 'Item Code', 'dw-product-catalog' );
 			}
 		}
 		
@@ -68,23 +69,28 @@ class PC_Admin_Columns {
 	 */
 	public function render_column( $column_name, $post_id ) {
 		switch ( $column_name ) {
-			case 'pc_product_name':
-				$value = PC_Product_Display::get_product_name( $post_id );
-				echo $value ? esc_html( $value ) : '—';
-				break;
-			
 			case 'pc_brand':
 				$value = PC_Product_Display::get_brand( $post_id );
 				echo $value ? esc_html( $value ) : '—';
 				break;
 			
-			case 'pc_item_code':
-				$value = PC_Product_Display::get_item_code( $post_id );
+			case 'pc_cut_type':
+				$value = PC_Product_Display::get_cut_type( $post_id );
 				echo $value ? esc_html( $value ) : '—';
 				break;
 			
-			case 'pc_upc':
-				$value = PC_Product_Display::get_upc( $post_id );
+			case 'pc_size_weight':
+				$value = PC_Product_Display::get_size_weight( $post_id );
+				echo $value ? esc_html( $value ) : '—';
+				break;
+			
+			case 'pc_origin':
+				$value = PC_Product_Display::get_origin( $post_id );
+				echo $value ? esc_html( $value ) : '—';
+				break;
+			
+			case 'pc_item_code':
+				$value = PC_Product_Display::get_item_code( $post_id );
 				echo $value ? esc_html( $value ) : '—';
 				break;
 		}
@@ -97,12 +103,14 @@ class PC_Admin_Columns {
 	 * @return array Modified sortable columns
 	 */
 	public function sortable_columns( $columns ) {
-		$columns['pc_product_name'] = 'pc_product_name';
-		$columns['pc_brand']       = 'pc_brand';
-		$columns['pc_item_code']   = 'pc_item_code';
-		$columns['pc_upc']         = 'pc_upc';
+		$columns['pc_brand']        = 'pc_brand';
+		$columns['pc_cut_type']     = 'pc_cut_type';
+		$columns['pc_size_weight']  = 'pc_size_weight';
+		$columns['pc_origin']        = 'pc_origin';
+		$columns['pc_item_code']    = 'pc_item_code';
 		
 		return $columns;
 	}
 }
+
 

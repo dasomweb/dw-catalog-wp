@@ -121,17 +121,18 @@ class PC_Bulk_Import {
 				<ol>
 					<li><?php _e( 'Prepare your Excel file (.xlsx) or CSV file (.csv)', 'dw-product-catalog' ); ?></li>
 					<li><?php _e( 'Ensure the first row contains column headers', 'dw-product-catalog' ); ?></li>
-					<li><?php _e( 'Required column: <code>post_title</code>', 'dw-product-catalog' ); ?></li>
+					<li><?php _e( 'Required column: <code>_pc_product_name</code> (will be used as post title)', 'dw-product-catalog' ); ?></li>
 					<li><?php _e( 'Optional columns:', 'dw-product-catalog' ); ?>
 						<ul>
 							<li><code>post_content</code> - <?php _e( 'Product description', 'dw-product-catalog' ); ?></li>
 							<li><code>post_status</code> - <?php _e( 'publish, draft, or private', 'dw-product-catalog' ); ?></li>
 							<li><code>featured_image_url</code> - <?php _e( 'Featured image URL (will be downloaded and set as featured image)', 'dw-product-catalog' ); ?></li>
-							<li><code>_pc_product_name</code> - <?php _e( 'Product Name', 'dw-product-catalog' ); ?></li>
 							<li><code>_pc_brand</code> - <?php _e( 'Brand', 'dw-product-catalog' ); ?></li>
+							<li><code>_pc_cut_type</code> - <?php _e( 'Cut / Form', 'dw-product-catalog' ); ?></li>
+							<li><code>_pc_size_weight</code> - <?php _e( 'Size / Weight', 'dw-product-catalog' ); ?></li>
+							<li><code>_pc_packing_unit</code> - <?php _e( 'Packing Unit', 'dw-product-catalog' ); ?></li>
+							<li><code>_pc_origin</code> - <?php _e( 'Origin', 'dw-product-catalog' ); ?></li>
 							<li><code>_pc_item_code</code> - <?php _e( 'Item Code', 'dw-product-catalog' ); ?></li>
-							<li><code>_pc_upc</code> - <?php _e( 'UPC', 'dw-product-catalog' ); ?></li>
-							<li><code>_pc_allergen</code> - <?php _e( 'Allergen (comma-separated)', 'dw-product-catalog' ); ?></li>
 						</ul>
 					</li>
 					<li>
@@ -143,9 +144,9 @@ class PC_Bulk_Import {
 				</ol>
 
 				<h3><?php _e( 'Sample CSV Format', 'dw-product-catalog' ); ?></h3>
-				<pre style="background: #f5f5f5; padding: 10px; overflow-x: auto;"><code>post_title,post_content,featured_image_url,_pc_product_name,_pc_brand,_pc_item_code,_pc_upc,_pc_allergen
-"Product 1","Description 1","https://example.com/image1.jpg","Product Name 1","Brand A","ITEM-001","123456789012","Milk, Eggs"
-"Product 2","Description 2","https://example.com/image2.jpg","Product Name 2","Brand B","ITEM-002","123456789013","Nuts"</code></pre>
+				<pre style="background: #f5f5f5; padding: 10px; overflow-x: auto;"><code>_pc_product_name,post_content,featured_image_url,_pc_brand,_pc_cut_type,_pc_size_weight,_pc_packing_unit,_pc_origin,_pc_item_code
+"Premium Coffee Beans","High quality coffee","https://example.com/image1.jpg","Brand A","Whole","1lb","10pc/cs","Colombia","ITEM-001"
+"Salmon Fillet","Fresh salmon","https://example.com/image2.jpg","Brand B","Fillet","200g","1/15lb/cs","Norway","ITEM-002"</code></pre>
 			</div>
 
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" enctype="multipart/form-data" id="pc-import-form">
@@ -373,7 +374,7 @@ class PC_Bulk_Import {
 			return array(
 				'success' => false,
 				'skipped' => false,
-				'error'   => __( 'Title or Product Name is required', 'dw-product-catalog' ),
+				'error'   => __( 'Product Name is required', 'dw-product-catalog' ),
 			);
 		}
 		
@@ -425,22 +426,16 @@ class PC_Bulk_Import {
 		$meta_fields = array(
 			'_pc_product_name',
 			'_pc_brand',
+			'_pc_cut_type',
+			'_pc_size_weight',
+			'_pc_packing_unit',
+			'_pc_origin',
 			'_pc_item_code',
-			'_pc_upc',
-			'_pc_allergen',
 		);
 
 		foreach ( $meta_fields as $meta_key ) {
 			if ( isset( $data[ $meta_key ] ) && ! empty( $data[ $meta_key ] ) ) {
-				$value = $data[ $meta_key ];
-				
-				// Sanitize based on field type
-				if ( $meta_key === '_pc_allergen' ) {
-					$value = sanitize_textarea_field( $value );
-				} else {
-					$value = sanitize_text_field( $value );
-				}
-				
+				$value = sanitize_text_field( $data[ $meta_key ] );
 				update_post_meta( $post_id, $meta_key, $value );
 			}
 		}

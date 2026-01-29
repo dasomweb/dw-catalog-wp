@@ -231,3 +231,4 @@ These external URLs are acceptable as they are not site-specific:
 
 The plugin will work seamlessly across any domain or environment without code changes.
 
+
