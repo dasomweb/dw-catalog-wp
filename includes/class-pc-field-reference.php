@@ -52,65 +52,81 @@ class PC_Field_Reference {
 				'label'       => __( 'Product Name', 'dw-product-catalog' ),
 				'meta_key'    => '_pc_product_name',
 				'type'        => 'text',
-				'description' => __( 'Actual product name used in transactions. This will be saved as the post title.', 'dw-product-catalog' ),
+				'description' => __( 'Product name. Saved as post title.', 'dw-product-catalog' ),
 				'required'    => true,
 				'example'     => 'Premium Coffee Beans',
 			),
 			array(
-				'label'       => __( 'Brand', 'dw-product-catalog' ),
-				'meta_key'    => '_pc_brand',
-				'type'        => 'text',
-				'description' => __( 'Manufacturer or distributor brand', 'dw-product-catalog' ),
+				'label'       => __( 'Category', 'dw-product-catalog' ),
+				'meta_key'    => 'product_category',
+				'type'        => 'taxonomy',
+				'description' => __( 'Category Name (taxonomy)', 'dw-product-catalog' ),
 				'required'    => false,
-				'example'     => 'Brand Name',
 			),
 			array(
-				'label'       => __( 'Cut / Form', 'dw-product-catalog' ),
-				'meta_key'    => '_pc_cut_type',
-				'type'        => 'text',
-				'description' => __( 'Cut or form type (e.g., Whole, Loin, Fillet, SAKU)', 'dw-product-catalog' ),
+				'label'       => __( 'Category Slug', 'dw-product-catalog' ),
+				'meta_key'    => '_pc_category_slug',
+				'type'        => 'slug',
+				'description' => __( 'Category Code / slug', 'dw-product-catalog' ),
 				'required'    => false,
-				'example'     => 'Whole, Loin, Fillet, SAKU',
-			),
-			array(
-				'label'       => __( 'Size / Weight', 'dw-product-catalog' ),
-				'meta_key'    => '_pc_size_weight',
-				'type'        => 'text',
-				'description' => __( 'Weight per unit or capacity, size range (e.g., 1lb, 200g, 400/600, 21–25)', 'dw-product-catalog' ),
-				'required'    => false,
-				'example'     => '1lb, 200g, 400/600, 21–25',
-			),
-			array(
-				'label'       => __( 'Packing Unit', 'dw-product-catalog' ),
-				'meta_key'    => '_pc_packing_unit',
-				'type'        => 'text',
-				'description' => __( 'Packing standard (e.g., 10pc/cs, 1/15lb/cs)', 'dw-product-catalog' ),
-				'required'    => false,
-				'example'     => '10pc/cs, 1/15lb/cs',
-			),
-			array(
-				'label'       => __( 'Origin', 'dw-product-catalog' ),
-				'meta_key'    => '_pc_origin',
-				'type'        => 'text',
-				'description' => __( 'Country or region information', 'dw-product-catalog' ),
-				'required'    => false,
-				'example'     => 'USA, Canada, Japan',
+				'example'     => 'category-code',
 			),
 			array(
 				'label'       => __( 'Item Code', 'dw-product-catalog' ),
 				'meta_key'    => '_pc_item_code',
 				'type'        => 'text',
-				'description' => __( 'Internal management product code', 'dw-product-catalog' ),
+				'description' => __( 'Item code', 'dw-product-catalog' ),
 				'required'    => false,
 				'example'     => 'ITEM-001',
+			),
+			array(
+				'label'       => __( 'Pack Size / Case Pack', 'dw-product-catalog' ),
+				'meta_key'    => '_pc_pack_size_raw',
+				'type'        => 'text',
+				'description' => __( 'Pack size or case pack', 'dw-product-catalog' ),
+				'required'    => false,
+				'example'     => '10pc/cs',
+			),
+			array(
+				'label'       => __( 'Brand', 'dw-product-catalog' ),
+				'meta_key'    => '_pc_brand_raw',
+				'type'        => 'text',
+				'description' => __( 'Brand', 'dw-product-catalog' ),
+				'required'    => false,
+				'example'     => 'Brand Name',
+			),
+			array(
+				'label'       => __( 'Origin', 'dw-product-catalog' ),
+				'meta_key'    => '_pc_origin_raw',
+				'type'        => 'text',
+				'description' => __( 'Country or region', 'dw-product-catalog' ),
+				'required'    => false,
+				'example'     => 'USA, Japan',
+			),
+			array(
+				'label'       => __( 'Status', 'dw-product-catalog' ),
+				'meta_key'    => '_pc_status',
+				'type'        => 'select',
+				'description' => __( 'Active, Inactive, Discontinued', 'dw-product-catalog' ),
+				'required'    => false,
+				'options'     => array( 'active' => 'Active', 'inactive' => 'Inactive', 'discontinued' => 'Discontinued' ),
+				'example'     => 'active',
+			),
+			array(
+				'label'       => __( 'ETC', 'dw-product-catalog' ),
+				'meta_key'    => '_pc_internal_note',
+				'type'        => 'textarea',
+				'description' => __( 'Internal notes (ETC)', 'dw-product-catalog' ),
+				'required'    => false,
+				'example'     => 'Note',
 			),
 			array(
 				'label'       => __( 'Featured Image', 'dw-product-catalog' ),
 				'meta_key'    => 'featured_image_url',
 				'type'        => 'url',
-				'description' => __( 'Featured image URL (for bulk import - will be downloaded and set as featured image)', 'dw-product-catalog' ),
+				'description' => __( 'Featured image URL (bulk import)', 'dw-product-catalog' ),
 				'required'    => false,
-				'example'     => 'https://example.com/product-image.jpg',
+				'example'     => 'https://example.com/image.jpg',
 			),
 		);
 	}
@@ -182,27 +198,32 @@ class PC_Field_Reference {
 					
 					<h3><?php _e( 'Get Field Value', 'dw-product-catalog' ); ?></h3>
 					<pre><code>$product_name = get_post_meta( $post_id, '_pc_product_name', true );
-$brand = get_post_meta( $post_id, '_pc_brand', true );</code></pre>
+$item_code = get_post_meta( $post_id, '_pc_item_code', true );
+$brand = get_post_meta( $post_id, '_pc_brand_raw', true );
+$status = get_post_meta( $post_id, '_pc_status', true );
+$internal_note = get_post_meta( $post_id, '_pc_internal_note', true );</code></pre>
 
 					<h3><?php _e( 'Using Helper Functions', 'dw-product-catalog' ); ?></h3>
 					<pre><code>$product_name = PC_Product_Display::get_product_name( $post_id );
+$item_code = PC_Product_Display::get_item_code( $post_id );
+$pack_size = PC_Product_Display::get_pack_size_raw( $post_id );
 $brand = PC_Product_Display::get_brand( $post_id );
-$cut_type = PC_Product_Display::get_cut_type( $post_id );
-$size_weight = PC_Product_Display::get_size_weight( $post_id );
-$packing_unit = PC_Product_Display::get_packing_unit( $post_id );
 $origin = PC_Product_Display::get_origin( $post_id );
-$item_code = PC_Product_Display::get_item_code( $post_id );</code></pre>
+$status = PC_Product_Display::get_status( $post_id );
+$category_slug = PC_Product_Display::get_category_slug( $post_id );
+$internal_note = PC_Product_Display::get_internal_note( $post_id );</code></pre>
 
 					<h3><?php _e( 'Kadence Blocks Pro Dynamic Field', 'dw-product-catalog' ); ?></h3>
 					<p><?php _e( 'Use the meta key directly in Kadence Blocks Pro Dynamic Field:', 'dw-product-catalog' ); ?></p>
 					<ul>
 						<li><code>_pc_product_name</code></li>
-						<li><code>_pc_brand</code></li>
-						<li><code>_pc_cut_type</code></li>
-						<li><code>_pc_size_weight</code></li>
-						<li><code>_pc_packing_unit</code></li>
-						<li><code>_pc_origin</code></li>
 						<li><code>_pc_item_code</code></li>
+						<li><code>_pc_pack_size_raw</code></li>
+						<li><code>_pc_brand_raw</code></li>
+						<li><code>_pc_origin_raw</code></li>
+						<li><code>_pc_status</code></li>
+						<li><code>_pc_category_slug</code></li>
+						<li><code>_pc_internal_note</code></li>
 					</ul>
 
 					<h3><?php _e( 'Excel Import Format', 'dw-product-catalog' ); ?></h3>

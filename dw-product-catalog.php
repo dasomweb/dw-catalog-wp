@@ -3,7 +3,7 @@
  * Plugin Name: DW Product Catalog
  * Plugin URI: https://github.com/dasomweb/DW-Product-Catalog
  * Description: Domain-change friendly product catalog plugin
- * Version: 1.4.0
+ * Version: 1.5.0
  * Author: Dasom Web
  * Author URI: https://github.com/dasomweb
  * License: GPL v2 or later
@@ -35,7 +35,7 @@ function pc_get_plugin_config() {
 		
 		// Plugin Information
 		'plugin_slug'       => 'dw-product-catalog',
-		'plugin_version'    => '1.4.0',
+		'plugin_version'    => '1.5.0',
 		'plugin_name'       => 'DW Product Catalog',
 		'plugin_text_domain' => 'dw-product-catalog',
 		

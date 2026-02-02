@@ -127,12 +127,13 @@ class PC_Bulk_Import {
 							<li><code>post_content</code> - <?php _e( 'Product description', 'dw-product-catalog' ); ?></li>
 							<li><code>post_status</code> - <?php _e( 'publish, draft, or private', 'dw-product-catalog' ); ?></li>
 							<li><code>featured_image_url</code> - <?php _e( 'Featured image URL (will be downloaded and set as featured image)', 'dw-product-catalog' ); ?></li>
-							<li><code>_pc_brand</code> - <?php _e( 'Brand', 'dw-product-catalog' ); ?></li>
-							<li><code>_pc_cut_type</code> - <?php _e( 'Cut / Form', 'dw-product-catalog' ); ?></li>
-							<li><code>_pc_size_weight</code> - <?php _e( 'Size / Weight', 'dw-product-catalog' ); ?></li>
-							<li><code>_pc_packing_unit</code> - <?php _e( 'Packing Unit', 'dw-product-catalog' ); ?></li>
-							<li><code>_pc_origin</code> - <?php _e( 'Origin', 'dw-product-catalog' ); ?></li>
 							<li><code>_pc_item_code</code> - <?php _e( 'Item Code', 'dw-product-catalog' ); ?></li>
+							<li><code>_pc_pack_size_raw</code> - <?php _e( 'Pack Size / Case Pack', 'dw-product-catalog' ); ?></li>
+							<li><code>_pc_brand_raw</code> - <?php _e( 'Brand', 'dw-product-catalog' ); ?></li>
+							<li><code>_pc_origin_raw</code> - <?php _e( 'Origin', 'dw-product-catalog' ); ?></li>
+							<li><code>_pc_status</code> - <?php _e( 'Status (active, inactive, discontinued)', 'dw-product-catalog' ); ?></li>
+							<li><code>_pc_category_slug</code> - <?php _e( 'Category Slug', 'dw-product-catalog' ); ?></li>
+							<li><code>_pc_internal_note</code> - <?php _e( 'ETC', 'dw-product-catalog' ); ?></li>
 						</ul>
 					</li>
 					<li>
@@ -144,9 +145,9 @@ class PC_Bulk_Import {
 				</ol>
 
 				<h3><?php _e( 'Sample CSV Format', 'dw-product-catalog' ); ?></h3>
-				<pre style="background: #f5f5f5; padding: 10px; overflow-x: auto;"><code>_pc_product_name,post_content,featured_image_url,_pc_brand,_pc_cut_type,_pc_size_weight,_pc_packing_unit,_pc_origin,_pc_item_code
-"Premium Coffee Beans","High quality coffee","https://example.com/image1.jpg","Brand A","Whole","1lb","10pc/cs","Colombia","ITEM-001"
-"Salmon Fillet","Fresh salmon","https://example.com/image2.jpg","Brand B","Fillet","200g","1/15lb/cs","Norway","ITEM-002"</code></pre>
+				<pre style="background: #f5f5f5; padding: 10px; overflow-x: auto;"><code>_pc_product_name,post_content,featured_image_url,_pc_item_code,_pc_pack_size_raw,_pc_brand_raw,_pc_origin_raw,_pc_status,_pc_category_slug,_pc_internal_note
+"Premium Coffee Beans","High quality coffee","https://example.com/image1.jpg","ITEM-001","10pc/cs","Brand A","Colombia","active","category-code",""
+"Salmon Fillet","Fresh salmon","https://example.com/image2.jpg","ITEM-002","1/15lb/cs","Brand B","Norway","active","","Note"</code></pre>
 			</div>
 
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" enctype="multipart/form-data" id="pc-import-form">
@@ -280,15 +281,15 @@ class PC_Bulk_Import {
 			);
 		}
 
-		// Read header row
+		// Read header row (required: _pc_product_name)
 		$headers = fgetcsv( $handle );
-		if ( ! $headers || ! in_array( 'post_title', $headers, true ) ) {
+		if ( ! $headers || ! in_array( '_pc_product_name', $headers, true ) ) {
 			fclose( $handle );
 			return array(
 				'imported' => 0,
 				'failed'   => 0,
 				'skipped'  => 0,
-				'errors'   => array( __( 'CSV file must contain a "post_title" column.', 'dw-product-catalog' ) ),
+				'errors'   => array( __( 'CSV file must contain an "_pc_product_name" column.', 'dw-product-catalog' ) ),
 			);
 		}
 
@@ -422,22 +423,24 @@ class PC_Bulk_Import {
 			}
 		}
 
-		// Save meta fields
-		$meta_fields = array(
+		// Save meta fields (text)
+		$text_meta = array(
 			'_pc_product_name',
-			'_pc_brand',
-			'_pc_cut_type',
-			'_pc_size_weight',
-			'_pc_packing_unit',
-			'_pc_origin',
 			'_pc_item_code',
+			'_pc_pack_size_raw',
+			'_pc_brand_raw',
+			'_pc_origin_raw',
+			'_pc_status',
+			'_pc_category_slug',
 		);
-
-		foreach ( $meta_fields as $meta_key ) {
-			if ( isset( $data[ $meta_key ] ) && ! empty( $data[ $meta_key ] ) ) {
-				$value = sanitize_text_field( $data[ $meta_key ] );
-				update_post_meta( $post_id, $meta_key, $value );
+		foreach ( $text_meta as $meta_key ) {
+			if ( isset( $data[ $meta_key ] ) && (string) $data[ $meta_key ] !== '' ) {
+				update_post_meta( $post_id, $meta_key, sanitize_text_field( $data[ $meta_key ] ) );
 			}
+		}
+		// Textarea: ETC
+		if ( isset( $data['_pc_internal_note'] ) ) {
+			update_post_meta( $post_id, '_pc_internal_note', sanitize_textarea_field( $data['_pc_internal_note'] ) );
 		}
 
 		return array(
