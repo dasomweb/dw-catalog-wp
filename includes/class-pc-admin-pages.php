@@ -211,10 +211,10 @@ class PC_Admin_Pages {
 								$categories = wp_get_post_terms( $post_id, 'product_category' );
 								$category_names = ! empty( $categories ) ? implode( ', ', wp_list_pluck( $categories, 'name' ) ) : '';
 								$item_code = PC_Product_Display::get_item_code( $post_id );
-								$pack_size = get_post_meta( $post_id, '_pc_pack_size_raw', true );
+								$pack_size = get_post_meta( $post_id, 'dw_pc_pack_size_raw', true );
 								$brand = PC_Product_Display::get_brand( $post_id );
 								$origin = PC_Product_Display::get_origin( $post_id );
-								$product_status = get_post_meta( $post_id, '_pc_status', true );
+								$product_status = get_post_meta( $post_id, 'dw_pc_status', true );
 								$status_labels = array(
 									'active'       => __( 'Active', 'dw-product-catalog' ),
 									'inactive'     => __( 'Inactive', 'dw-product-catalog' ),
@@ -315,12 +315,12 @@ class PC_Admin_Pages {
 			$product_name = '';
 		}
 		$item_code     = $is_edit ? PC_Product_Display::get_item_code( $product_id ) : '';
-		$pack_size_raw = $is_edit ? get_post_meta( $product_id, '_pc_pack_size_raw', true ) : '';
+		$pack_size_raw = $is_edit ? get_post_meta( $product_id, 'dw_pc_pack_size_raw', true ) : '';
 		$brand_raw     = $is_edit ? PC_Product_Display::get_brand( $product_id ) : '';
 		$origin_raw    = $is_edit ? PC_Product_Display::get_origin( $product_id ) : '';
-		$status        = $is_edit ? get_post_meta( $product_id, '_pc_status', true ) : '';
-		$category_slug = $is_edit ? get_post_meta( $product_id, '_pc_category_slug', true ) : '';
-		$internal_note = $is_edit ? get_post_meta( $product_id, '_pc_internal_note', true ) : '';
+		$status        = $is_edit ? get_post_meta( $product_id, 'dw_pc_status', true ) : '';
+		$category_slug = $is_edit ? get_post_meta( $product_id, 'dw_pc_category_slug', true ) : '';
+		$internal_note = $is_edit ? get_post_meta( $product_id, 'dw_pc_internal_note', true ) : '';
 		?>
 		<div class="wrap">
 			<h1><?php echo $is_edit ? __( 'Edit Product', 'dw-product-catalog' ) : __( 'Add New Product', 'dw-product-catalog' ); ?></h1>
@@ -745,13 +745,13 @@ class PC_Admin_Pages {
 
 		// Save meta fields (text)
 		$text_fields = array(
-			'pc_product_name'  => '_pc_product_name',
-			'pc_item_code'     => '_pc_item_code',
-			'pc_pack_size_raw' => '_pc_pack_size_raw',
-			'pc_brand_raw'     => '_pc_brand_raw',
-			'pc_origin_raw'    => '_pc_origin_raw',
-			'pc_status'        => '_pc_status',
-			'pc_category_slug' => '_pc_category_slug',
+			'pc_product_name'  => 'dw_pc_product_name',
+			'pc_item_code'     => 'dw_pc_item_code',
+			'pc_pack_size_raw' => 'dw_pc_pack_size_raw',
+			'pc_brand_raw'     => 'dw_pc_brand_raw',
+			'pc_origin_raw'    => 'dw_pc_origin_raw',
+			'pc_status'        => 'dw_pc_status',
+			'pc_category_slug' => 'dw_pc_category_slug',
 		);
 		foreach ( $text_fields as $field_name => $meta_key ) {
 			if ( isset( $_POST[ $field_name ] ) ) {
@@ -762,9 +762,9 @@ class PC_Admin_Pages {
 		}
 		// Textarea: ETC
 		if ( isset( $_POST['pc_internal_note'] ) ) {
-			update_post_meta( $product_id, '_pc_internal_note', sanitize_textarea_field( $_POST['pc_internal_note'] ) );
+			update_post_meta( $product_id, 'dw_pc_internal_note', sanitize_textarea_field( $_POST['pc_internal_note'] ) );
 		} else {
-			delete_post_meta( $product_id, '_pc_internal_note' );
+			delete_post_meta( $product_id, 'dw_pc_internal_note' );
 		}
 
 		// Redirect

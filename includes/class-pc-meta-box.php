@@ -36,14 +36,14 @@ class PC_Meta_Box {
 	public function render_product_details_meta_box( $post ) {
 		wp_nonce_field( 'pc_save_product_meta', 'pc_product_meta_nonce' );
 
-		$product_name  = get_post_meta( $post->ID, '_pc_product_name', true );
-		$item_code     = get_post_meta( $post->ID, '_pc_item_code', true );
-		$pack_size_raw = get_post_meta( $post->ID, '_pc_pack_size_raw', true );
-		$brand_raw     = get_post_meta( $post->ID, '_pc_brand_raw', true );
-		$origin_raw    = get_post_meta( $post->ID, '_pc_origin_raw', true );
-		$status        = get_post_meta( $post->ID, '_pc_status', true );
-		$category_slug = get_post_meta( $post->ID, '_pc_category_slug', true );
-		$internal_note = get_post_meta( $post->ID, '_pc_internal_note', true );
+		$product_name  = get_post_meta( $post->ID, 'dw_pc_product_name', true );
+		$item_code     = get_post_meta( $post->ID, 'dw_pc_item_code', true );
+		$pack_size_raw = get_post_meta( $post->ID, 'dw_pc_pack_size_raw', true );
+		$brand_raw     = get_post_meta( $post->ID, 'dw_pc_brand_raw', true );
+		$origin_raw    = get_post_meta( $post->ID, 'dw_pc_origin_raw', true );
+		$status        = get_post_meta( $post->ID, 'dw_pc_status', true );
+		$category_slug = get_post_meta( $post->ID, 'dw_pc_category_slug', true );
+		$internal_note = get_post_meta( $post->ID, 'dw_pc_internal_note', true );
 		?>
 		<div class="pc-product-fields">
 			<table class="form-table">
@@ -105,13 +105,13 @@ class PC_Meta_Box {
 		}
 
 		$text_fields = array(
-			'pc_product_name'  => '_pc_product_name',
-			'pc_item_code'     => '_pc_item_code',
-			'pc_pack_size_raw' => '_pc_pack_size_raw',
-			'pc_brand_raw'     => '_pc_brand_raw',
-			'pc_origin_raw'    => '_pc_origin_raw',
-			'pc_status'        => '_pc_status',
-			'pc_category_slug' => '_pc_category_slug',
+			'pc_product_name'  => 'dw_pc_product_name',
+			'pc_item_code'     => 'dw_pc_item_code',
+			'pc_pack_size_raw' => 'dw_pc_pack_size_raw',
+			'pc_brand_raw'     => 'dw_pc_brand_raw',
+			'pc_origin_raw'    => 'dw_pc_origin_raw',
+			'pc_status'        => 'dw_pc_status',
+			'pc_category_slug' => 'dw_pc_category_slug',
 		);
 		foreach ( $text_fields as $field_name => $meta_key ) {
 			if ( isset( $_POST[ $field_name ] ) ) {
@@ -121,9 +121,9 @@ class PC_Meta_Box {
 			}
 		}
 		if ( isset( $_POST['pc_internal_note'] ) ) {
-			update_post_meta( $post_id, '_pc_internal_note', sanitize_textarea_field( $_POST['pc_internal_note'] ) );
+			update_post_meta( $post_id, 'dw_pc_internal_note', sanitize_textarea_field( $_POST['pc_internal_note'] ) );
 		} else {
-			delete_post_meta( $post_id, '_pc_internal_note' );
+			delete_post_meta( $post_id, 'dw_pc_internal_note' );
 		}
 	}
 

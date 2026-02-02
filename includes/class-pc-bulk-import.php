@@ -121,19 +121,19 @@ class PC_Bulk_Import {
 				<ol>
 					<li><?php _e( 'Prepare your Excel file (.xlsx) or CSV file (.csv)', 'dw-product-catalog' ); ?></li>
 					<li><?php _e( 'Ensure the first row contains column headers', 'dw-product-catalog' ); ?></li>
-					<li><?php _e( 'Required column: <code>_pc_product_name</code> (will be used as post title)', 'dw-product-catalog' ); ?></li>
+					<li><?php _e( 'Required column: <code>dw_pc_product_name</code> (will be used as post title)', 'dw-product-catalog' ); ?></li>
 					<li><?php _e( 'Optional columns:', 'dw-product-catalog' ); ?>
 						<ul>
 							<li><code>post_content</code> - <?php _e( 'Product description', 'dw-product-catalog' ); ?></li>
 							<li><code>post_status</code> - <?php _e( 'publish, draft, or private', 'dw-product-catalog' ); ?></li>
 							<li><code>featured_image_url</code> - <?php _e( 'Featured image URL (will be downloaded and set as featured image)', 'dw-product-catalog' ); ?></li>
-							<li><code>_pc_item_code</code> - <?php _e( 'Item Code', 'dw-product-catalog' ); ?></li>
-							<li><code>_pc_pack_size_raw</code> - <?php _e( 'Pack Size / Case Pack', 'dw-product-catalog' ); ?></li>
-							<li><code>_pc_brand_raw</code> - <?php _e( 'Brand', 'dw-product-catalog' ); ?></li>
-							<li><code>_pc_origin_raw</code> - <?php _e( 'Origin', 'dw-product-catalog' ); ?></li>
-							<li><code>_pc_status</code> - <?php _e( 'Status (active, inactive, discontinued)', 'dw-product-catalog' ); ?></li>
-							<li><code>_pc_category_slug</code> - <?php _e( 'Category Slug', 'dw-product-catalog' ); ?></li>
-							<li><code>_pc_internal_note</code> - <?php _e( 'ETC', 'dw-product-catalog' ); ?></li>
+							<li><code>dw_pc_item_code</code> - <?php _e( 'Item Code', 'dw-product-catalog' ); ?></li>
+							<li><code>dw_pc_pack_size_raw</code> - <?php _e( 'Pack Size / Case Pack', 'dw-product-catalog' ); ?></li>
+							<li><code>dw_pc_brand_raw</code> - <?php _e( 'Brand', 'dw-product-catalog' ); ?></li>
+							<li><code>dw_pc_origin_raw</code> - <?php _e( 'Origin', 'dw-product-catalog' ); ?></li>
+							<li><code>dw_pc_status</code> - <?php _e( 'Status (active, inactive, discontinued)', 'dw-product-catalog' ); ?></li>
+							<li><code>dw_pc_category_slug</code> - <?php _e( 'Category Slug', 'dw-product-catalog' ); ?></li>
+							<li><code>dw_pc_internal_note</code> - <?php _e( 'ETC', 'dw-product-catalog' ); ?></li>
 						</ul>
 					</li>
 					<li>
@@ -145,7 +145,7 @@ class PC_Bulk_Import {
 				</ol>
 
 				<h3><?php _e( 'Sample CSV Format', 'dw-product-catalog' ); ?></h3>
-				<pre style="background: #f5f5f5; padding: 10px; overflow-x: auto;"><code>_pc_product_name,post_content,featured_image_url,_pc_item_code,_pc_pack_size_raw,_pc_brand_raw,_pc_origin_raw,_pc_status,_pc_category_slug,_pc_internal_note
+				<pre style="background: #f5f5f5; padding: 10px; overflow-x: auto;"><code>dw_pc_product_name,post_content,featured_image_url,dw_pc_item_code,dw_pc_pack_size_raw,dw_pc_brand_raw,dw_pc_origin_raw,dw_pc_status,dw_pc_category_slug,dw_pc_internal_note
 "Premium Coffee Beans","High quality coffee","https://example.com/image1.jpg","ITEM-001","10pc/cs","Brand A","Colombia","active","category-code",""
 "Salmon Fillet","Fresh salmon","https://example.com/image2.jpg","ITEM-002","1/15lb/cs","Brand B","Norway","active","","Note"</code></pre>
 			</div>
@@ -281,15 +281,15 @@ class PC_Bulk_Import {
 			);
 		}
 
-		// Read header row (required: _pc_product_name)
+		// Read header row (required: dw_pc_product_name)
 		$headers = fgetcsv( $handle );
-		if ( ! $headers || ! in_array( '_pc_product_name', $headers, true ) ) {
+		if ( ! $headers || ! in_array( 'dw_pc_product_name', $headers, true ) ) {
 			fclose( $handle );
 			return array(
 				'imported' => 0,
 				'failed'   => 0,
 				'skipped'  => 0,
-				'errors'   => array( __( 'CSV file must contain an "_pc_product_name" column.', 'dw-product-catalog' ) ),
+				'errors'   => array( __( 'CSV file must contain an "dw_pc_product_name" column.', 'dw-product-catalog' ) ),
 			);
 		}
 
@@ -360,7 +360,7 @@ class PC_Bulk_Import {
 	 */
 	private function import_product( $data, $default_status, $skip_duplicates ) {
 		// Get Product Name
-		$product_name = isset( $data['_pc_product_name'] ) ? trim( $data['_pc_product_name'] ) : '';
+		$product_name = isset( $data['dw_pc_product_name'] ) ? trim( $data['dw_pc_product_name'] ) : '';
 		
 		// Get Title
 		$post_title = isset( $data['post_title'] ) ? trim( $data['post_title'] ) : '';
@@ -425,13 +425,13 @@ class PC_Bulk_Import {
 
 		// Save meta fields (text)
 		$text_meta = array(
-			'_pc_product_name',
-			'_pc_item_code',
-			'_pc_pack_size_raw',
-			'_pc_brand_raw',
-			'_pc_origin_raw',
-			'_pc_status',
-			'_pc_category_slug',
+			'dw_pc_product_name',
+			'dw_pc_item_code',
+			'dw_pc_pack_size_raw',
+			'dw_pc_brand_raw',
+			'dw_pc_origin_raw',
+			'dw_pc_status',
+			'dw_pc_category_slug',
 		);
 		foreach ( $text_meta as $meta_key ) {
 			if ( isset( $data[ $meta_key ] ) && (string) $data[ $meta_key ] !== '' ) {
@@ -439,8 +439,8 @@ class PC_Bulk_Import {
 			}
 		}
 		// Textarea: ETC
-		if ( isset( $data['_pc_internal_note'] ) ) {
-			update_post_meta( $post_id, '_pc_internal_note', sanitize_textarea_field( $data['_pc_internal_note'] ) );
+		if ( isset( $data['dw_pc_internal_note'] ) ) {
+			update_post_meta( $post_id, 'dw_pc_internal_note', sanitize_textarea_field( $data['dw_pc_internal_note'] ) );
 		}
 
 		return array(

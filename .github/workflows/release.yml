@@ -3,24 +3,36 @@ name: Create Release
 on:
   push:
     tags:
-      - 'v*'  # Triggers on version tags like v1.0.0, v1.2.3, etc.
+      - 'v*'   # Triggers on version tags like v1.0.0, v1.2.3
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version for release (e.g. 1.5.0). Use when tag push did not run - tag must exist.'
+        required: true
+        default: '1.5.0'
 
 jobs:
   create-release:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    
+    timeout-minutes: 15
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/v{0}', github.event.inputs.version) || github.ref }}
 
       - name: Extract version from tag
         id: tag_version
         run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION=${GITHUB_REF#refs/tags/v}
+          fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Version: $VERSION"
 
@@ -67,6 +79,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: v${{ steps.tag_version.outputs.version }}
           files: |
             dw-product-catalog-*.zip
           name: Release v${{ steps.tag_version.outputs.version }}
