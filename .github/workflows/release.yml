@@ -37,13 +37,14 @@ jobs:
           echo "Version: $VERSION"
 
       - name: Create plugin zip file
+        id: create_zip
         run: |
-          # ZIP name MUST be dw-product-catalog.zip (no version) so WordPress always
-          # installs/updates to wp-content/plugins/dw-product-catalog/ (updates work)
+          # 배포용 ZIP 파일명 = 반드시 버전 포함 (예: dw-product-catalog-1.5.7.zip)
+          # ZIP 내용 = 루트 폴더 하나 "dw-product-catalog/" → 설치 경로 항상 wp-content/plugins/dw-product-catalog/
           PLUGIN_NAME="dw-product-catalog"
-          ZIP_NAME="${PLUGIN_NAME}.zip"
+          ZIP_NAME="${PLUGIN_NAME}-${VERSION}.zip"
           
-          mkdir -p temp_plugin
+          mkdir -p temp_plugin/${PLUGIN_NAME}
           rsync -av --exclude='.git*' \
             --exclude='.github' \
             --exclude='*.DS_Store' \
@@ -59,15 +60,15 @@ jobs:
             --exclude='create-release.sh' \
             --exclude='temp_plugin' \
             --exclude='*.zip' \
-            ./ temp_plugin/
+            ./ temp_plugin/${PLUGIN_NAME}/
           
           cd temp_plugin
-          zip -r "../$ZIP_NAME" .
+          zip -r "../$ZIP_NAME" "${PLUGIN_NAME}"
           cd ..
           rm -rf temp_plugin
           
           echo "zip_file=$ZIP_NAME" >> $GITHUB_OUTPUT
-          echo "Created: $ZIP_NAME (install dir will be $PLUGIN_NAME/)"
+          echo "Created: $ZIP_NAME (install dir: wp-content/plugins/$PLUGIN_NAME/)"
         env:
           VERSION: ${{ steps.tag_version.outputs.version }}
 
@@ -75,22 +76,21 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ steps.tag_version.outputs.version }}
-          files: |
-            dw-product-catalog.zip
+          files: ${{ steps.create_zip.outputs.zip_file }}
           name: Release v${{ steps.tag_version.outputs.version }}
           body: |
             ## DW Product Catalog v${{ steps.tag_version.outputs.version }}
             
             ### 설치 방법 (Installation)
             
-            1. **dw-product-catalog.zip** 다운로드 (버전명 없음 → 설치 폴더가 항상 `dw-product-catalog`로 유지됨)
+            1. **dw-product-catalog-${{ steps.tag_version.outputs.version }}.zip** 다운로드
             2. WordPress 관리자 > 플러그인 > 새로 추가 > 플러그인 업로드
-            3. ZIP 업로드 후 설치·활성화
+            3. ZIP 업로드 후 설치·활성화  
+            → 설치 경로는 항상 `wp-content/plugins/dw-product-catalog/` (ZIP 안에 폴더명이 고정되어 있음)
             
             ### 업데이트 (Update)
             
-            같은 **dw-product-catalog.zip**을 새 버전으로 다시 업로드하면 기존 `wp-content/plugins/dw-product-catalog/`가 덮어써져 업데이트됩니다.  
-            이전에 버전명이 붙은 폴더(`dw-product-catalog-1.5.4` 등)가 있다면 삭제해 두세요.
+            새 버전 ZIP을 업로드하면 기존 `dw-product-catalog` 폴더가 덮어써져 업데이트됩니다.
             
             ### 변경사항 (Changelog)
             

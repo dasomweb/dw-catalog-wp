@@ -61,22 +61,22 @@
 }
 
 /* Custom Admin Pages */
-#pc-product-form .form-table th {
+.pc-product-form .form-table th {
 	width: 200px;
 	padding: 20px 10px 20px 0;
 	vertical-align: top;
 }
 
-#pc-product-form .form-table td {
+.pc-product-form .form-table td {
 	padding: 15px 10px;
 }
 
-#pc-product-form .form-table th label {
+.pc-product-form .form-table th label {
 	font-weight: 600;
 	font-size: 14px;
 }
 
-#pc-product-form .form-table th .description {
+.pc-product-form .form-table th .description {
 	display: block;
 	font-weight: normal;
 	font-size: 12px;
@@ -84,19 +84,19 @@
 	margin-top: 5px;
 }
 
-#pc-product-form .form-table input[type="text"],
-#pc-product-form .form-table select,
-#pc-product-form .form-table textarea {
+.pc-product-form .form-table input[type="text"],
+.pc-product-form .form-table select,
+.pc-product-form .form-table textarea {
 	width: 100%;
 	max-width: 500px;
 }
 
-#pc-product-form .form-table textarea {
+.pc-product-form .form-table textarea {
 	resize: vertical;
 	min-height: 80px;
 }
 
-#pc-product-form .required {
+.pc-product-form .required {
 	color: #d63638;
 }
 

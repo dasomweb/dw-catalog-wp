@@ -1,11 +1,13 @@
 # 깃허브에 푸시하는 플러그인 파일만 담은 설치용 ZIP (GitHub 릴리즈와 동일 구성)
-# Run from repo root. Output: dw-product-catalog.zip
+# Run from repo root. Output: dw-product-catalog-<version>.zip
+# ZIP filename = versioned; ZIP contents = single root folder "dw-product-catalog/" so install dir is always wp-content/plugins/dw-product-catalog/
 
 $ErrorActionPreference = "Stop"
 $config = Get-Content "dw-product-catalog.php" -Raw
 if ($config -match "plugin_version'\s*=>\s*'([^']+)'") { $ver = $Matches[1] } else { $ver = "1.0.0" }
 $buildDir = "build"
-$pluginDir = "$buildDir\plugin"
+$pluginSlug = "dw-product-catalog"
+$pluginDir = "$buildDir\$pluginSlug"
 
 if (Test-Path $buildDir) { Remove-Item $buildDir -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $pluginDir | Out-Null
@@ -28,15 +30,13 @@ License: GPLv2 or later
 Product catalog post type, custom fields, bulk import, GitHub updates.
 "@ | Set-Content "$pluginDir\README.txt" -Encoding UTF8
 
-# WordPress uses the ZIP filename (minus .zip) as the plugin folder.
-# So we must output "dw-product-catalog.zip" and put FILES at zip root (no inner folder),
-# so after extract we get: wp-content/plugins/dw-product-catalog/dw-product-catalog.php
-$zipName = "dw-product-catalog.zip"
+# ZIP filename = versioned (dw-product-catalog-1.5.6.zip). Contents = single root folder "dw-product-catalog/" so WordPress always installs to wp-content/plugins/dw-product-catalog/
+$zipName = "$pluginSlug-$ver.zip"
 $zipPath = (Join-Path (Get-Location) $zipName)
 if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
-Compress-Archive -Path "$pluginDir\*" -DestinationPath $zipPath -Force
+Compress-Archive -Path "$buildDir\$pluginSlug" -DestinationPath $zipPath -Force
 Remove-Item $buildDir -Recurse -Force
 
 Write-Host "Created: $zipName (version $ver)" -ForegroundColor Green
 Write-Host "Upload this file in WordPress: Plugins > Add New > Upload Plugin"
-Write-Host "After install, path will be: wp-content/plugins/dw-product-catalog/dw-product-catalog.php"
+Write-Host "Install folder will always be: wp-content/plugins/dw-product-catalog/"

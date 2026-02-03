@@ -126,7 +126,7 @@ class PC_Bulk_Import {
 						<ul>
 							<li><code>post_content</code> - <?php _e( 'Product description', 'dw-product-catalog' ); ?></li>
 							<li><code>post_status</code> - <?php _e( 'publish, draft, or private', 'dw-product-catalog' ); ?></li>
-							<li><code>featured_image_url</code> - <?php _e( 'Featured image URL (will be downloaded and set as featured image)', 'dw-product-catalog' ); ?></li>
+							<li><code>featured_image_url</code> <?php _e( 'or <code>image_url</code>', 'dw-product-catalog' ); ?> - <?php _e( 'Public image URL (downloaded and added to Media library as featured image)', 'dw-product-catalog' ); ?></li>
 							<li><code>dw_pc_item_code</code> - <?php _e( 'Item Code', 'dw-product-catalog' ); ?></li>
 							<li><code>dw_pc_pack_size_raw</code> - <?php _e( 'Pack Size / Case Pack', 'dw-product-catalog' ); ?></li>
 							<li><code>dw_pc_brand_raw</code> - <?php _e( 'Brand', 'dw-product-catalog' ); ?></li>
@@ -145,8 +145,10 @@ class PC_Bulk_Import {
 					</li>
 				</ol>
 
+				<p class="description" style="margin-top:8px;"><?php _e( 'Image URLs must be publicly accessible (no login required) so the server can download them into the Media library.', 'dw-product-catalog' ); ?></p>
+
 				<h3><?php _e( 'Sample CSV Format', 'dw-product-catalog' ); ?></h3>
-				<p class="description"><?php _e( 'Default delimiter is semicolon (;). Select the delimiter that matches your file.', 'dw-product-catalog' ); ?></p>
+				<p class="description"><?php _e( 'Default delimiter is semicolon (;). Select the delimiter that matches your file. Column headers are trimmed; BOM is stripped so headers like featured_image_url are recognized.', 'dw-product-catalog' ); ?></p>
 				<pre style="background: #f5f5f5; padding: 10px; overflow-x: auto;"><code>dw_pc_product_name;post_content;featured_image_url;dw_pc_item_code;dw_pc_pack_size_raw;dw_pc_brand_raw;dw_pc_origin_raw;dw_pc_status;dw_pc_category_name;dw_pc_category_slug;dw_pc_internal_note
 "Premium Coffee Beans";"High quality coffee";"https://example.com/image1.jpg";"ITEM-001";"10pc/cs";"Brand A";"Colombia";"active";"Beverages";"category-code";""
 "Salmon Fillet";"Fresh salmon";"https://example.com/image2.jpg";"ITEM-002";"1/15lb/cs";"Brand B";"Norway";"active";"Seafood";"";"Note"</code></pre>
@@ -309,8 +311,19 @@ class PC_Bulk_Import {
 		}
 
 		// Read header row (required: dw_pc_product_name)
-		$headers = fgetcsv( $handle, 0, $delimiter );
-		if ( ! $headers || ! in_array( 'dw_pc_product_name', $headers, true ) ) {
+		$headers_raw = fgetcsv( $handle, 0, $delimiter );
+		if ( ! $headers_raw ) {
+			fclose( $handle );
+			return array(
+				'imported' => 0,
+				'failed'   => 0,
+				'skipped'  => 0,
+				'errors'   => array( __( 'Could not read CSV headers.', 'dw-product-catalog' ) ),
+			);
+		}
+		// Normalize headers: trim, strip BOM (Excel UTF-8 often adds BOM so column names match)
+		$headers = $this->normalize_csv_headers( $headers_raw );
+		if ( ! in_array( 'dw_pc_product_name', $headers, true ) ) {
 			fclose( $handle );
 			return array(
 				'imported' => 0,
@@ -337,6 +350,9 @@ class PC_Bulk_Import {
 			
 			if ( $result['success'] ) {
 				$imported++;
+				if ( ! empty( $result['warning'] ) ) {
+					$errors[] = sprintf( __( 'Row %d: %s', 'dw-product-catalog' ), $row_num, $result['warning'] );
+				}
 			} elseif ( $result['skipped'] ) {
 				$skipped++;
 			} else {
@@ -375,6 +391,25 @@ class PC_Bulk_Import {
 			'skipped'  => 0,
 			'errors'   => array( __( 'Excel import requires additional library. Please convert to CSV format.', 'dw-product-catalog' ) ),
 		);
+	}
+
+	/**
+	 * Normalize CSV headers: trim and strip BOM so column names match (e.g. featured_image_url).
+	 * 
+	 * @param array $headers Raw header row from fgetcsv
+	 * @return array Normalized headers
+	 */
+	private function normalize_csv_headers( $headers ) {
+		$out = array();
+		foreach ( $headers as $i => $h ) {
+			$h = trim( (string) $h );
+			// Strip UTF-8 BOM from first column (Excel / some editors add it)
+			if ( $i === 0 && substr( $h, 0, 3 ) === "\xEF\xBB\xBF" ) {
+				$h = substr( $h, 3 );
+			}
+			$out[] = $h;
+		}
+		return $out;
 	}
 
 	/**
@@ -459,13 +494,23 @@ class PC_Bulk_Import {
 			}
 		}
 
-		// Handle featured image
-		if ( isset( $data['featured_image_url'] ) && ! empty( $data['featured_image_url'] ) ) {
-			$image_url = esc_url_raw( $data['featured_image_url'] );
-			$attachment_id = $this->import_image_from_url( $image_url, $post_id, $data['post_title'] );
-			
-			if ( $attachment_id && ! is_wp_error( $attachment_id ) ) {
-				set_post_thumbnail( $post_id, $attachment_id );
+		// Handle featured image: support column "featured_image_url" or "image_url" (trimmed)
+		$image_warning = '';
+		$image_url = '';
+		if ( ! empty( $data['featured_image_url'] ) ) {
+			$image_url = trim( (string) $data['featured_image_url'] );
+		} elseif ( ! empty( $data['image_url'] ) ) {
+			$image_url = trim( (string) $data['image_url'] );
+		}
+		if ( $image_url !== '' ) {
+			$image_url = esc_url_raw( $image_url );
+			if ( $image_url !== '' ) {
+				$attachment_id = $this->import_image_from_url( $image_url, $post_id, $data['post_title'] );
+				if ( $attachment_id && ! is_wp_error( $attachment_id ) ) {
+					set_post_thumbnail( $post_id, $attachment_id );
+				} elseif ( is_wp_error( $attachment_id ) ) {
+					$image_warning = sprintf( __( 'Image import failed: %s', 'dw-product-catalog' ), $attachment_id->get_error_message() );
+				}
 			}
 		}
 
@@ -493,6 +538,7 @@ class PC_Bulk_Import {
 			'success' => true,
 			'skipped' => false,
 			'error'   => '',
+			'warning' => $image_warning,
 		);
 	}
 
@@ -511,12 +557,14 @@ class PC_Bulk_Import {
 			return $attachment_id;
 		}
 
-		// Download image
 		require_once( ABSPATH . 'wp-admin/includes/file.php' );
 		require_once( ABSPATH . 'wp-admin/includes/media.php' );
 		require_once( ABSPATH . 'wp-admin/includes/image.php' );
 
+		// Slightly longer timeout for large or slow image servers
+		add_filter( 'http_request_timeout', array( $this, 'filter_import_http_timeout' ), 10, 0 );
 		$tmp = download_url( $image_url );
+		remove_filter( 'http_request_timeout', array( $this, 'filter_import_http_timeout' ), 10 );
 
 		if ( is_wp_error( $tmp ) ) {
 			return $tmp;
@@ -535,21 +583,34 @@ class PC_Bulk_Import {
 			'tmp_name' => $tmp,
 		);
 
-		// Sideload into uploads and create attachment (adds to Media library)
 		$attachment_id = media_handle_sideload( $file_array, $post_id, $title );
 
 		if ( is_wp_error( $attachment_id ) ) {
-			@unlink( $file_array['tmp_name'] );
+			if ( ! empty( $file_array['tmp_name'] ) && file_exists( $file_array['tmp_name'] ) ) {
+				@unlink( $file_array['tmp_name'] );
+			}
 			return $attachment_id;
 		}
 
 		// Ensure attachment metadata is generated so it appears correctly in Media
-		$attach_data = wp_generate_attachment_metadata( $attachment_id, get_attached_file( $attachment_id ) );
-		if ( ! is_wp_error( $attach_data ) ) {
-			wp_update_attachment_metadata( $attachment_id, $attach_data );
+		$attached_file = get_attached_file( $attachment_id );
+		if ( $attached_file && file_exists( $attached_file ) ) {
+			$attach_data = wp_generate_attachment_metadata( $attachment_id, $attached_file );
+			if ( ! is_wp_error( $attach_data ) ) {
+				wp_update_attachment_metadata( $attachment_id, $attach_data );
+			}
 		}
 
 		return $attachment_id;
+	}
+
+	/**
+	 * Increase HTTP timeout during image import (large or slow servers).
+	 * 
+	 * @return int Timeout in seconds
+	 */
+	public function filter_import_http_timeout() {
+		return 30;
 	}
 }
 

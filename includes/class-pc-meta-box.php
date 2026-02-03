@@ -37,6 +37,9 @@ class PC_Meta_Box {
 		wp_nonce_field( 'pc_save_product_meta', 'pc_product_meta_nonce' );
 
 		$product_name  = get_post_meta( $post->ID, 'dw_pc_product_name', true );
+		if ( $product_name === '' ) {
+			$product_name = $post->post_title;
+		}
 		$item_code     = get_post_meta( $post->ID, 'dw_pc_item_code', true );
 		$pack_size_raw = get_post_meta( $post->ID, 'dw_pc_pack_size_raw', true );
 		$brand_raw     = get_post_meta( $post->ID, 'dw_pc_brand_raw', true );
@@ -133,6 +136,16 @@ class PC_Meta_Box {
 				delete_post_meta( $post_id, $meta_key );
 			}
 		}
+
+		// Sync post_title from Product Name so core title and our meta stay in sync
+		$product_name = isset( $_POST['pc_product_name'] ) ? trim( sanitize_text_field( $_POST['pc_product_name'] ) ) : '';
+		if ( $product_name !== '' ) {
+			wp_update_post( array(
+				'ID'         => $post_id,
+				'post_title' => $product_name,
+			) );
+		}
+
 		if ( isset( $_POST['pc_internal_note'] ) ) {
 			update_post_meta( $post_id, 'dw_pc_internal_note', sanitize_textarea_field( $_POST['pc_internal_note'] ) );
 		} else {
@@ -177,6 +190,10 @@ class PC_Meta_Box {
 		if ( file_exists( $css_path ) ) {
 			wp_enqueue_style( 'pc-admin-style', $css_url, array(), $config['plugin_version'] );
 		}
+		// Product Name → post title sync on the standard editor (Featured Image is handled by core)
+		wp_enqueue_script( 'jquery' );
+		$inline = 'jQuery(function($){var $pn=$("#pc_product_name"),$t=$("#post_title");if($pn.length&&$t.length){$pn.on("input",function(){var v=$(this).val();if(v)$t.val(v);});if($pn.val()&&!$t.val())$t.val($pn.val());}});';
+		wp_add_inline_script( 'jquery', $inline, 'after' );
 	}
 
 	public static function get_product_meta( $post_id, $meta_key, $default = '' ) {
