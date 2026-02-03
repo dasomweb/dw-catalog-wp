@@ -563,23 +563,29 @@ class PC_Admin_Pages {
 							</div>
 
 							<?php
-							// Featured Image (Product Image) - only when editing existing product
+							// Product Image (Featured Image) - custom UI to avoid core meta box errors on custom page
 							if ( $is_edit && $product_id > 0 ) {
-								$post = get_post( $product_id );
-								if ( $post && $post->post_type === $this->post_type ) {
-									require_once ABSPATH . 'wp-admin/includes/post.php';
-									$GLOBALS['post'] = $post;
-									?>
-									<div class="postbox">
-										<div class="postbox-header">
-											<h2 class="hndle"><?php _e( 'Product Image', 'dw-product-catalog' ); ?></h2>
-										</div>
-										<div class="inside">
-											<?php post_thumbnail_meta_box( $post ); ?>
-										</div>
+								$thumb_id = get_post_thumbnail_id( $product_id );
+								$thumb_url = $thumb_id ? wp_get_attachment_image_url( $thumb_id, 'medium' ) : '';
+								?>
+								<div class="postbox" id="pc-product-image-box">
+									<div class="postbox-header">
+										<h2 class="hndle"><?php _e( 'Product Image', 'dw-product-catalog' ); ?></h2>
 									</div>
-									<?php
-								}
+									<div class="inside">
+										<input type="hidden" name="_thumbnail_id" id="pc_thumbnail_id" value="<?php echo esc_attr( $thumb_id ? $thumb_id : '' ); ?>" />
+										<div id="pc-product-image-preview" class="pc-product-image-preview" style="margin-bottom:10px;">
+											<?php if ( $thumb_url ) : ?>
+												<img src="<?php echo esc_url( $thumb_url ); ?>" alt="" style="max-width:100%;height:auto;display:block;" />
+											<?php endif; ?>
+										</div>
+										<p class="hide-if-no-js">
+											<button type="button" class="button" id="pc-set-product-image"><?php _e( 'Set product image', 'dw-product-catalog' ); ?></button>
+											<button type="button" class="button hide-if-no-js" id="pc-remove-product-image" <?php echo $thumb_id ? '' : ' style="display:none;"'; ?>><?php _e( 'Remove product image', 'dw-product-catalog' ); ?></button>
+										</p>
+									</div>
+								</div>
+								<?php
 							}
 							?>
 
@@ -909,12 +915,8 @@ class PC_Admin_Pages {
 			return;
 		}
 
-		// Enqueue media and post script for Featured Image on edit product page
-		if ( strpos( $hook, 'pc-products-edit' ) !== false ) {
-			wp_enqueue_media();
-			wp_enqueue_script( 'post' );
-		}
-		if ( strpos( $hook, 'pc-products-new' ) !== false ) {
+		// Enqueue media for Product Image on edit product page (no core 'post' script to avoid errors)
+		if ( strpos( $hook, 'pc-products-edit' ) !== false || strpos( $hook, 'pc-products-new' ) !== false ) {
 			wp_enqueue_media();
 		}
 
@@ -931,27 +933,49 @@ class PC_Admin_Pages {
 			);
 		}
 		
-		// Add JavaScript to sync Product Name to Title
+		// Add JavaScript for edit page: Product Name sync and Product Image (media modal)
 		if ( strpos( $hook, 'pc-products-edit' ) !== false ) {
 			?>
 			<script type="text/javascript">
 			jQuery(document).ready(function($) {
 				var $productName = $('#pc_product_name');
 				var $title = $('#post_title');
-				var titleInitialValue = $title.val();
-				
-				// Sync Product Name to Title when Product Name changes
-				$productName.on('input', function() {
-					var productNameValue = $(this).val();
-					if (productNameValue) {
-						$title.val(productNameValue);
-					}
-				});
-				
-				// If Product Name is filled but Title is empty, sync on page load
-				if ($productName.val() && !$title.val()) {
-					$title.val($productName.val());
+				if ($productName.length && $title.length) {
+					$productName.on('input', function() {
+						var v = $(this).val();
+						if (v) $title.val(v);
+					});
+					if ($productName.val() && !$title.val()) $title.val($productName.val());
 				}
+
+				// Product Image: open media library and set thumbnail (no core post script)
+				var pcMediaFrame;
+				$('#pc-set-product-image').on('click', function(e) {
+					e.preventDefault();
+					if (pcMediaFrame) {
+						pcMediaFrame.open();
+						return;
+					}
+					pcMediaFrame = wp.media({
+						title: '<?php echo esc_js( __( 'Set product image', 'dw-product-catalog' ) ); ?>',
+						button: { text: '<?php echo esc_js( __( 'Use as product image', 'dw-product-catalog' ) ); ?>' },
+						library: { type: 'image' },
+						multiple: false
+					});
+					pcMediaFrame.on('select', function() {
+						var att = pcMediaFrame.state().get('selection').first().toJSON();
+						$('#pc_thumbnail_id').val(att.id);
+						$('#pc-product-image-preview').html('<img src="' + (att.sizes && att.sizes.medium ? att.sizes.medium.url : att.url) + '" alt="" style="max-width:100%;height:auto;display:block;" />');
+						$('#pc-remove-product-image').show();
+					});
+					pcMediaFrame.open();
+				});
+				$('#pc-remove-product-image').on('click', function(e) {
+					e.preventDefault();
+					$('#pc_thumbnail_id').val('');
+					$('#pc-product-image-preview').empty();
+					$(this).hide();
+				});
 			});
 			</script>
 			<?php
