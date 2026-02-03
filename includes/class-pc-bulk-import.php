@@ -505,7 +505,7 @@ class PC_Bulk_Import {
 	 * @return int|WP_Error Attachment ID or error
 	 */
 	private function import_image_from_url( $image_url, $post_id, $title = '' ) {
-		// Check if image already exists
+		// Check if image already exists in Media (by URL)
 		$attachment_id = attachment_url_to_postid( $image_url );
 		if ( $attachment_id ) {
 			return $attachment_id;
@@ -522,25 +522,31 @@ class PC_Bulk_Import {
 			return $tmp;
 		}
 
-		// Get file extension
+		// Filename: use path without query string, ensure we have an extension for Media library
+		$path = parse_url( $image_url, PHP_URL_PATH );
+		$name = $path ? basename( $path ) : 'image';
+		$name = preg_replace( '/[^a-zA-Z0-9._-]/', '', $name );
+		if ( ! preg_match( '/\.(jpe?g|gif|png|webp|bmp)$/i', $name ) ) {
+			$name .= '.jpg';
+		}
+
 		$file_array = array(
-			'name'     => basename( $image_url ),
+			'name'     => $name,
 			'tmp_name' => $tmp,
 		);
 
-		// If error storing temporarily, unlink
-		if ( is_wp_error( $tmp ) ) {
-			@unlink( $file_array['tmp_name'] );
-			return $tmp;
-		}
-
-		// Do the validation and storage stuff
+		// Sideload into uploads and create attachment (adds to Media library)
 		$attachment_id = media_handle_sideload( $file_array, $post_id, $title );
 
-		// If error storing permanently, unlink
 		if ( is_wp_error( $attachment_id ) ) {
 			@unlink( $file_array['tmp_name'] );
 			return $attachment_id;
+		}
+
+		// Ensure attachment metadata is generated so it appears correctly in Media
+		$attach_data = wp_generate_attachment_metadata( $attachment_id, get_attached_file( $attachment_id ) );
+		if ( ! is_wp_error( $attach_data ) ) {
+			wp_update_attachment_metadata( $attachment_id, $attach_data );
 		}
 
 		return $attachment_id;

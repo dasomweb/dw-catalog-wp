@@ -563,6 +563,27 @@ class PC_Admin_Pages {
 							</div>
 
 							<?php
+							// Featured Image (Product Image) - only when editing existing product
+							if ( $is_edit && $product_id > 0 ) {
+								$post = get_post( $product_id );
+								if ( $post && $post->post_type === $this->post_type ) {
+									require_once ABSPATH . 'wp-admin/includes/post.php';
+									$GLOBALS['post'] = $post;
+									?>
+									<div class="postbox">
+										<div class="postbox-header">
+											<h2 class="hndle"><?php _e( 'Product Image', 'dw-product-catalog' ); ?></h2>
+										</div>
+										<div class="inside">
+											<?php post_thumbnail_meta_box( $post ); ?>
+										</div>
+									</div>
+									<?php
+								}
+							}
+							?>
+
+							<?php
 							// Categories meta box
 							if ( $is_edit ) {
 								$categories = get_terms( array(
@@ -782,6 +803,16 @@ class PC_Admin_Pages {
 			delete_post_meta( $product_id, 'dw_pc_category_slug' );
 		}
 
+		// Featured Image (Product Image) - meta box uses _thumbnail_id
+		if ( isset( $_POST['_thumbnail_id'] ) ) {
+			$thumb_id = intval( $_POST['_thumbnail_id'] );
+			if ( $thumb_id > 0 ) {
+				set_post_thumbnail( $product_id, $thumb_id );
+			} else {
+				delete_post_thumbnail( $product_id );
+			}
+		}
+
 		// Handle tags (comma-separated string)
 		if ( isset( $_POST['product_tags'] ) ) {
 			$tags_string = sanitize_text_field( $_POST['product_tags'] );
@@ -876,6 +907,15 @@ class PC_Admin_Pages {
 		// Only load on our custom pages
 		if ( strpos( $hook, 'pc-products' ) === false ) {
 			return;
+		}
+
+		// Enqueue media and post script for Featured Image on edit product page
+		if ( strpos( $hook, 'pc-products-edit' ) !== false ) {
+			wp_enqueue_media();
+			wp_enqueue_script( 'post' );
+		}
+		if ( strpos( $hook, 'pc-products-new' ) !== false ) {
+			wp_enqueue_media();
 		}
 
 		$config = pc_get_plugin_config();
