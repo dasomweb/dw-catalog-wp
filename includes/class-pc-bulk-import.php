@@ -131,7 +131,7 @@ class PC_Bulk_Import {
 							<li><code>dw_pc_pack_size_raw</code> - <?php _e( 'Pack Size / Case Pack', 'dw-product-catalog' ); ?></li>
 							<li><code>dw_pc_brand_raw</code> - <?php _e( 'Brand', 'dw-product-catalog' ); ?></li>
 							<li><code>dw_pc_origin_raw</code> - <?php _e( 'Origin', 'dw-product-catalog' ); ?></li>
-							<li><code>dw_pc_status</code> - <?php _e( 'Status (active, inactive, discontinued)', 'dw-product-catalog' ); ?></li>
+							<li><code>dw_pc_status</code> - <?php _e( 'Status (active, inactive, out_of_stock, discontinued)', 'dw-product-catalog' ); ?></li>
 							<li><code>dw_pc_category_name</code> - <?php _e( 'Category Name (created if missing)', 'dw-product-catalog' ); ?></li>
 							<li><code>dw_pc_category_slug</code> - <?php _e( 'Category Slug (created if missing)', 'dw-product-catalog' ); ?></li>
 							<li><code>dw_pc_internal_note</code> - <?php _e( 'ETC', 'dw-product-catalog' ); ?></li>

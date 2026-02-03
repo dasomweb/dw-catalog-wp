@@ -64,9 +64,10 @@ class PC_Admin_Columns {
 			case 'pc_status':
 				$value = PC_Product_Display::get_status( $post_id );
 				$labels = array(
-					'active'       => __( 'Active', 'dw-product-catalog' ),
-					'inactive'     => __( 'Inactive', 'dw-product-catalog' ),
-					'discontinued' => __( 'Discontinued', 'dw-product-catalog' ),
+					'active'        => __( 'Active', 'dw-product-catalog' ),
+					'inactive'      => __( 'Inactive', 'dw-product-catalog' ),
+					'out_of_stock'  => __( 'Out of Stock', 'dw-product-catalog' ),
+					'discontinued'  => __( 'Discontinued', 'dw-product-catalog' ),
 				);
 				echo $value ? ( isset( $labels[ $value ] ) ? esc_html( $labels[ $value ] ) : esc_html( $value ) ) : '—';
 				break;

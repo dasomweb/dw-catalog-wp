@@ -484,6 +484,7 @@ class PC_Admin_Pages {
 														<option value="" <?php selected( $status, '' ); ?>><?php _e( '— Select —', 'dw-product-catalog' ); ?></option>
 														<option value="active" <?php selected( $status, 'active' ); ?>><?php _e( 'Active', 'dw-product-catalog' ); ?></option>
 														<option value="inactive" <?php selected( $status, 'inactive' ); ?>><?php _e( 'Inactive', 'dw-product-catalog' ); ?></option>
+														<option value="out_of_stock" <?php selected( $status, 'out_of_stock' ); ?>><?php _e( 'Out of Stock', 'dw-product-catalog' ); ?></option>
 														<option value="discontinued" <?php selected( $status, 'discontinued' ); ?>><?php _e( 'Discontinued', 'dw-product-catalog' ); ?></option>
 													</select>
 												</td>

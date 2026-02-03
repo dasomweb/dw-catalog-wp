@@ -108,9 +108,9 @@ class PC_Field_Reference {
 				'label'       => __( 'Status', 'dw-product-catalog' ),
 				'meta_key'    => 'dw_pc_status',
 				'type'        => 'select',
-				'description' => __( 'Active, Inactive, Discontinued', 'dw-product-catalog' ),
+				'description' => __( 'Active, Inactive, Out of Stock, Discontinued', 'dw-product-catalog' ),
 				'required'    => false,
-				'options'     => array( 'active' => 'Active', 'inactive' => 'Inactive', 'discontinued' => 'Discontinued' ),
+				'options'     => array( 'active' => 'Active', 'inactive' => 'Inactive', 'out_of_stock' => 'Out of Stock', 'discontinued' => 'Discontinued' ),
 				'example'     => 'active',
 			),
 			array(
