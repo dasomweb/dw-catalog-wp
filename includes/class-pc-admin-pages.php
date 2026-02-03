@@ -150,8 +150,10 @@ class PC_Admin_Pages {
 			echo '<div class="notice notice-success"><p>' . esc_html__( 'Products deleted successfully.', 'dw-product-catalog' ) . '</p></div>';
 		}
 
-		// Get products
-		$paged = isset( $_GET['paged'] ) ? intval( $_GET['paged'] ) : 1;
+		$search_name     = isset( $_REQUEST['pc_search_name'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['pc_search_name'] ) ) : '';
+		$search_item_code = isset( $_REQUEST['pc_search_item_code'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['pc_search_item_code'] ) ) : '';
+		$paged           = isset( $_GET['paged'] ) ? intval( $_GET['paged'] ) : 1;
+
 		$args = array(
 			'post_type'      => $this->post_type,
 			'posts_per_page' => 20,
@@ -159,7 +161,39 @@ class PC_Admin_Pages {
 			'post_status'    => 'any',
 		);
 
+		if ( $search_name !== '' || $search_item_code !== '' ) {
+			$filter_cb = function( $where ) use ( $search_name, $search_item_code ) {
+				global $wpdb;
+				$and = array();
+				if ( $search_name !== '' ) {
+					$like_name = '%' . $wpdb->esc_like( $search_name ) . '%';
+					$and[] = $wpdb->prepare(
+						"( {$wpdb->posts}.post_title LIKE %s OR {$wpdb->posts}.ID IN ( SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = 'dw_pc_product_name' AND meta_value LIKE %s ) )",
+						$like_name,
+						$like_name
+					);
+				}
+				if ( $search_item_code !== '' ) {
+					$like_code = '%' . $wpdb->esc_like( $search_item_code ) . '%';
+					$and[] = $wpdb->prepare(
+						"( {$wpdb->posts}.post_name LIKE %s OR {$wpdb->posts}.ID IN ( SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = 'dw_pc_item_code' AND meta_value LIKE %s ) )",
+						$like_code,
+						$like_code
+					);
+				}
+				if ( ! empty( $and ) ) {
+					$where .= ' AND ' . implode( ' AND ', $and );
+				}
+				return $where;
+			};
+			add_filter( 'posts_where', $filter_cb );
+		}
+
 		$products = new WP_Query( $args );
+
+		if ( isset( $filter_cb ) ) {
+			remove_filter( 'posts_where', $filter_cb );
+		}
 		?>
 		<div class="wrap">
 			<h1 class="wp-heading-inline"><?php _e( 'Product Catalog', 'dw-product-catalog' ); ?></h1>
@@ -168,9 +202,25 @@ class PC_Admin_Pages {
 			</a>
 			<hr class="wp-header-end">
 
+			<form method="get" action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>" class="pc-list-search" style="margin-bottom: 12px;">
+				<input type="hidden" name="page" value="pc-products">
+				<label for="pc_search_name"><?php esc_html_e( 'Product Name', 'dw-product-catalog' ); ?></label>
+				<input type="search" id="pc_search_name" name="pc_search_name" value="<?php echo esc_attr( $search_name ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'Search by name…', 'dw-product-catalog' ); ?>" style="width: 180px; margin-right: 8px;">
+				<label for="pc_search_item_code" style="margin-left: 8px;"><?php esc_html_e( 'Item Code', 'dw-product-catalog' ); ?></label>
+				<input type="search" id="pc_search_item_code" name="pc_search_item_code" value="<?php echo esc_attr( $search_item_code ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'Search by item code…', 'dw-product-catalog' ); ?>" style="width: 140px; margin-right: 8px;">
+				<input type="submit" class="button" value="<?php esc_attr_e( 'Search', 'dw-product-catalog' ); ?>">
+				<?php if ( $search_name !== '' || $search_item_code !== '' ) : ?>
+					<a href="<?php echo esc_url( admin_url( 'admin.php?page=pc-products' ) ); ?>" class="button"><?php esc_html_e( 'Clear', 'dw-product-catalog' ); ?></a>
+				<?php endif; ?>
+			</form>
+
 			<?php if ( $products->have_posts() ) : ?>
 				<form method="post" action="<?php echo esc_url( admin_url( 'admin.php?page=pc-products' ) ); ?>">
 					<?php wp_nonce_field( 'pc-bulk-action' ); ?>
+					<?php if ( $search_name !== '' || $search_item_code !== '' ) : ?>
+						<input type="hidden" name="pc_search_name" value="<?php echo esc_attr( $search_name ); ?>">
+						<input type="hidden" name="pc_search_item_code" value="<?php echo esc_attr( $search_item_code ); ?>">
+					<?php endif; ?>
 					<div class="tablenav top">
 						<div class="alignleft actions bulkactions">
 							<select name="action">
@@ -253,8 +303,16 @@ class PC_Admin_Pages {
 
 					<?php
 					// Pagination
+					$pagination_base = add_query_arg( 'page', 'pc-products', admin_url( 'admin.php' ) );
+					if ( $search_name !== '' ) {
+						$pagination_base = add_query_arg( 'pc_search_name', $search_name, $pagination_base );
+					}
+					if ( $search_item_code !== '' ) {
+						$pagination_base = add_query_arg( 'pc_search_item_code', $search_item_code, $pagination_base );
+					}
+					$pagination_base = add_query_arg( 'paged', '%#%', $pagination_base );
 					$pagination = paginate_links( array(
-						'base'    => add_query_arg( 'paged', '%#%' ),
+						'base'    => $pagination_base,
 						'format'  => '',
 						'current' => $paged,
 						'total'   => $products->max_num_pages,
