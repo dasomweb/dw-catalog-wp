@@ -38,14 +38,12 @@ jobs:
 
       - name: Create plugin zip file
         run: |
-          # Create zip file with plugin name
+          # ZIP name MUST be dw-product-catalog.zip (no version) so WordPress always
+          # installs/updates to wp-content/plugins/dw-product-catalog/ (updates work)
           PLUGIN_NAME="dw-product-catalog"
-          ZIP_NAME="${PLUGIN_NAME}-${VERSION}.zip"
+          ZIP_NAME="${PLUGIN_NAME}.zip"
           
-          # Create temporary directory for plugin files
           mkdir -p temp_plugin
-          
-          # Copy plugin files (excluding git and documentation)
           rsync -av --exclude='.git*' \
             --exclude='.github' \
             --exclude='*.DS_Store' \
@@ -63,16 +61,13 @@ jobs:
             --exclude='*.zip' \
             ./ temp_plugin/
           
-          # Create zip from temp directory (ensures proper structure)
           cd temp_plugin
           zip -r "../$ZIP_NAME" .
           cd ..
-          
-          # Cleanup
           rm -rf temp_plugin
           
           echo "zip_file=$ZIP_NAME" >> $GITHUB_OUTPUT
-          echo "Created: $ZIP_NAME"
+          echo "Created: $ZIP_NAME (install dir will be $PLUGIN_NAME/)"
         env:
           VERSION: ${{ steps.tag_version.outputs.version }}
 
@@ -81,22 +76,21 @@ jobs:
         with:
           tag_name: v${{ steps.tag_version.outputs.version }}
           files: |
-            dw-product-catalog-*.zip
+            dw-product-catalog.zip
           name: Release v${{ steps.tag_version.outputs.version }}
           body: |
             ## DW Product Catalog v${{ steps.tag_version.outputs.version }}
             
             ### 설치 방법 (Installation)
             
-            1. WordPress 관리자 페이지로 이동
-            2. 플러그인 > 새로 추가
-            3. 플러그인 업로드 클릭
-            4. 아래 ZIP 파일을 업로드
+            1. **dw-product-catalog.zip** 다운로드 (버전명 없음 → 설치 폴더가 항상 `dw-product-catalog`로 유지됨)
+            2. WordPress 관리자 > 플러그인 > 새로 추가 > 플러그인 업로드
+            3. ZIP 업로드 후 설치·활성화
             
-            ### 업데이트 방법 (Update)
+            ### 업데이트 (Update)
             
-            플러그인이 자동으로 GitHub에서 업데이트를 확인합니다.
-            WordPress 관리자 > 플러그인 페이지에서 업데이트 알림을 확인하세요.
+            같은 **dw-product-catalog.zip**을 새 버전으로 다시 업로드하면 기존 `wp-content/plugins/dw-product-catalog/`가 덮어써져 업데이트됩니다.  
+            이전에 버전명이 붙은 폴더(`dw-product-catalog-1.5.4` 등)가 있다면 삭제해 두세요.
             
             ### 변경사항 (Changelog)
             
