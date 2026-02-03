@@ -3,7 +3,7 @@
  * Plugin Name: DW Product Catalog
  * Plugin URI: https://github.com/dasomweb/DW-Product-Catalog
  * Description: Domain-change friendly product catalog plugin
- * Version: 1.5.1
+ * Version: 1.5.2
  * Author: Dasom Web
  * Author URI: https://github.com/dasomweb
  * License: GPL v2 or later
@@ -35,7 +35,7 @@ function pc_get_plugin_config() {
 		
 		// Plugin Information
 		'plugin_slug'       => 'dw-product-catalog',
-		'plugin_version'    => '1.5.1',
+		'plugin_version'    => '1.5.2',
 		'plugin_name'       => 'DW Product Catalog',
 		'plugin_text_domain' => 'dw-product-catalog',
 		
@@ -73,6 +73,49 @@ function pc_get_plugin_path() {
  */
 function pc_get_plugin_file() {
 	return __FILE__;
+}
+
+/**
+ * Get or create a product category term by name and/or slug.
+ * Used when saving a product or importing so category is created if missing.
+ *
+ * @param string $category_name Category display name (optional).
+ * @param string $category_slug Category slug/code (optional).
+ * @return int Term ID, or 0 on failure.
+ */
+function pc_get_or_create_product_category( $category_name = '', $category_slug = '' ) {
+	$category_name = trim( (string) $category_name );
+	$category_slug = trim( (string) $category_slug );
+	if ( $category_name === '' && $category_slug === '' ) {
+		return 0;
+	}
+	$taxonomy = 'product_category';
+
+	// Prefer lookup by slug if provided
+	if ( $category_slug !== '' ) {
+		$term = get_term_by( 'slug', $category_slug, $taxonomy );
+		if ( $term && ! is_wp_error( $term ) ) {
+			return (int) $term->term_id;
+		}
+	}
+	if ( $category_name !== '' ) {
+		$term = get_term_by( 'name', $category_name, $taxonomy );
+		if ( $term && ! is_wp_error( $term ) ) {
+			return (int) $term->term_id;
+		}
+	}
+
+	// Create term
+	$name = $category_name !== '' ? $category_name : $category_slug;
+	$slug = $category_slug !== '' ? $category_slug : sanitize_title( $name );
+	if ( $name === '' ) {
+		return 0;
+	}
+	$result = wp_insert_term( $name, $taxonomy, array( 'slug' => $slug ) );
+	if ( is_wp_error( $result ) ) {
+		return 0;
+	}
+	return (int) $result['term_id'];
 }
 
 // Load includes

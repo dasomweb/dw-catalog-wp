@@ -320,6 +320,16 @@ class PC_Admin_Pages {
 		$origin_raw    = $is_edit ? PC_Product_Display::get_origin( $product_id ) : '';
 		$status        = $is_edit ? get_post_meta( $product_id, 'dw_pc_status', true ) : '';
 		$category_slug = $is_edit ? get_post_meta( $product_id, 'dw_pc_category_slug', true ) : '';
+		$category_name = '';
+		if ( $is_edit ) {
+			$terms = wp_get_post_terms( $product_id, 'product_category' );
+			if ( ! empty( $terms ) && ! is_wp_error( $terms ) ) {
+				$category_name = $terms[0]->name;
+				if ( $category_slug === '' ) {
+					$category_slug = $terms[0]->slug;
+				}
+			}
+		}
 		$internal_note = $is_edit ? get_post_meta( $product_id, 'dw_pc_internal_note', true ) : '';
 		?>
 		<div class="wrap">
@@ -415,6 +425,9 @@ class PC_Admin_Pages {
 														class="regular-text"
 														placeholder="<?php esc_attr_e( 'Enter item code', 'dw-product-catalog' ); ?>"
 													/>
+													<p class="description">
+														<?php _e( 'Used as the product URL slug (post slug).', 'dw-product-catalog' ); ?>
+													</p>
 												</td>
 											</tr>
 											<tr>
@@ -477,6 +490,24 @@ class PC_Admin_Pages {
 											</tr>
 											<tr>
 												<th scope="row">
+													<label for="pc_category_name"><?php _e( 'Category Name', 'dw-product-catalog' ); ?></label>
+												</th>
+												<td>
+													<input 
+														type="text" 
+														id="pc_category_name" 
+														name="pc_category_name" 
+														value="<?php echo esc_attr( $category_name ); ?>" 
+														class="regular-text"
+														placeholder="<?php esc_attr_e( 'e.g., Seafood', 'dw-product-catalog' ); ?>"
+													/>
+													<p class="description">
+														<?php _e( 'Category display name. Created if it does not exist.', 'dw-product-catalog' ); ?>
+													</p>
+												</td>
+											</tr>
+											<tr>
+												<th scope="row">
 													<label for="pc_category_slug"><?php _e( 'Category Slug', 'dw-product-catalog' ); ?></label>
 												</th>
 												<td>
@@ -489,7 +520,7 @@ class PC_Admin_Pages {
 														placeholder="<?php esc_attr_e( 'e.g., category-code', 'dw-product-catalog' ); ?>"
 													/>
 													<p class="description">
-														<?php _e( 'Category code / slug (from Excel: Category Code)', 'dw-product-catalog' ); ?>
+														<?php _e( 'Category code / slug. Created if it does not exist. Used as post URL slug when combined with Item Code.', 'dw-product-catalog' ); ?>
 													</p>
 												</td>
 											</tr>
@@ -697,9 +728,14 @@ class PC_Admin_Pages {
 		}
 		
 		// Product Name becomes the Title
+		// Post slug (post_name): use Item Code if provided, else Product Name
+		$item_code = isset( $_POST['pc_item_code'] ) ? trim( sanitize_text_field( $_POST['pc_item_code'] ) ) : '';
+		$post_slug = $item_code !== '' ? sanitize_title( $item_code ) : sanitize_title( $product_name );
+
 		$post_data = array(
 			'post_type'    => $this->post_type,
 			'post_title'   => $product_name,
+			'post_name'    => $post_slug,
 			'post_content' => isset( $_POST['post_content'] ) ? wp_kses_post( $_POST['post_content'] ) : '',
 			'post_status'  => isset( $_POST['post_status'] ) ? sanitize_text_field( $_POST['post_status'] ) : 'publish',
 		);
@@ -718,16 +754,31 @@ class PC_Admin_Pages {
 
 		$product_id = $result;
 
-		// Save taxonomies (categories and tags)
-		if ( isset( $_POST['tax_input'] ) ) {
-			// Save categories
-			if ( isset( $_POST['tax_input']['product_category'] ) ) {
-				$categories = array_map( 'intval', $_POST['tax_input']['product_category'] );
-				wp_set_object_terms( $product_id, $categories, 'product_category' );
-			} else {
-				// If no categories selected, remove all
-				wp_set_object_terms( $product_id, array(), 'product_category' );
+		// Category: get or create from Category Name / Category Slug
+		$category_name = isset( $_POST['pc_category_name'] ) ? trim( sanitize_text_field( $_POST['pc_category_name'] ) ) : '';
+		$category_slug = isset( $_POST['pc_category_slug'] ) ? trim( sanitize_text_field( $_POST['pc_category_slug'] ) ) : '';
+		if ( $category_name !== '' || $category_slug !== '' ) {
+			$term_id = pc_get_or_create_product_category( $category_name, $category_slug );
+			if ( $term_id ) {
+				wp_set_object_terms( $product_id, array( $term_id ), 'product_category' );
+				$term = get_term( $term_id, 'product_category' );
+				if ( $term && ! is_wp_error( $term ) ) {
+					update_post_meta( $product_id, 'dw_pc_category_slug', $term->slug );
+				}
 			}
+		} elseif ( isset( $_POST['tax_input']['product_category'] ) ) {
+			// Fallback: checkbox selection
+			$categories = array_map( 'intval', (array) $_POST['tax_input']['product_category'] );
+			wp_set_object_terms( $product_id, $categories, 'product_category' );
+			$terms = wp_get_post_terms( $product_id, 'product_category' );
+			if ( ! empty( $terms ) && ! is_wp_error( $terms ) ) {
+				update_post_meta( $product_id, 'dw_pc_category_slug', $terms[0]->slug );
+			} else {
+				delete_post_meta( $product_id, 'dw_pc_category_slug' );
+			}
+		} else {
+			wp_set_object_terms( $product_id, array(), 'product_category' );
+			delete_post_meta( $product_id, 'dw_pc_category_slug' );
 		}
 
 		// Handle tags (comma-separated string)

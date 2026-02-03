@@ -43,6 +43,14 @@ class PC_Meta_Box {
 		$origin_raw    = get_post_meta( $post->ID, 'dw_pc_origin_raw', true );
 		$status        = get_post_meta( $post->ID, 'dw_pc_status', true );
 		$category_slug = get_post_meta( $post->ID, 'dw_pc_category_slug', true );
+		$category_name = '';
+		$terms = wp_get_post_terms( $post->ID, 'product_category' );
+		if ( ! empty( $terms ) && ! is_wp_error( $terms ) ) {
+			$category_name = $terms[0]->name;
+			if ( $category_slug === '' ) {
+				$category_slug = $terms[0]->slug;
+			}
+		}
 		$internal_note = get_post_meta( $post->ID, 'dw_pc_internal_note', true );
 		?>
 		<div class="pc-product-fields">
@@ -80,8 +88,12 @@ class PC_Meta_Box {
 						</td>
 					</tr>
 					<tr>
+						<th scope="row"><label for="pc_category_name"><?php _e( 'Category Name', 'dw-product-catalog' ); ?></label></th>
+						<td><input type="text" id="pc_category_name" name="pc_category_name" value="<?php echo esc_attr( $category_name ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'e.g., Seafood', 'dw-product-catalog' ); ?>" /></td>
+					</tr>
+					<tr>
 						<th scope="row"><label for="pc_category_slug"><?php _e( 'Category Slug', 'dw-product-catalog' ); ?></label></th>
-						<td><input type="text" id="pc_category_slug" name="pc_category_slug" value="<?php echo esc_attr( $category_slug ); ?>" class="regular-text" /></td>
+						<td><input type="text" id="pc_category_slug" name="pc_category_slug" value="<?php echo esc_attr( $category_slug ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'e.g., category-code', 'dw-product-catalog' ); ?>" /></td>
 					</tr>
 					<tr>
 						<th scope="row"><label for="pc_internal_note"><?php _e( 'ETC', 'dw-product-catalog' ); ?></label></th>
@@ -124,6 +136,32 @@ class PC_Meta_Box {
 			update_post_meta( $post_id, 'dw_pc_internal_note', sanitize_textarea_field( $_POST['pc_internal_note'] ) );
 		} else {
 			delete_post_meta( $post_id, 'dw_pc_internal_note' );
+		}
+
+		// Category: get or create from Category Name / Category Slug
+		$category_name = isset( $_POST['pc_category_name'] ) ? trim( sanitize_text_field( $_POST['pc_category_name'] ) ) : '';
+		$category_slug = isset( $_POST['pc_category_slug'] ) ? trim( sanitize_text_field( $_POST['pc_category_slug'] ) ) : '';
+		if ( $category_name !== '' || $category_slug !== '' ) {
+			$term_id = pc_get_or_create_product_category( $category_name, $category_slug );
+			if ( $term_id ) {
+				wp_set_object_terms( $post_id, array( $term_id ), 'product_category' );
+				$term = get_term( $term_id, 'product_category' );
+				if ( $term && ! is_wp_error( $term ) ) {
+					update_post_meta( $post_id, 'dw_pc_category_slug', $term->slug );
+				}
+			}
+		} else {
+			wp_set_object_terms( $post_id, array(), 'product_category' );
+			delete_post_meta( $post_id, 'dw_pc_category_slug' );
+		}
+
+		// Post slug (post_name): use Item Code if provided
+		$item_code = isset( $_POST['pc_item_code'] ) ? trim( sanitize_text_field( $_POST['pc_item_code'] ) ) : '';
+		if ( $item_code !== '' ) {
+			wp_update_post( array(
+				'ID'        => $post_id,
+				'post_name' => sanitize_title( $item_code ),
+			) );
 		}
 	}
 

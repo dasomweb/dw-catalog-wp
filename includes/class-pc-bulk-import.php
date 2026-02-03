@@ -132,7 +132,8 @@ class PC_Bulk_Import {
 							<li><code>dw_pc_brand_raw</code> - <?php _e( 'Brand', 'dw-product-catalog' ); ?></li>
 							<li><code>dw_pc_origin_raw</code> - <?php _e( 'Origin', 'dw-product-catalog' ); ?></li>
 							<li><code>dw_pc_status</code> - <?php _e( 'Status (active, inactive, discontinued)', 'dw-product-catalog' ); ?></li>
-							<li><code>dw_pc_category_slug</code> - <?php _e( 'Category Slug', 'dw-product-catalog' ); ?></li>
+							<li><code>dw_pc_category_name</code> - <?php _e( 'Category Name (created if missing)', 'dw-product-catalog' ); ?></li>
+							<li><code>dw_pc_category_slug</code> - <?php _e( 'Category Slug (created if missing)', 'dw-product-catalog' ); ?></li>
 							<li><code>dw_pc_internal_note</code> - <?php _e( 'ETC', 'dw-product-catalog' ); ?></li>
 						</ul>
 					</li>
@@ -145,9 +146,10 @@ class PC_Bulk_Import {
 				</ol>
 
 				<h3><?php _e( 'Sample CSV Format', 'dw-product-catalog' ); ?></h3>
-				<pre style="background: #f5f5f5; padding: 10px; overflow-x: auto;"><code>dw_pc_product_name,post_content,featured_image_url,dw_pc_item_code,dw_pc_pack_size_raw,dw_pc_brand_raw,dw_pc_origin_raw,dw_pc_status,dw_pc_category_slug,dw_pc_internal_note
-"Premium Coffee Beans","High quality coffee","https://example.com/image1.jpg","ITEM-001","10pc/cs","Brand A","Colombia","active","category-code",""
-"Salmon Fillet","Fresh salmon","https://example.com/image2.jpg","ITEM-002","1/15lb/cs","Brand B","Norway","active","","Note"</code></pre>
+				<p class="description"><?php _e( 'Default delimiter is semicolon (;). Select the delimiter that matches your file.', 'dw-product-catalog' ); ?></p>
+				<pre style="background: #f5f5f5; padding: 10px; overflow-x: auto;"><code>dw_pc_product_name;post_content;featured_image_url;dw_pc_item_code;dw_pc_pack_size_raw;dw_pc_brand_raw;dw_pc_origin_raw;dw_pc_status;dw_pc_category_name;dw_pc_category_slug;dw_pc_internal_note
+"Premium Coffee Beans";"High quality coffee";"https://example.com/image1.jpg";"ITEM-001";"10pc/cs";"Brand A";"Colombia";"active";"Beverages";"category-code";""
+"Salmon Fillet";"Fresh salmon";"https://example.com/image2.jpg";"ITEM-002";"1/15lb/cs";"Brand B";"Norway";"active";"Seafood";"";"Note"</code></pre>
 			</div>
 
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" enctype="multipart/form-data" id="pc-import-form">
@@ -170,6 +172,21 @@ class PC_Bulk_Import {
 								/>
 								<p class="description">
 									<?php _e( 'Upload a CSV or Excel file (.csv, .xlsx, .xls)', 'dw-product-catalog' ); ?>
+								</p>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row">
+								<label for="csv_delimiter"><?php _e( 'CSV Delimiter', 'dw-product-catalog' ); ?></label>
+							</th>
+							<td>
+								<select name="csv_delimiter" id="csv_delimiter">
+									<option value="semicolon" selected><?php _e( 'Semicolon (;)', 'dw-product-catalog' ); ?></option>
+									<option value="comma"><?php _e( 'Comma (,)', 'dw-product-catalog' ); ?></option>
+									<option value="tab"><?php _e( 'Tab', 'dw-product-catalog' ); ?></option>
+								</select>
+								<p class="description">
+									<?php _e( 'Column separator for CSV files. Default: semicolon (;)', 'dw-product-catalog' ); ?>
 								</p>
 							</td>
 						</tr>
@@ -231,11 +248,20 @@ class PC_Bulk_Import {
 		$default_status = isset( $_POST['default_status'] ) ? sanitize_text_field( $_POST['default_status'] ) : 'publish';
 		$skip_duplicates = isset( $_POST['skip_duplicates'] ) && $_POST['skip_duplicates'] === '1';
 
+		// CSV delimiter: semicolon (default), comma, or tab
+		$delimiter_key = isset( $_POST['csv_delimiter'] ) ? sanitize_text_field( $_POST['csv_delimiter'] ) : 'semicolon';
+		$delimiters = array(
+			'semicolon' => ';',
+			'comma'     => ',',
+			'tab'       => "\t",
+		);
+		$csv_delimiter = isset( $delimiters[ $delimiter_key ] ) ? $delimiters[ $delimiter_key ] : ';';
+
 		// Process file
 		$file_ext = strtolower( pathinfo( $file['name'], PATHINFO_EXTENSION ) );
 		
 		if ( $file_ext === 'csv' ) {
-			$result = $this->import_csv( $file, $default_status, $skip_duplicates );
+			$result = $this->import_csv( $file, $default_status, $skip_duplicates, $csv_delimiter );
 		} elseif ( in_array( $file_ext, array( 'xlsx', 'xls' ), true ) ) {
 			$result = $this->import_excel( $file, $default_status, $skip_duplicates );
 		} else {
@@ -263,9 +289,10 @@ class PC_Bulk_Import {
 	 * @param array  $file File array from $_FILES
 	 * @param string $default_status Default post status
 	 * @param bool   $skip_duplicates Skip duplicate titles
+	 * @param string $delimiter CSV column delimiter (default ;)
 	 * @return array Result array
 	 */
-	private function import_csv( $file, $default_status, $skip_duplicates ) {
+	private function import_csv( $file, $default_status, $skip_duplicates, $delimiter = ';' ) {
 		$imported = 0;
 		$failed = 0;
 		$skipped = 0;
@@ -282,7 +309,7 @@ class PC_Bulk_Import {
 		}
 
 		// Read header row (required: dw_pc_product_name)
-		$headers = fgetcsv( $handle );
+		$headers = fgetcsv( $handle, 0, $delimiter );
 		if ( ! $headers || ! in_array( 'dw_pc_product_name', $headers, true ) ) {
 			fclose( $handle );
 			return array(
@@ -295,7 +322,7 @@ class PC_Bulk_Import {
 
 		// Process rows
 		$row_num = 1;
-		while ( ( $row = fgetcsv( $handle ) ) !== false ) {
+		while ( ( $row = fgetcsv( $handle, 0, $delimiter ) ) !== false ) {
 			$row_num++;
 			
 			if ( count( $row ) !== count( $headers ) ) {
@@ -394,10 +421,15 @@ class PC_Bulk_Import {
 			}
 		}
 
+		// Post slug (post_name): use Item Code if provided, else Product Name
+		$item_code = isset( $data['dw_pc_item_code'] ) ? trim( (string) $data['dw_pc_item_code'] ) : '';
+		$post_slug = $item_code !== '' ? sanitize_title( $item_code ) : sanitize_title( $data['post_title'] );
+
 		// Prepare post data
 		$post_data = array(
 			'post_type'    => $this->post_type,
 			'post_title'   => sanitize_text_field( $data['post_title'] ),
+			'post_name'    => $post_slug,
 			'post_content' => isset( $data['post_content'] ) ? wp_kses_post( $data['post_content'] ) : '',
 			'post_status'  => isset( $data['post_status'] ) ? sanitize_text_field( $data['post_status'] ) : $default_status,
 		);
@@ -411,6 +443,20 @@ class PC_Bulk_Import {
 				'skipped' => false,
 				'error'   => $post_id->get_error_message(),
 			);
+		}
+
+		// Category: get or create from Category Name / Category Slug
+		$category_name = isset( $data['dw_pc_category_name'] ) ? trim( (string) $data['dw_pc_category_name'] ) : '';
+		$category_slug = isset( $data['dw_pc_category_slug'] ) ? trim( (string) $data['dw_pc_category_slug'] ) : '';
+		if ( $category_name !== '' || $category_slug !== '' ) {
+			$term_id = pc_get_or_create_product_category( $category_name, $category_slug );
+			if ( $term_id ) {
+				wp_set_object_terms( $post_id, array( $term_id ), 'product_category' );
+				$term = get_term( $term_id, 'product_category' );
+				if ( $term && ! is_wp_error( $term ) ) {
+					update_post_meta( $post_id, 'dw_pc_category_slug', $term->slug );
+				}
+			}
 		}
 
 		// Handle featured image

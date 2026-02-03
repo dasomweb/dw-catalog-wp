@@ -57,17 +57,18 @@ class PC_Field_Reference {
 				'example'     => 'Premium Coffee Beans',
 			),
 			array(
-				'label'       => __( 'Category', 'dw-product-catalog' ),
-				'meta_key'    => 'product_category',
-				'type'        => 'taxonomy',
-				'description' => __( 'Category Name (taxonomy)', 'dw-product-catalog' ),
+				'label'       => __( 'Category Name', 'dw-product-catalog' ),
+				'meta_key'    => 'dw_pc_category_name',
+				'type'        => 'text',
+				'description' => __( 'Category display name. Created if missing (import/save).', 'dw-product-catalog' ),
 				'required'    => false,
+				'example'     => 'Seafood',
 			),
 			array(
 				'label'       => __( 'Category Slug', 'dw-product-catalog' ),
 				'meta_key'    => 'dw_pc_category_slug',
 				'type'        => 'slug',
-				'description' => __( 'Category Code / slug', 'dw-product-catalog' ),
+				'description' => __( 'Category code / slug. Created if missing (import/save).', 'dw-product-catalog' ),
 				'required'    => false,
 				'example'     => 'category-code',
 			),
@@ -75,7 +76,7 @@ class PC_Field_Reference {
 				'label'       => __( 'Item Code', 'dw-product-catalog' ),
 				'meta_key'    => 'dw_pc_item_code',
 				'type'        => 'text',
-				'description' => __( 'Item code', 'dw-product-catalog' ),
+				'description' => __( 'Item code. Used as product URL slug (post slug).', 'dw-product-catalog' ),
 				'required'    => false,
 				'example'     => 'ITEM-001',
 			),
@@ -239,7 +240,7 @@ $internal_note = PC_Product_Display::get_internal_note( $post_id );</code></pre>
 							<?php endif; ?>
 						<?php endforeach; ?>
 					</ul>
-					<p><strong><?php _e( 'Note:', 'dw-product-catalog' ); ?></strong> <?php _e( 'The Product Name field (dw_pc_product_name) will automatically be used as the post title. You do not need to provide a separate post_title column.', 'dw-product-catalog' ); ?></p>
+					<p><strong><?php _e( 'Note:', 'dw-product-catalog' ); ?></strong> <?php _e( 'Product Name (dw_pc_product_name) is used as the post title. Item Code (dw_pc_item_code) is used as the product URL slug (post slug). Category Name and Category Slug are created if they do not exist.', 'dw-product-catalog' ); ?></p>
 				</div>
 			</div>
 		</div>
