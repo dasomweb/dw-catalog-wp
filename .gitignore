@@ -50,3 +50,6 @@ wp-config.php
 # Plugin build artifacts
 *.zip
 /build/
+
+# Composer (PDF export); vendor is built at release time
+/vendor/

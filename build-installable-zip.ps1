@@ -12,11 +12,19 @@ $pluginDir = "$buildDir\$pluginSlug"
 if (Test-Path $buildDir) { Remove-Item $buildDir -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $pluginDir | Out-Null
 
+# PDF export: install Composer deps so vendor/ is included
+if (Test-Path "composer.json") {
+  if (Get-Command composer -ErrorAction SilentlyContinue) {
+    composer install --no-dev --optimize-autoloader 2>&1 | Out-Null
+  }
+}
+
 # 푸시한 파일만 복사 (release.yml과 동일)
 Copy-Item "dw-product-catalog.php" $pluginDir
 Copy-Item "index.php" $pluginDir
 Copy-Item "includes" $pluginDir -Recurse -Force
 Copy-Item "assets" $pluginDir -Recurse -Force
+if (Test-Path "vendor") { Copy-Item "vendor" $pluginDir -Recurse -Force }
 if (Test-Path "uninstall.php") { Copy-Item "uninstall.php" $pluginDir }
 
 # WordPress용 요약

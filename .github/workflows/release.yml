@@ -36,6 +36,12 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Version: $VERSION"
 
+      - name: Install Composer dependencies (PDF export)
+        run: |
+          if [ -f composer.json ]; then
+            composer install --no-dev --optimize-autoloader
+          fi
+
       - name: Create plugin zip file
         id: create_zip
         run: |
