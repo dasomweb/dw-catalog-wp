@@ -161,38 +161,39 @@ class PC_Admin_Pages {
 			'post_status'    => 'any',
 		);
 
-		if ( $search_name !== '' || $search_item_code !== '' ) {
-			$filter_cb = function( $where ) use ( $search_name, $search_item_code ) {
+		// Item code: use meta_query (WordPress built-in, reliable for dw_pc_item_code)
+		if ( $search_item_code !== '' ) {
+			$args['meta_query'] = array(
+				array(
+					'key'     => 'dw_pc_item_code',
+					'value'   => $search_item_code,
+					'compare' => 'LIKE',
+				),
+			);
+		}
+
+		// Product name: post_title + dw_pc_product_name meta via custom WHERE
+		if ( $search_name !== '' ) {
+			$filter_cb = function( $where, $query ) use ( $search_name ) {
+				if ( $query->get( 'post_type' ) !== 'product' ) {
+					return $where;
+				}
 				global $wpdb;
-				$and = array();
-				if ( $search_name !== '' ) {
-					$like_name = '%' . $wpdb->esc_like( $search_name ) . '%';
-					$and[] = $wpdb->prepare(
-						"( {$wpdb->posts}.post_title LIKE %s OR {$wpdb->posts}.ID IN ( SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = 'dw_pc_product_name' AND meta_value LIKE %s ) )",
-						$like_name,
-						$like_name
-					);
-				}
-				if ( $search_item_code !== '' ) {
-					$like_code = '%' . $wpdb->esc_like( $search_item_code ) . '%';
-					$and[] = $wpdb->prepare(
-						"( {$wpdb->posts}.post_name LIKE %s OR {$wpdb->posts}.ID IN ( SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = 'dw_pc_item_code' AND meta_value LIKE %s ) )",
-						$like_code,
-						$like_code
-					);
-				}
-				if ( ! empty( $and ) ) {
-					$where .= ' AND ' . implode( ' AND ', $and );
-				}
+				$like_name = '%' . $wpdb->esc_like( $search_name ) . '%';
+				$where .= $wpdb->prepare(
+					" AND ( {$wpdb->posts}.post_title LIKE %s OR {$wpdb->posts}.ID IN ( SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = 'dw_pc_product_name' AND meta_value LIKE %s ) )",
+					$like_name,
+					$like_name
+				);
 				return $where;
 			};
-			add_filter( 'posts_where', $filter_cb );
+			add_filter( 'posts_where', $filter_cb, 10, 2 );
 		}
 
 		$products = new WP_Query( $args );
 
 		if ( isset( $filter_cb ) ) {
-			remove_filter( 'posts_where', $filter_cb );
+			remove_filter( 'posts_where', $filter_cb, 10 );
 		}
 		?>
 		<div class="wrap">
@@ -245,6 +246,7 @@ class PC_Admin_Pages {
 								<th class="manage-column"><?php _e( 'Origin', 'dw-product-catalog' ); ?></th>
 								<th class="manage-column"><?php _e( 'Status', 'dw-product-catalog' ); ?></th>
 								<th class="manage-column"><?php _e( 'Actions', 'dw-product-catalog' ); ?></th>
+								<th class="manage-column column-thumb"><?php _e( 'Image', 'dw-product-catalog' ); ?></th>
 							</tr>
 						</thead>
 						<tbody>
@@ -295,6 +297,15 @@ class PC_Admin_Pages {
 										   onclick="return confirm('<?php esc_attr_e( 'Are you sure you want to delete this product?', 'dw-product-catalog' ); ?>');">
 											<?php _e( 'Delete', 'dw-product-catalog' ); ?>
 										</a>
+									</td>
+									<td class="column-thumb">
+										<?php
+										if ( has_post_thumbnail( $post_id ) ) {
+											echo get_the_post_thumbnail( $post_id, array( 60, 60 ), array( 'class' => 'pc-list-thumb' ) );
+										} else {
+											echo '<span class="pc-list-thumb-placeholder">—</span>';
+										}
+										?>
 									</td>
 								</tr>
 							<?php endwhile; ?>

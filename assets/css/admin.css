@@ -108,3 +108,19 @@
 	width: 12%;
 }
 
+/* Product list 60x60 thumbnail */
+.wp-list-table .column-thumb {
+	width: 80px;
+	vertical-align: middle;
+}
+.wp-list-table .pc-list-thumb {
+	width: 60px;
+	height: 60px;
+	object-fit: cover;
+	display: block;
+	border-radius: 2px;
+}
+.wp-list-table .pc-list-thumb-placeholder {
+	color: #c3c4c7;
+}
+
