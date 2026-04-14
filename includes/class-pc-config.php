@@ -2,8 +2,8 @@
 /**
  * Configuration Manager Class
  *
- * Central manager for dynamic post types and custom fields.
- * Stores configurations in wp_options for per-site customization.
+ * Central manager for post types and custom fields.
+ * Post types are defined in code; custom fields are stored in wp_options.
  *
  * @package DW_Catalog_WP
  */
