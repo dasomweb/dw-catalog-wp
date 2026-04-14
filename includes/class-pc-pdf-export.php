@@ -2,263 +2,219 @@
 /**
  * PDF Export Class
  *
- * Exports products by category to US Letter PDF with card layout.
- * Domain-agnostic: no hardcoded URLs; uses attachment IDs for images.
+ * Exports items by category to US Letter PDF with card layout.
+ * Works dynamically with any registered post type.
  *
- * @package DW_Product_Catalog
+ * @package DW_Catalog_WP
  */
 
-// Exit if accessed directly
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-/**
- * PC_PDF_Export Class
- */
 class PC_PDF_Export {
 
-	const POST_TYPE = 'product';
-	const TAXONOMY  = 'product_category';
-
-	/**
-	 * Constructor
-	 */
 	public function __construct() {
-		add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
-		add_action( 'admin_post_pc_pdf_export', array( $this, 'handle_export' ) );
+		add_action( 'admin_menu', array( $this, 'add_admin_menus' ) );
+		add_action( 'admin_post_dw_catalog_pdf_export', array( $this, 'handle_export' ) );
 	}
 
 	/**
-	 * Add admin menu
+	 * Add PDF Export submenu to each post type menu.
 	 */
-	public function add_admin_menu() {
-		add_submenu_page(
-			'pc-products',
-			__( 'PDF Export', 'dw-catalog-wp' ),
-			__( 'PDF Export', 'dw-catalog-wp' ),
-			'edit_posts',
-			'pc-pdf-export',
-			array( $this, 'render_page' )
-		);
+	public function add_admin_menus() {
+		$post_types = PC_Config::get_post_types();
+		foreach ( $post_types as $slug => $config ) {
+			if ( empty( $config['has_category'] ) ) {
+				continue; // PDF export requires categories
+			}
+			$parent = 'dw-catalog-' . $slug;
+			add_submenu_page(
+				$parent,
+				__( 'PDF Export', 'dw-catalog-wp' ),
+				__( 'PDF Export', 'dw-catalog-wp' ),
+				'edit_posts',
+				$parent . '-pdf',
+				array( $this, 'render_page' )
+			);
+		}
 	}
 
-	/**
-	 * Get exportable fields (meta_key => default label)
-	 *
-	 * @return array
-	 */
-	public static function get_exportable_fields() {
-		return array(
-			'post_title'           => __( 'Product Name', 'dw-catalog-wp' ),
-			'dw_pc_item_code'      => __( 'Item Code', 'dw-catalog-wp' ),
-			'dw_pc_pack_size_raw'  => __( 'Pack Size / Case Pack', 'dw-catalog-wp' ),
-			'dw_pc_brand_raw'      => __( 'Brand', 'dw-catalog-wp' ),
-			'dw_pc_origin_raw'     => __( 'Origin', 'dw-catalog-wp' ),
-			'dw_pc_status'         => __( 'Status', 'dw-catalog-wp' ),
-			'product_category'    => __( 'Category', 'dw-catalog-wp' ),
-			'dw_pc_internal_note'  => __( 'ETC', 'dw-catalog-wp' ),
-		);
+	private function get_post_type_from_page() {
+		$page = isset( $_GET['page'] ) ? sanitize_text_field( $_GET['page'] ) : '';
+		if ( preg_match( '/^dw-catalog-(.+)-pdf$/', $page, $m ) ) {
+			return $m[1];
+		}
+		return '';
 	}
 
-	/**
-	 * Render PDF Export settings page
-	 */
 	public function render_page() {
 		if ( ! current_user_can( 'edit_posts' ) ) {
-			wp_die( esc_html__( 'You do not have permission to access this page.', 'dw-catalog-wp' ) );
+			wp_die( __( 'Unauthorized', 'dw-catalog-wp' ) );
 		}
 
-		$categories = get_terms( array(
-			'taxonomy'   => self::TAXONOMY,
-			'hide_empty' => false,
-		) );
+		$pt_slug = $this->get_post_type_from_page();
+		$pt_config = PC_Config::get_post_type( $pt_slug );
+		if ( ! $pt_config ) {
+			echo '<div class="wrap"><p>' . esc_html__( 'Post type not found.', 'dw-catalog-wp' ) . '</p></div>';
+			return;
+		}
+
+		$cat_tax = PC_Config::get_category_taxonomy( $pt_slug );
+		$categories = get_terms( array( 'taxonomy' => $cat_tax, 'hide_empty' => false ) );
 		if ( is_wp_error( $categories ) ) {
 			$categories = array();
 		}
 
-		$fields = self::get_exportable_fields();
-		$form_url = admin_url( 'admin-post.php?action=pc_pdf_export' );
+		$export_fields = PC_Config::get_export_fields( $pt_slug );
+		// Add post_title and category as export options
+		$field_options = array(
+			'post_title' => __( 'Title', 'dw-catalog-wp' ),
+		);
+		foreach ( $export_fields as $f ) {
+			$field_options[ $f['meta_key'] ] = $f['label'];
+		}
+		$field_options[ $cat_tax ] = __( 'Category', 'dw-catalog-wp' );
+
+		$form_url = admin_url( 'admin-post.php?action=dw_catalog_pdf_export' );
 		?>
 		<div class="wrap">
-			<h1><?php esc_html_e( 'PDF Export', 'dw-catalog-wp' ); ?></h1>
-			<p><?php esc_html_e( 'Export products by category to a US Letter PDF with card layout. Choose categories and which fields to include.', 'dw-catalog-wp' ); ?></p>
+			<h1><?php printf( __( 'PDF Export — %s', 'dw-catalog-wp' ), esc_html( $pt_config['plural_name'] ) ); ?></h1>
 
 			<?php
 			$autoload = pc_get_plugin_path() . 'vendor/autoload.php';
 			if ( ! file_exists( $autoload ) ) {
-				echo '<div class="notice notice-warning"><p>';
-				echo esc_html__( 'PDF export requires Composer dependencies. Run "composer install" in the plugin directory, or use a release ZIP that includes them.', 'dw-catalog-wp' );
-				echo '</p></div>';
+				echo '<div class="notice notice-warning"><p>' . esc_html__( 'PDF export requires Composer dependencies. Run "composer install" in the plugin directory.', 'dw-catalog-wp' ) . '</p></div>';
 			}
 			?>
 
-			<form method="post" action="<?php echo esc_url( $form_url ); ?>" id="pc-pdf-export-form" style="max-width: 720px;">
-				<?php wp_nonce_field( 'pc_pdf_export', 'pc_pdf_export_nonce' ); ?>
+			<form method="post" action="<?php echo esc_url( $form_url ); ?>" style="max-width:720px;">
+				<?php wp_nonce_field( 'dw_catalog_pdf', 'dw_catalog_pdf_nonce' ); ?>
+				<input type="hidden" name="post_type_slug" value="<?php echo esc_attr( $pt_slug ); ?>">
 
-				<h2 class="title"><?php esc_html_e( 'Categories', 'dw-catalog-wp' ); ?></h2>
-				<p class="description"><?php esc_html_e( 'Select one or more categories. Products in these categories will be included.', 'dw-catalog-wp' ); ?></p>
-				<div style="max-height: 200px; overflow-y: auto; border: 1px solid #c3c4c7; padding: 10px; background: #fff; margin-bottom: 20px;">
+				<h2 class="title"><?php _e( 'Categories', 'dw-catalog-wp' ); ?></h2>
+				<div style="max-height:200px; overflow-y:auto; border:1px solid #c3c4c7; padding:10px; background:#fff; margin-bottom:20px;">
 					<?php if ( empty( $categories ) ) : ?>
-						<p><?php esc_html_e( 'No categories found.', 'dw-catalog-wp' ); ?></p>
+						<p><?php _e( 'No categories found.', 'dw-catalog-wp' ); ?></p>
 					<?php else : ?>
 						<?php foreach ( $categories as $term ) : ?>
-							<label style="display: block; margin-bottom: 6px;">
-								<input type="checkbox" name="pc_pdf_categories[]" value="<?php echo esc_attr( $term->term_id ); ?>">
+							<label style="display:block; margin-bottom:6px;">
+								<input type="checkbox" name="pdf_categories[]" value="<?php echo esc_attr( $term->term_id ); ?>">
 								<?php echo esc_html( $term->name ); ?>
 								<?php if ( $term->slug ) : ?>
-									<code style="font-size: 11px;">(<?php echo esc_html( $term->slug ); ?>)</code>
+									<code style="font-size:11px;">(<?php echo esc_html( $term->slug ); ?>)</code>
 								<?php endif; ?>
 							</label>
 						<?php endforeach; ?>
 					<?php endif; ?>
 				</div>
 
-				<h2 class="title"><?php esc_html_e( 'Include featured image', 'dw-catalog-wp' ); ?></h2>
+				<h2 class="title"><?php _e( 'Include featured image', 'dw-catalog-wp' ); ?></h2>
 				<label>
-					<input type="checkbox" name="pc_pdf_include_image" value="1" checked>
-					<?php esc_html_e( 'Show product image in each card', 'dw-catalog-wp' ); ?>
+					<input type="checkbox" name="pdf_include_image" value="1" checked>
+					<?php _e( 'Show image in each card', 'dw-catalog-wp' ); ?>
 				</label>
 
-				<h2 class="title" style="margin-top: 24px;"><?php esc_html_e( 'Grid layout', 'dw-catalog-wp' ); ?></h2>
-				<p class="description"><?php esc_html_e( 'Number of cards per row in the PDF.', 'dw-catalog-wp' ); ?></p>
-				<p>
-					<label for="pc_pdf_per_row">
-						<?php esc_html_e( 'Cards per row:', 'dw-catalog-wp' ); ?>
-					</label>
-					<select name="pc_pdf_per_row" id="pc_pdf_per_row">
-						<option value="1">1</option>
-						<option value="2" selected>2</option>
-						<option value="3">3</option>
-						<option value="4">4</option>
-					</select>
-				</p>
+				<h2 class="title" style="margin-top:24px;"><?php _e( 'Cards per row', 'dw-catalog-wp' ); ?></h2>
+				<select name="pdf_per_row">
+					<option value="1">1</option>
+					<option value="2" selected>2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+				</select>
 
-				<h2 class="title" style="margin-top: 24px;"><?php esc_html_e( 'Fields to include', 'dw-catalog-wp' ); ?></h2>
-				<p class="description"><?php esc_html_e( 'Select fields and optionally set a custom label for the PDF.', 'dw-catalog-wp' ); ?></p>
-				<table class="form-table" role="presentation">
-					<tbody>
-						<?php foreach ( $fields as $meta_key => $default_label ) : ?>
-							<tr>
-								<td style="width: 30px; vertical-align: middle;">
-									<?php
-									$default_checked = in_array( $meta_key, array( 'post_title', 'dw_pc_item_code', 'dw_pc_brand_raw', 'product_category' ), true );
-									?>
-									<input type="checkbox" name="pc_pdf_fields[]" value="<?php echo esc_attr( $meta_key ); ?>" id="pc_pdf_field_<?php echo esc_attr( sanitize_title( $meta_key ) ); ?>" <?php echo $default_checked ? ' checked' : ''; ?>>
-								</td>
-								<td style="width: 200px;">
-									<label for="pc_pdf_field_<?php echo esc_attr( sanitize_title( $meta_key ) ); ?>"><?php echo esc_html( $default_label ); ?></label>
-								</td>
-								<td>
-									<input type="text" name="pc_pdf_field_label[<?php echo esc_attr( $meta_key ); ?>]" value="<?php echo esc_attr( $default_label ); ?>" class="regular-text" placeholder="<?php echo esc_attr( $default_label ); ?>">
-								</td>
-							</tr>
-						<?php endforeach; ?>
-					</tbody>
+				<h2 class="title" style="margin-top:24px;"><?php _e( 'Fields to include', 'dw-catalog-wp' ); ?></h2>
+				<table class="form-table">
+					<?php foreach ( $field_options as $key => $default_label ) : ?>
+						<tr>
+							<td style="width:30px;"><input type="checkbox" name="pdf_fields[]" value="<?php echo esc_attr( $key ); ?>" checked></td>
+							<td style="width:200px;"><?php echo esc_html( $default_label ); ?></td>
+							<td><input type="text" name="pdf_label[<?php echo esc_attr( $key ); ?>]" value="<?php echo esc_attr( $default_label ); ?>" class="regular-text"></td>
+						</tr>
+					<?php endforeach; ?>
 				</table>
 
 				<p class="submit">
-					<button type="submit" name="pc_pdf_generate" class="button button-primary"><?php esc_html_e( 'Generate PDF', 'dw-catalog-wp' ); ?></button>
+					<button type="submit" class="button button-primary"><?php _e( 'Generate PDF', 'dw-catalog-wp' ); ?></button>
 				</p>
 			</form>
 		</div>
 		<?php
 	}
 
-	/**
-	 * Handle PDF export request
-	 */
 	public function handle_export() {
-		if ( ! isset( $_POST['pc_pdf_export_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['pc_pdf_export_nonce'] ) ), 'pc_pdf_export' ) ) {
-			wp_die( esc_html__( 'Security check failed.', 'dw-catalog-wp' ) );
+		if ( ! isset( $_POST['dw_catalog_pdf_nonce'] ) || ! wp_verify_nonce( $_POST['dw_catalog_pdf_nonce'], 'dw_catalog_pdf' ) ) {
+			wp_die( __( 'Security check failed.', 'dw-catalog-wp' ) );
 		}
 		if ( ! current_user_can( 'edit_posts' ) ) {
-			wp_die( esc_html__( 'You do not have permission to export.', 'dw-catalog-wp' ) );
+			wp_die( __( 'Unauthorized', 'dw-catalog-wp' ) );
 		}
 
 		$autoload = pc_get_plugin_path() . 'vendor/autoload.php';
 		if ( ! file_exists( $autoload ) ) {
-			wp_die( esc_html__( 'PDF library not found. Run composer install in the plugin directory.', 'dw-catalog-wp' ) );
+			wp_die( __( 'PDF library not found. Run composer install.', 'dw-catalog-wp' ) );
 		}
 
-		$category_ids = isset( $_POST['pc_pdf_categories'] ) && is_array( $_POST['pc_pdf_categories'] ) ? array_map( 'intval', $_POST['pc_pdf_categories'] ) : array();
-		$category_ids = array_filter( $category_ids );
-		if ( empty( $category_ids ) ) {
-			wp_die( esc_html__( 'Please select at least one category.', 'dw-catalog-wp' ) );
+		$pt_slug = sanitize_key( $_POST['post_type_slug'] );
+		$pt_config = PC_Config::get_post_type( $pt_slug );
+		if ( ! $pt_config ) {
+			wp_die( __( 'Invalid post type.', 'dw-catalog-wp' ) );
 		}
 
-		$include_image = ! empty( $_POST['pc_pdf_include_image'] );
-		$per_row = isset( $_POST['pc_pdf_per_row'] ) ? max( 1, min( 4, (int) $_POST['pc_pdf_per_row'] ) ) : 2;
-		$selected_fields = isset( $_POST['pc_pdf_fields'] ) && is_array( $_POST['pc_pdf_fields'] ) ? array_map( 'sanitize_text_field', wp_unslash( $_POST['pc_pdf_fields'] ) ) : array();
-		if ( empty( $selected_fields ) && ! $include_image ) {
-			wp_die( esc_html__( 'Please select at least one field or include the product image.', 'dw-catalog-wp' ) );
-		}
-		$field_labels = isset( $_POST['pc_pdf_field_label'] ) && is_array( $_POST['pc_pdf_field_label'] ) ? array_map( 'sanitize_text_field', wp_unslash( $_POST['pc_pdf_field_label'] ) ) : array();
-		$all_fields = self::get_exportable_fields();
-		$labels = array();
-		foreach ( $all_fields as $key => $default ) {
-			$labels[ $key ] = isset( $field_labels[ $key ] ) && $field_labels[ $key ] !== '' ? $field_labels[ $key ] : $default;
+		$cat_tax = PC_Config::get_category_taxonomy( $pt_slug );
+		$cat_ids = isset( $_POST['pdf_categories'] ) ? array_map( 'intval', $_POST['pdf_categories'] ) : array();
+		$cat_ids = array_filter( $cat_ids );
+		if ( empty( $cat_ids ) ) {
+			wp_die( __( 'Select at least one category.', 'dw-catalog-wp' ) );
 		}
 
-		$args = array(
-			'post_type'      => self::POST_TYPE,
+		$include_image = ! empty( $_POST['pdf_include_image'] );
+		$per_row = isset( $_POST['pdf_per_row'] ) ? max( 1, min( 4, (int) $_POST['pdf_per_row'] ) ) : 2;
+		$selected_fields = isset( $_POST['pdf_fields'] ) ? array_map( 'sanitize_text_field', $_POST['pdf_fields'] ) : array();
+		$field_labels = isset( $_POST['pdf_label'] ) ? array_map( 'sanitize_text_field', $_POST['pdf_label'] ) : array();
+
+		$query = new WP_Query( array(
+			'post_type'      => $pt_slug,
 			'posts_per_page' => -1,
 			'post_status'    => 'publish',
 			'orderby'        => 'title',
 			'order'          => 'ASC',
-			'tax_query'      => array(
-				array(
-					'taxonomy' => self::TAXONOMY,
-					'field'    => 'term_id',
-					'terms'    => $category_ids,
-				),
-			),
-		);
-		$query = new WP_Query( $args );
+			'tax_query'      => array( array(
+				'taxonomy' => $cat_tax,
+				'field'    => 'term_id',
+				'terms'    => $cat_ids,
+			) ),
+		) );
 		$products = $query->posts;
 		wp_reset_postdata();
 
 		if ( empty( $products ) ) {
-			wp_die( esc_html__( 'No products found in the selected categories.', 'dw-catalog-wp' ) );
+			wp_die( __( 'No items found.', 'dw-catalog-wp' ) );
 		}
 
 		require_once $autoload;
-		$html = $this->build_pdf_html( $products, $selected_fields, $labels, $include_image, $per_row );
-		$this->output_pdf( $html );
+		$html = $this->build_html( $products, $pt_slug, $cat_tax, $selected_fields, $field_labels, $include_image, $per_row );
+		$this->output_pdf( $html, $pt_slug );
 		exit;
 	}
 
-	/**
-	 * Build HTML for PDF (card layout, US Letter)
-	 *
-	 * @param WP_Post[] $products
-	 * @param string[]  $selected_fields
-	 * @param string[]  $labels
-	 * @param bool      $include_image
-	 * @param int       $per_row Number of cards per row (1–4).
-	 * @return string
-	 */
-	protected function build_pdf_html( $products, $selected_fields, $labels, $include_image, $per_row = 2 ) {
+	protected function build_html( $products, $pt_slug, $cat_tax, $fields, $labels, $include_image, $per_row ) {
 		$per_row = max( 1, min( 4, (int) $per_row ) );
 		$rows = array();
 		$cells = array();
 		$count = 0;
+		$all_fields = PC_Config::get_fields( $pt_slug );
 
 		foreach ( $products as $post ) {
-			$post_id = $post->ID;
+			$pid = $post->ID;
 			$cell = '<div class="pc-pdf-card">';
 
 			if ( $include_image ) {
-				$thumb_id = (int) get_post_thumbnail_id( $post_id );
+				$thumb_id = (int) get_post_thumbnail_id( $pid );
 				if ( $thumb_id ) {
 					$file = get_attached_file( $thumb_id );
 					if ( $file && file_exists( $file ) ) {
-						$cell .= '<div class="pc-pdf-card-img"><img src="' . esc_url( $this->get_local_image_url_for_dompdf( $file ) ) . '" alt="" /></div>';
-					} else {
-						$url = wp_get_attachment_image_url( $thumb_id, 'medium' );
-						if ( $url ) {
-							$cell .= '<div class="pc-pdf-card-img"><img src="' . esc_url( $url ) . '" alt="" /></div>';
-						}
+						$cell .= '<div class="pc-pdf-card-img"><img src="' . esc_url( $this->local_url( $file ) ) . '" alt="" /></div>';
 					}
 				} else {
 					$cell .= '<div class="pc-pdf-card-img pc-pdf-no-img">—</div>';
@@ -266,9 +222,9 @@ class PC_PDF_Export {
 			}
 
 			$cell .= '<div class="pc-pdf-card-fields">';
-			foreach ( $selected_fields as $key ) {
-				$label = isset( $labels[ $key ] ) ? $labels[ $key ] : $key;
-				$value = $this->get_product_field_value( $post_id, $key, $post );
+			foreach ( $fields as $key ) {
+				$label = isset( $labels[ $key ] ) && $labels[ $key ] !== '' ? $labels[ $key ] : $key;
+				$value = $this->get_field_value( $pid, $key, $post, $pt_slug, $cat_tax, $all_fields );
 				if ( $value === '' ) {
 					$value = '—';
 				}
@@ -289,79 +245,53 @@ class PC_PDF_Export {
 		}
 
 		$gap = 2;
-		$card_width = ( 100 - ( $per_row - 1 ) * $gap ) / $per_row;
-		$nth_clear = $per_row;
-		$css = '
-			body { font-family: DejaVu Sans, sans-serif; font-size: 10pt; margin: 0; padding: 16px; }
-			.pc-pdf-row { clear: both; overflow: hidden; margin-bottom: 16px; }
-			.pc-pdf-card { float: left; width: ' . ( (float) $card_width ) . '%; margin-right: ' . ( (float) $gap ) . '%; border: 1px solid #ccc; padding: 10px; box-sizing: border-box; min-height: 180px; }
-			.pc-pdf-card:nth-child(' . ( (int) $nth_clear ) . 'n) { margin-right: 0; }
-			.pc-pdf-card-img { width: 120px; height: 120px; float: left; margin-right: 12px; text-align: center; line-height: 120px; background: #f5f5f5; font-size: 14pt; color: #999; }
-			.pc-pdf-card-img img { max-width: 120px; max-height: 120px; vertical-align: middle; }
-			.pc-pdf-card-fields { overflow: hidden; }
-			.pc-pdf-field { margin-bottom: 4px; }
-		';
+		$cw = ( 100 - ( $per_row - 1 ) * $gap ) / $per_row;
+		$css = "body{font-family:DejaVu Sans,sans-serif;font-size:10pt;margin:0;padding:16px;}
+.pc-pdf-row{clear:both;overflow:hidden;margin-bottom:16px;}
+.pc-pdf-card{float:left;width:{$cw}%;margin-right:{$gap}%;border:1px solid #ccc;padding:10px;box-sizing:border-box;min-height:180px;}
+.pc-pdf-card:nth-child({$per_row}n){margin-right:0;}
+.pc-pdf-card-img{width:120px;height:120px;float:left;margin-right:12px;text-align:center;line-height:120px;background:#f5f5f5;font-size:14pt;color:#999;}
+.pc-pdf-card-img img{max-width:120px;max-height:120px;vertical-align:middle;}
+.pc-pdf-card-fields{overflow:hidden;}
+.pc-pdf-field{margin-bottom:4px;}";
 
 		return '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' . $css . '</style></head><body>' . implode( '', $rows ) . '</body></html>';
 	}
 
-	/**
-	 * Get value for a product field
-	 *
-	 * @param int      $post_id
-	 * @param string   $key
-	 * @param WP_Post  $post
-	 * @return string
-	 */
-	protected function get_product_field_value( $post_id, $key, $post ) {
+	protected function get_field_value( $post_id, $key, $post, $pt_slug, $cat_tax, $all_fields ) {
 		if ( $key === 'post_title' ) {
 			return $post->post_title;
 		}
-		if ( $key === 'product_category' ) {
-			$terms = get_the_terms( $post_id, self::TAXONOMY );
-			if ( ! $terms || is_wp_error( $terms ) ) {
-				return '';
-			}
-			return implode( ', ', wp_list_pluck( $terms, 'name' ) );
+		if ( $key === $cat_tax ) {
+			$terms = get_the_terms( $post_id, $cat_tax );
+			return ( $terms && ! is_wp_error( $terms ) ) ? implode( ', ', wp_list_pluck( $terms, 'name' ) ) : '';
 		}
 		$value = get_post_meta( $post_id, $key, true );
-		if ( $key === 'dw_pc_status' ) {
-			$status_labels = array(
-				'active'       => __( 'Active', 'dw-catalog-wp' ),
-				'inactive'     => __( 'Inactive', 'dw-catalog-wp' ),
-				'out_of_stock' => __( 'Out of Stock', 'dw-catalog-wp' ),
-				'discontinued' => __( 'Discontinued', 'dw-catalog-wp' ),
-			);
-			$value = isset( $status_labels[ $value ] ) ? $status_labels[ $value ] : $value;
+		// Resolve select labels
+		foreach ( $all_fields as $f ) {
+			if ( $f['meta_key'] === $key && $f['type'] === 'select' && $value !== '' ) {
+				$opts = PC_Config::parse_select_options( $f['options'] );
+				$value = isset( $opts[ $value ] ) ? $opts[ $value ] : $value;
+				break;
+			}
 		}
 		return is_string( $value ) ? $value : '';
 	}
 
-	/**
-	 * Return file URL for Dompdf (file:// so Dompdf can load local image)
-	 *
-	 * @param string $file_path Absolute path to image file.
-	 * @return string
-	 */
-	protected function get_local_image_url_for_dompdf( $file_path ) {
-		$path = str_replace( '\\', '/', $file_path );
+	protected function local_url( $path ) {
+		$path = str_replace( '\\', '/', $path );
 		if ( substr( $path, 1, 1 ) === ':' ) {
 			$path = '/' . $path;
 		}
 		return 'file://' . $path;
 	}
 
-	/**
-	 * Output PDF using Dompdf (US Letter)
-	 *
-	 * @param string $html
-	 */
-	protected function output_pdf( $html ) {
+	protected function output_pdf( $html, $pt_slug ) {
 		$dompdf = new \Dompdf\Dompdf( array( 'isRemoteEnabled' => true ) );
 		$dompdf->setPaper( 'letter', 'portrait' );
 		$dompdf->loadHtml( $html );
 		$dompdf->render();
-		$filename = 'product-catalog-' . gmdate( 'Y-m-d-His' ) . '.pdf';
+		$filename = $pt_slug . '-catalog-' . gmdate( 'Y-m-d-His' ) . '.pdf';
 		$dompdf->stream( $filename, array( 'Attachment' => true ) );
 	}
 }

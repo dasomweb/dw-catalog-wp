@@ -1,201 +1,279 @@
 <?php
 /**
- * Product Meta Box Class
+ * Meta Box Class
  *
- * Handles custom meta boxes for product fields (default post editor).
+ * Dynamically renders custom meta boxes based on PC_Config fields.
  *
- * @package DW_Product_Catalog
+ * @package DW_Catalog_WP
  */
 
-// Exit if accessed directly
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
 class PC_Meta_Box {
 
-	private $post_type = 'product';
-
 	public function __construct() {
 		add_action( 'add_meta_boxes', array( $this, 'add_meta_boxes' ) );
-		add_action( 'save_post_' . $this->post_type, array( $this, 'save_product_meta' ), 10, 2 );
+		add_action( 'save_post', array( $this, 'save_meta' ), 10, 2 );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_scripts' ) );
 	}
 
+	/**
+	 * Add meta boxes for all registered post types.
+	 */
 	public function add_meta_boxes() {
-		add_meta_box(
-			'pc_product_details',
-			__( 'Product Details', 'dw-catalog-wp' ),
-			array( $this, 'render_product_details_meta_box' ),
-			$this->post_type,
-			'normal',
-			'high'
-		);
+		$post_types = PC_Config::get_post_types();
+		foreach ( $post_types as $slug => $config ) {
+			$fields = PC_Config::get_fields( $slug );
+			if ( empty( $fields ) ) {
+				continue;
+			}
+			add_meta_box(
+				'dw_catalog_' . $slug . '_details',
+				sprintf( __( '%s Details', 'dw-catalog-wp' ), $config['singular_name'] ),
+				array( $this, 'render_meta_box' ),
+				$slug,
+				'normal',
+				'high',
+				array( 'post_type_slug' => $slug )
+			);
+		}
 	}
 
-	public function render_product_details_meta_box( $post ) {
-		wp_nonce_field( 'pc_save_product_meta', 'pc_product_meta_nonce' );
+	/**
+	 * Render the meta box for a post type.
+	 */
+	public function render_meta_box( $post, $metabox ) {
+		$pt_slug = $metabox['args']['post_type_slug'];
+		$fields = PC_Config::get_fields( $pt_slug );
 
-		$product_name  = get_post_meta( $post->ID, 'dw_pc_product_name', true );
-		if ( $product_name === '' ) {
-			$product_name = $post->post_title;
-		}
-		$item_code     = get_post_meta( $post->ID, 'dw_pc_item_code', true );
-		$pack_size_raw = get_post_meta( $post->ID, 'dw_pc_pack_size_raw', true );
-		$brand_raw     = get_post_meta( $post->ID, 'dw_pc_brand_raw', true );
-		$origin_raw    = get_post_meta( $post->ID, 'dw_pc_origin_raw', true );
-		$status        = get_post_meta( $post->ID, 'dw_pc_status', true );
-		$category_slug = get_post_meta( $post->ID, 'dw_pc_category_slug', true );
-		$category_name = '';
-		$terms = wp_get_post_terms( $post->ID, 'product_category' );
-		if ( ! empty( $terms ) && ! is_wp_error( $terms ) ) {
-			$category_name = $terms[0]->name;
-			if ( $category_slug === '' ) {
-				$category_slug = $terms[0]->slug;
-			}
-		}
-		$internal_note = get_post_meta( $post->ID, 'dw_pc_internal_note', true );
+		wp_nonce_field( 'dw_catalog_save_meta_' . $pt_slug, 'dw_catalog_meta_nonce' );
 		?>
 		<div class="pc-product-fields">
 			<table class="form-table">
 				<tbody>
-					<tr>
-						<th scope="row"><label for="pc_product_name"><?php _e( 'Product Name', 'dw-catalog-wp' ); ?></label></th>
-						<td><input type="text" id="pc_product_name" name="pc_product_name" value="<?php echo esc_attr( $product_name ); ?>" class="regular-text" /></td>
-					</tr>
-					<tr>
-						<th scope="row"><label for="pc_item_code"><?php _e( 'Item Code', 'dw-catalog-wp' ); ?></label></th>
-						<td><input type="text" id="pc_item_code" name="pc_item_code" value="<?php echo esc_attr( $item_code ); ?>" class="regular-text" /></td>
-					</tr>
-					<tr>
-						<th scope="row"><label for="pc_pack_size_raw"><?php _e( 'Pack Size / Case Pack', 'dw-catalog-wp' ); ?></label></th>
-						<td><input type="text" id="pc_pack_size_raw" name="pc_pack_size_raw" value="<?php echo esc_attr( $pack_size_raw ); ?>" class="regular-text" /></td>
-					</tr>
-					<tr>
-						<th scope="row"><label for="pc_brand_raw"><?php _e( 'Brand', 'dw-catalog-wp' ); ?></label></th>
-						<td><input type="text" id="pc_brand_raw" name="pc_brand_raw" value="<?php echo esc_attr( $brand_raw ); ?>" class="regular-text" /></td>
-					</tr>
-					<tr>
-						<th scope="row"><label for="pc_origin_raw"><?php _e( 'Origin', 'dw-catalog-wp' ); ?></label></th>
-						<td><input type="text" id="pc_origin_raw" name="pc_origin_raw" value="<?php echo esc_attr( $origin_raw ); ?>" class="regular-text" /></td>
-					</tr>
-					<tr>
-						<th scope="row"><label for="pc_status"><?php _e( 'Status', 'dw-catalog-wp' ); ?></label></th>
-						<td>
-							<select name="pc_status" id="pc_status">
-								<option value="" <?php selected( $status, '' ); ?>><?php _e( '— Select —', 'dw-catalog-wp' ); ?></option>
-								<option value="active" <?php selected( $status, 'active' ); ?>><?php _e( 'Active', 'dw-catalog-wp' ); ?></option>
-								<option value="inactive" <?php selected( $status, 'inactive' ); ?>><?php _e( 'Inactive', 'dw-catalog-wp' ); ?></option>
-								<option value="out_of_stock" <?php selected( $status, 'out_of_stock' ); ?>><?php _e( 'Out of Stock', 'dw-catalog-wp' ); ?></option>
-								<option value="discontinued" <?php selected( $status, 'discontinued' ); ?>><?php _e( 'Discontinued', 'dw-catalog-wp' ); ?></option>
-							</select>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row"><label for="pc_category_name"><?php _e( 'Category Name', 'dw-catalog-wp' ); ?></label></th>
-						<td><input type="text" id="pc_category_name" name="pc_category_name" value="<?php echo esc_attr( $category_name ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'e.g., Seafood', 'dw-catalog-wp' ); ?>" /></td>
-					</tr>
-					<tr>
-						<th scope="row"><label for="pc_category_slug"><?php _e( 'Category Slug', 'dw-catalog-wp' ); ?></label></th>
-						<td><input type="text" id="pc_category_slug" name="pc_category_slug" value="<?php echo esc_attr( $category_slug ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'e.g., category-code', 'dw-catalog-wp' ); ?>" /></td>
-					</tr>
-					<tr>
-						<th scope="row"><label for="pc_internal_note"><?php _e( 'ETC', 'dw-catalog-wp' ); ?></label></th>
-						<td><textarea id="pc_internal_note" name="pc_internal_note" rows="4" class="large-text"><?php echo esc_textarea( $internal_note ); ?></textarea></td>
-					</tr>
+					<?php foreach ( $fields as $field ) : ?>
+						<?php $this->render_field( $post, $field ); ?>
+					<?php endforeach; ?>
 				</tbody>
 			</table>
 		</div>
 		<?php
 	}
 
-	public function save_product_meta( $post_id, $post ) {
-		if ( ! isset( $_POST['pc_product_meta_nonce'] ) || ! wp_verify_nonce( $_POST['pc_product_meta_nonce'], 'pc_save_product_meta' ) ) {
+	/**
+	 * Render a single field row.
+	 */
+	private function render_field( $post, $field ) {
+		$meta_key = $field['meta_key'];
+		$value = get_post_meta( $post->ID, $meta_key, true );
+		$type = $field['type'];
+		$label = $field['label'];
+		$input_id = 'dw_field_' . sanitize_key( $meta_key );
+
+		// For title field, default to post_title
+		if ( ! empty( $field['is_title_field'] ) && $value === '' ) {
+			$value = $post->post_title;
+		}
+		?>
+		<tr>
+			<th scope="row">
+				<label for="<?php echo esc_attr( $input_id ); ?>">
+					<?php echo esc_html( $label ); ?>
+					<?php if ( ! empty( $field['required'] ) ) : ?>
+						<span style="color:#d63638;">*</span>
+					<?php endif; ?>
+				</label>
+			</th>
+			<td>
+				<?php
+				switch ( $type ) {
+					case 'textarea':
+						printf(
+							'<textarea id="%s" name="%s" rows="4" class="large-text">%s</textarea>',
+							esc_attr( $input_id ),
+							esc_attr( $meta_key ),
+							esc_textarea( $value )
+						);
+						break;
+
+					case 'select':
+						$options = PC_Config::parse_select_options( $field['options'] );
+						printf( '<select id="%s" name="%s">', esc_attr( $input_id ), esc_attr( $meta_key ) );
+						echo '<option value="">' . esc_html__( '— Select —', 'dw-catalog-wp' ) . '</option>';
+						foreach ( $options as $opt_val => $opt_label ) {
+							printf(
+								'<option value="%s"%s>%s</option>',
+								esc_attr( $opt_val ),
+								selected( $value, $opt_val, false ),
+								esc_html( $opt_label )
+							);
+						}
+						echo '</select>';
+						break;
+
+					case 'number':
+						printf(
+							'<input type="number" id="%s" name="%s" value="%s" class="regular-text" step="any" />',
+							esc_attr( $input_id ),
+							esc_attr( $meta_key ),
+							esc_attr( $value )
+						);
+						break;
+
+					case 'email':
+						printf(
+							'<input type="email" id="%s" name="%s" value="%s" class="regular-text" />',
+							esc_attr( $input_id ),
+							esc_attr( $meta_key ),
+							esc_attr( $value )
+						);
+						break;
+
+					case 'url':
+						printf(
+							'<input type="url" id="%s" name="%s" value="%s" class="regular-text" />',
+							esc_attr( $input_id ),
+							esc_attr( $meta_key ),
+							esc_attr( $value )
+						);
+						break;
+
+					case 'date':
+						printf(
+							'<input type="date" id="%s" name="%s" value="%s" class="regular-text" />',
+							esc_attr( $input_id ),
+							esc_attr( $meta_key ),
+							esc_attr( $value )
+						);
+						break;
+
+					case 'text':
+					default:
+						printf(
+							'<input type="text" id="%s" name="%s" value="%s" class="regular-text" />',
+							esc_attr( $input_id ),
+							esc_attr( $meta_key ),
+							esc_attr( $value )
+						);
+						break;
+				}
+
+				if ( ! empty( $field['description'] ) ) {
+					echo '<p class="description">' . esc_html( $field['description'] ) . '</p>';
+				}
+				?>
+			</td>
+		</tr>
+		<?php
+	}
+
+	/**
+	 * Save meta for any of our post types.
+	 */
+	public function save_meta( $post_id, $post ) {
+		$pt_slug = $post->post_type;
+		if ( ! PC_Config::is_our_post_type( $pt_slug ) ) {
+			return;
+		}
+
+		if ( ! isset( $_POST['dw_catalog_meta_nonce'] ) || ! wp_verify_nonce( $_POST['dw_catalog_meta_nonce'], 'dw_catalog_save_meta_' . $pt_slug ) ) {
 			return;
 		}
 		if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
 			return;
 		}
-		if ( ! current_user_can( 'edit_post', $post_id ) || $this->post_type !== $post->post_type ) {
+		if ( ! current_user_can( 'edit_post', $post_id ) ) {
 			return;
 		}
 
-		$text_fields = array(
-			'pc_product_name'  => 'dw_pc_product_name',
-			'pc_item_code'     => 'dw_pc_item_code',
-			'pc_pack_size_raw' => 'dw_pc_pack_size_raw',
-			'pc_brand_raw'     => 'dw_pc_brand_raw',
-			'pc_origin_raw'    => 'dw_pc_origin_raw',
-			'pc_status'        => 'dw_pc_status',
-			'pc_category_slug' => 'dw_pc_category_slug',
-		);
-		foreach ( $text_fields as $field_name => $meta_key ) {
-			if ( isset( $_POST[ $field_name ] ) ) {
-				update_post_meta( $post_id, $meta_key, sanitize_text_field( $_POST[ $field_name ] ) );
+		$fields = PC_Config::get_fields( $pt_slug );
+		$title_value = '';
+
+		foreach ( $fields as $field ) {
+			$meta_key = $field['meta_key'];
+
+			if ( isset( $_POST[ $meta_key ] ) ) {
+				$raw_value = $_POST[ $meta_key ];
+				if ( $field['type'] === 'textarea' ) {
+					$value = sanitize_textarea_field( $raw_value );
+				} elseif ( $field['type'] === 'email' ) {
+					$value = sanitize_email( $raw_value );
+				} elseif ( $field['type'] === 'url' ) {
+					$value = esc_url_raw( $raw_value );
+				} elseif ( $field['type'] === 'number' ) {
+					$value = is_numeric( $raw_value ) ? $raw_value : '';
+				} else {
+					$value = sanitize_text_field( $raw_value );
+				}
+				update_post_meta( $post_id, $meta_key, $value );
+
+				// Track title field
+				if ( ! empty( $field['is_title_field'] ) ) {
+					$title_value = trim( $value );
+				}
 			} else {
 				delete_post_meta( $post_id, $meta_key );
 			}
 		}
 
-		// Sync post_title from Product Name so core title and our meta stay in sync
-		$product_name = isset( $_POST['pc_product_name'] ) ? trim( sanitize_text_field( $_POST['pc_product_name'] ) ) : '';
-		if ( $product_name !== '' ) {
+		// Sync title field to post_title
+		if ( $title_value !== '' ) {
+			remove_action( 'save_post', array( $this, 'save_meta' ), 10 );
 			wp_update_post( array(
 				'ID'         => $post_id,
-				'post_title' => $product_name,
+				'post_title' => $title_value,
 			) );
+			add_action( 'save_post', array( $this, 'save_meta' ), 10, 2 );
 		}
 
-		if ( isset( $_POST['pc_internal_note'] ) ) {
-			update_post_meta( $post_id, 'dw_pc_internal_note', sanitize_textarea_field( $_POST['pc_internal_note'] ) );
-		} else {
-			delete_post_meta( $post_id, 'dw_pc_internal_note' );
-		}
-
-		// Category: get or create from Category Name / Category Slug
-		$category_name = isset( $_POST['pc_category_name'] ) ? trim( sanitize_text_field( $_POST['pc_category_name'] ) ) : '';
-		$category_slug = isset( $_POST['pc_category_slug'] ) ? trim( sanitize_text_field( $_POST['pc_category_slug'] ) ) : '';
-		if ( $category_name !== '' || $category_slug !== '' ) {
-			$term_id = pc_get_or_create_product_category( $category_name, $category_slug );
-			if ( $term_id ) {
-				wp_set_object_terms( $post_id, array( $term_id ), 'product_category' );
-				$term = get_term( $term_id, 'product_category' );
-				if ( $term && ! is_wp_error( $term ) ) {
-					update_post_meta( $post_id, 'dw_pc_category_slug', $term->slug );
+		// Handle category taxonomy fields (category_name / category_slug pattern)
+		$pt_config = PC_Config::get_post_type( $pt_slug );
+		if ( ! empty( $pt_config['has_category'] ) ) {
+			$cat_taxonomy = PC_Config::get_category_taxonomy( $pt_slug );
+			$cat_name = isset( $_POST['dw_catalog_category_name'] ) ? trim( sanitize_text_field( $_POST['dw_catalog_category_name'] ) ) : '';
+			$cat_slug = isset( $_POST['dw_catalog_category_slug'] ) ? trim( sanitize_text_field( $_POST['dw_catalog_category_slug'] ) ) : '';
+			if ( $cat_name !== '' || $cat_slug !== '' ) {
+				$term_id = pc_get_or_create_term( $cat_name, $cat_slug, $cat_taxonomy );
+				if ( $term_id ) {
+					wp_set_object_terms( $post_id, array( $term_id ), $cat_taxonomy );
 				}
 			}
-		} else {
-			wp_set_object_terms( $post_id, array(), 'product_category' );
-			delete_post_meta( $post_id, 'dw_pc_category_slug' );
-		}
-
-		// Post slug (post_name): use Item Code if provided
-		$item_code = isset( $_POST['pc_item_code'] ) ? trim( sanitize_text_field( $_POST['pc_item_code'] ) ) : '';
-		if ( $item_code !== '' ) {
-			wp_update_post( array(
-				'ID'        => $post_id,
-				'post_name' => sanitize_title( $item_code ),
-			) );
 		}
 	}
 
+	/**
+	 * Enqueue admin scripts for our post types.
+	 */
 	public function enqueue_admin_scripts( $hook ) {
-		global $post_type;
-		if ( $this->post_type !== $post_type || ! in_array( $hook, array( 'post.php', 'post-new.php' ), true ) ) {
+		if ( ! in_array( $hook, array( 'post.php', 'post-new.php' ), true ) ) {
 			return;
 		}
+		global $post_type;
+		if ( ! PC_Config::is_our_post_type( $post_type ) ) {
+			return;
+		}
+
 		$config = pc_get_plugin_config();
-		$css_url = PC_URL_Helper::get_css_url( 'admin.css' );
 		$css_path = pc_get_plugin_path() . 'assets/css/admin.css';
 		if ( file_exists( $css_path ) ) {
-			wp_enqueue_style( 'pc-admin-style', $css_url, array(), $config['plugin_version'] );
+			wp_enqueue_style( 'pc-admin-style', PC_URL_Helper::get_css_url( 'admin.css' ), array(), $config['plugin_version'] );
 		}
-		// Product Name → post title sync on the standard editor (Featured Image is handled by core)
-		wp_enqueue_script( 'jquery' );
-		$inline = 'jQuery(function($){var $pn=$("#pc_product_name"),$t=$("#post_title");if($pn.length&&$t.length){$pn.on("input",function(){var v=$(this).val();if(v)$t.val(v);});if($pn.val()&&!$t.val())$t.val($pn.val());}});';
-		wp_add_inline_script( 'jquery', $inline, 'after' );
+
+		// Title field sync: if a title field is defined, sync it to post_title
+		$title_field = PC_Config::get_title_field( $post_type );
+		if ( $title_field ) {
+			wp_enqueue_script( 'jquery' );
+			$field_id = 'dw_field_' . sanitize_key( $title_field['meta_key'] );
+			$inline = 'jQuery(function($){var $f=$("#' . esc_js( $field_id ) . '"),$t=$("#post_title");if($f.length&&$t.length){$f.on("input",function(){var v=$(this).val();if(v)$t.val(v);});if($f.val()&&!$t.val())$t.val($f.val());}});';
+			wp_add_inline_script( 'jquery', $inline, 'after' );
+		}
 	}
 
+	/**
+	 * Static helper: get a meta value with default.
+	 */
 	public static function get_product_meta( $post_id, $meta_key, $default = '' ) {
 		$value = get_post_meta( $post_id, $meta_key, true );
 		return ! empty( $value ) ? $value : $default;

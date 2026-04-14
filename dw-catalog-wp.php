@@ -2,8 +2,8 @@
 /**
  * Plugin Name: DW Catalog WP
  * Plugin URI: https://github.com/dasomweb/dw-catalog-wp
- * Description: Domain-change friendly product catalog plugin
- * Version: 1.8.0
+ * Description: Dynamic custom post type & custom field catalog plugin. Register multiple post types with custom fields per website.
+ * Version: 2.0.0
  * Author: Dasom Web
  * Author URI: https://github.com/dasomweb
  * License: GPL v2 or later
@@ -14,113 +14,93 @@
  * Requires PHP: 7.4
  */
 
-// Exit if accessed directly
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
 /**
  * Central Plugin Configuration
- * 
- * This function centralizes all configurable values for the plugin.
- * All environment-specific or plugin-specific values should be defined here.
- * 
- * @return array Configuration array
  */
 function pc_get_plugin_config() {
 	return array(
-		// GitHub Repository Information
-		'github_repo_owner' => 'dasomweb',
-		'github_repo_name'  => 'dw-catalog-wp',
-		
-		// Plugin Information
-		'plugin_slug'       => 'dw-catalog-wp',
-		'plugin_version'    => '1.8.0',
-		'plugin_name'       => 'DW Catalog WP',
+		'github_repo_owner'  => 'dasomweb',
+		'github_repo_name'   => 'dw-catalog-wp',
+		'plugin_slug'        => 'dw-catalog-wp',
+		'plugin_version'     => '2.0.0',
+		'plugin_name'        => 'DW Catalog WP',
 		'plugin_text_domain' => 'dw-catalog-wp',
-		
-		// Update Settings
-		'github_branch'     => 'main',
-		'requires_wp'       => '5.0',
-		'requires_php'      => '7.4',
+		'github_branch'      => 'main',
+		'requires_wp'        => '5.0',
+		'requires_php'       => '7.4',
 	);
 }
 
-/**
- * Get plugin directory URL
- * Uses WordPress function - domain agnostic
- * 
- * @return string Plugin directory URL
- */
 function pc_get_plugin_url() {
 	return plugin_dir_url( __FILE__ );
 }
 
-/**
- * Get plugin directory path
- * Uses WordPress function - domain agnostic
- * 
- * @return string Plugin directory path
- */
 function pc_get_plugin_path() {
 	return plugin_dir_path( __FILE__ );
 }
 
-/**
- * Get plugin base file
- * 
- * @return string Plugin base file path
- */
 function pc_get_plugin_file() {
 	return __FILE__;
 }
 
 /**
- * Get or create a product category term by name and/or slug.
- * Used when saving a product or importing so category is created if missing.
+ * Get or create a taxonomy term by name and/or slug.
+ * Generic replacement for the old pc_get_or_create_product_category.
  *
- * @param string $category_name Category display name (optional).
- * @param string $category_slug Category slug/code (optional).
+ * @param string $name     Term display name.
+ * @param string $slug     Term slug.
+ * @param string $taxonomy Taxonomy name.
  * @return int Term ID, or 0 on failure.
  */
-function pc_get_or_create_product_category( $category_name = '', $category_slug = '' ) {
-	$category_name = trim( (string) $category_name );
-	$category_slug = trim( (string) $category_slug );
-	if ( $category_name === '' && $category_slug === '' ) {
+function pc_get_or_create_term( $name = '', $slug = '', $taxonomy = '' ) {
+	$name = trim( (string) $name );
+	$slug = trim( (string) $slug );
+	if ( ( $name === '' && $slug === '' ) || $taxonomy === '' ) {
 		return 0;
 	}
-	$taxonomy = 'product_category';
 
-	// Prefer lookup by slug if provided
-	if ( $category_slug !== '' ) {
-		$term = get_term_by( 'slug', $category_slug, $taxonomy );
+	if ( $slug !== '' ) {
+		$term = get_term_by( 'slug', $slug, $taxonomy );
 		if ( $term && ! is_wp_error( $term ) ) {
 			return (int) $term->term_id;
 		}
 	}
-	if ( $category_name !== '' ) {
-		$term = get_term_by( 'name', $category_name, $taxonomy );
+	if ( $name !== '' ) {
+		$term = get_term_by( 'name', $name, $taxonomy );
 		if ( $term && ! is_wp_error( $term ) ) {
 			return (int) $term->term_id;
 		}
 	}
 
-	// Create term
-	$name = $category_name !== '' ? $category_name : $category_slug;
-	$slug = $category_slug !== '' ? $category_slug : sanitize_title( $name );
-	if ( $name === '' ) {
+	$term_name = $name !== '' ? $name : $slug;
+	$term_slug = $slug !== '' ? $slug : sanitize_title( $term_name );
+	if ( $term_name === '' ) {
 		return 0;
 	}
-	$result = wp_insert_term( $name, $taxonomy, array( 'slug' => $slug ) );
+
+	$result = wp_insert_term( $term_name, $taxonomy, array( 'slug' => $term_slug ) );
 	if ( is_wp_error( $result ) ) {
 		return 0;
 	}
 	return (int) $result['term_id'];
 }
 
+/**
+ * Backward-compatible wrapper for the old function name.
+ */
+function pc_get_or_create_product_category( $category_name = '', $category_slug = '' ) {
+	return pc_get_or_create_term( $category_name, $category_slug, 'product_category' );
+}
+
 // Load includes
 require_once pc_get_plugin_path() . 'includes/class-pc-url-helper.php';
+require_once pc_get_plugin_path() . 'includes/class-pc-config.php';
 require_once pc_get_plugin_path() . 'includes/class-pc-github-updater.php';
+require_once pc_get_plugin_path() . 'includes/class-pc-settings.php';
 require_once pc_get_plugin_path() . 'includes/class-pc-post-type.php';
 require_once pc_get_plugin_path() . 'includes/class-pc-meta-box.php';
 require_once pc_get_plugin_path() . 'includes/class-pc-product-display.php';
@@ -133,7 +113,7 @@ require_once pc_get_plugin_path() . 'includes/class-pc-bulk-import.php';
 add_action( 'plugins_loaded', 'pc_init_github_updater', 10 );
 function pc_init_github_updater() {
 	$config = pc_get_plugin_config();
-	$updater = new PC_GitHub_Updater(
+	new PC_GitHub_Updater(
 		pc_get_plugin_file(),
 		$config['github_repo_owner'],
 		$config['github_repo_name'],
@@ -142,71 +122,40 @@ function pc_init_github_updater() {
 	);
 }
 
-// Initialize Post Type
-add_action( 'plugins_loaded', 'pc_init_post_type', 10 );
-function pc_init_post_type() {
+// Initialize all components
+add_action( 'plugins_loaded', 'pc_init_components', 10 );
+function pc_init_components() {
+	new PC_Settings();
 	new PC_Post_Type();
-}
-
-// Initialize Meta Box
-add_action( 'plugins_loaded', 'pc_init_meta_box', 10 );
-function pc_init_meta_box() {
 	new PC_Meta_Box();
-}
-
-// Initialize Admin Columns
-add_action( 'plugins_loaded', 'pc_init_admin_columns', 10 );
-function pc_init_admin_columns() {
 	new PC_Admin_Columns();
-}
-
-// Initialize Admin Pages
-add_action( 'plugins_loaded', 'pc_init_admin_pages', 10 );
-function pc_init_admin_pages() {
 	new PC_Admin_Pages();
-}
-
-// Initialize Field Reference
-add_action( 'plugins_loaded', 'pc_init_field_reference', 10 );
-function pc_init_field_reference() {
 	new PC_Field_Reference();
-}
-
-// Initialize Bulk Import
-add_action( 'plugins_loaded', 'pc_init_bulk_import', 10 );
-function pc_init_bulk_import() {
 	new PC_Bulk_Import();
-}
 
-// Initialize PDF Export
-add_action( 'plugins_loaded', 'pc_init_pdf_export', 10 );
-function pc_init_pdf_export() {
+	// PDF Export (requires composer autoload)
 	require_once pc_get_plugin_path() . 'includes/class-pc-pdf-export.php';
 	new PC_PDF_Export();
 }
 
-// Plugin activation hook
+// Activation hook
 register_activation_hook( __FILE__, 'pc_activate' );
 function pc_activate() {
-	// Do not store any absolute URLs during activation
-	// Use WordPress options API with relative values only
 	$config = pc_get_plugin_config();
-	
-	// Store only plugin-specific data, no URLs
 	update_option( 'pc_plugin_version', $config['plugin_version'] );
 	update_option( 'pc_plugin_activated', time() );
-	
-	// Register post type and taxonomies for rewrite rules flush
-	$post_type = new PC_Post_Type();
-	
-	// Flush rewrite rules after post type registration (domain agnostic)
+
+	// Ensure default config is seeded
+	PC_Config::get_post_types();
+
+	// Register post types for rewrite flush
+	$pt = new PC_Post_Type();
+	$pt->register_all();
 	flush_rewrite_rules();
 }
 
-// Plugin deactivation hook
+// Deactivation hook
 register_deactivation_hook( __FILE__, 'pc_deactivate' );
 function pc_deactivate() {
-	// Cleanup - no domain-specific cleanup needed
 	flush_rewrite_rules();
 }
-

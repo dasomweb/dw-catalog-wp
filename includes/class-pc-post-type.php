@@ -1,107 +1,103 @@
 <?php
 /**
  * Post Type Registration Class
- * 
- * Registers the Catalog WP custom post type.
- * Domain-agnostic implementation.
- * 
- * @package DW_Product_Catalog
+ *
+ * Dynamically registers custom post types and taxonomies based on PC_Config.
+ *
+ * @package DW_Catalog_WP
  */
 
-// Exit if accessed directly
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-/**
- * PC_Post_Type Class
- * 
- * Handles custom post type registration for products.
- */
 class PC_Post_Type {
 
-	/**
-	 * Post type slug
-	 * 
-	 * @var string
-	 */
-	private $post_type = 'product';
-
-	/**
-	 * Constructor
-	 */
 	public function __construct() {
-		add_action( 'init', array( $this, 'register_post_type' ) );
-		add_action( 'init', array( $this, 'register_taxonomies' ) );
+		add_action( 'init', array( $this, 'register_all' ) );
 	}
 
 	/**
-	 * Register Product post type
-	 * 
-	 * Uses WordPress functions - domain agnostic
+	 * Register all configured post types and their taxonomies.
 	 */
-	public function register_post_type() {
-		$config = pc_get_plugin_config();
-		
+	public function register_all() {
+		$post_types = PC_Config::get_post_types();
+
+		foreach ( $post_types as $slug => $config ) {
+			$this->register_post_type( $slug, $config );
+
+			if ( ! empty( $config['has_category'] ) ) {
+				$this->register_category_taxonomy( $slug, $config );
+			}
+			if ( ! empty( $config['has_tag'] ) ) {
+				$this->register_tag_taxonomy( $slug, $config );
+			}
+		}
+	}
+
+	/**
+	 * Register a single post type.
+	 */
+	private function register_post_type( $slug, $config ) {
+		$singular = $config['singular_name'];
+		$plural   = $config['plural_name'];
+		$menu     = ! empty( $config['menu_name'] ) ? $config['menu_name'] : $plural;
+
 		$labels = array(
-			'name'                  => _x( 'Products', 'Post type general name', 'dw-catalog-wp' ),
-			'singular_name'         => _x( 'Product', 'Post type singular name', 'dw-catalog-wp' ),
-			'menu_name'             => _x( 'Catalog WP', 'Admin Menu text', 'dw-catalog-wp' ),
-			'name_admin_bar'        => _x( 'Product', 'Add New on Toolbar', 'dw-catalog-wp' ),
+			'name'                  => $plural,
+			'singular_name'         => $singular,
+			'menu_name'             => $menu,
+			'name_admin_bar'        => $singular,
 			'add_new'               => __( 'Add New', 'dw-catalog-wp' ),
-			'add_new_item'          => __( 'Add New Product', 'dw-catalog-wp' ),
-			'new_item'              => __( 'New Product', 'dw-catalog-wp' ),
-			'edit_item'             => __( 'Edit Product', 'dw-catalog-wp' ),
-			'view_item'             => __( 'View Product', 'dw-catalog-wp' ),
-			'all_items'             => __( 'All Products', 'dw-catalog-wp' ),
-			'search_items'          => __( 'Search Products', 'dw-catalog-wp' ),
-			'parent_item_colon'     => __( 'Parent Product:', 'dw-catalog-wp' ),
-			'not_found'             => __( 'No products found.', 'dw-catalog-wp' ),
-			'not_found_in_trash'    => __( 'No products found in Trash.', 'dw-catalog-wp' ),
-			'featured_image'        => _x( 'Product Image', 'Overrides the "Featured Image" phrase', 'dw-catalog-wp' ),
-			'set_featured_image'    => _x( 'Set product image', 'Overrides the "Set featured image" phrase', 'dw-catalog-wp' ),
-			'remove_featured_image' => _x( 'Remove product image', 'Overrides the "Remove featured image" phrase', 'dw-catalog-wp' ),
-			'use_featured_image'    => _x( 'Use as product image', 'Overrides the "Use as featured image" phrase', 'dw-catalog-wp' ),
-			'archives'              => _x( 'Product Archives', 'The post type archive label used in nav menus', 'dw-catalog-wp' ),
-			'insert_into_item'      => _x( 'Insert into product', 'Overrides the "Insert into post"/"Insert into page" phrase', 'dw-catalog-wp' ),
-			'uploaded_to_this_item' => _x( 'Uploaded to this product', 'Overrides the "Uploaded to this post"/"Uploaded to this page" phrase', 'dw-catalog-wp' ),
-			'filter_items_list'     => _x( 'Filter products list', 'Screen reader text for the filter links', 'dw-catalog-wp' ),
-			'items_list_navigation' => _x( 'Products list navigation', 'Screen reader text for the pagination', 'dw-catalog-wp' ),
-			'items_list'            => _x( 'Products list', 'Screen reader text for the items list', 'dw-catalog-wp' ),
+			'add_new_item'          => sprintf( __( 'Add New %s', 'dw-catalog-wp' ), $singular ),
+			'new_item'              => sprintf( __( 'New %s', 'dw-catalog-wp' ), $singular ),
+			'edit_item'             => sprintf( __( 'Edit %s', 'dw-catalog-wp' ), $singular ),
+			'view_item'             => sprintf( __( 'View %s', 'dw-catalog-wp' ), $singular ),
+			'all_items'             => sprintf( __( 'All %s', 'dw-catalog-wp' ), $plural ),
+			'search_items'          => sprintf( __( 'Search %s', 'dw-catalog-wp' ), $plural ),
+			'not_found'             => sprintf( __( 'No %s found.', 'dw-catalog-wp' ), strtolower( $plural ) ),
+			'not_found_in_trash'    => sprintf( __( 'No %s found in Trash.', 'dw-catalog-wp' ), strtolower( $plural ) ),
+			'featured_image'        => sprintf( __( '%s Image', 'dw-catalog-wp' ), $singular ),
+			'set_featured_image'    => sprintf( __( 'Set %s image', 'dw-catalog-wp' ), strtolower( $singular ) ),
+			'remove_featured_image' => sprintf( __( 'Remove %s image', 'dw-catalog-wp' ), strtolower( $singular ) ),
+			'use_featured_image'    => sprintf( __( 'Use as %s image', 'dw-catalog-wp' ), strtolower( $singular ) ),
+			'archives'              => sprintf( __( '%s Archives', 'dw-catalog-wp' ), $singular ),
 		);
+
+		$supports = ! empty( $config['supports'] ) ? $config['supports'] : array( 'title', 'editor', 'thumbnail' );
 
 		$args = array(
 			'labels'             => $labels,
-			'public'              => true,
-			'publicly_queryable' => true,
-			'show_ui'             => true,
+			'public'             => ! empty( $config['public'] ),
+			'publicly_queryable' => ! empty( $config['public'] ),
+			'show_ui'            => true,
 			'show_in_menu'       => true,
 			'show_in_admin_bar'  => true,
 			'show_in_nav_menus'  => true,
-			'query_var'           => true,
-			'rewrite'            => array( 'slug' => 'product' ), // Domain agnostic - uses WordPress rewrite
+			'query_var'          => true,
+			'rewrite'            => array( 'slug' => $slug ),
 			'capability_type'    => 'post',
-			'has_archive'        => true,
+			'has_archive'        => ! empty( $config['has_archive'] ),
 			'hierarchical'       => false,
 			'menu_position'      => 20,
-			'menu_icon'          => 'dashicons-products',
-			'supports'           => array( 'title', 'editor', 'thumbnail', 'excerpt', 'custom-fields' ),
-			'show_in_rest'       => true, // Enable Gutenberg editor
+			'menu_icon'          => ! empty( $config['menu_icon'] ) ? $config['menu_icon'] : 'dashicons-admin-generic',
+			'supports'           => $supports,
+			'show_in_rest'       => ! empty( $config['show_in_rest'] ),
 		);
 
-		register_post_type( $this->post_type, $args );
+		register_post_type( $slug, $args );
 	}
 
 	/**
-	 * Register taxonomies for products
-	 * 
-	 * Uses WordPress functions - domain agnostic
+	 * Register category taxonomy for a post type.
 	 */
-	public function register_taxonomies() {
-		// Product Category
-		$category_labels = array(
-			'name'              => _x( 'Product Categories', 'taxonomy general name', 'dw-catalog-wp' ),
-			'singular_name'     => _x( 'Product Category', 'taxonomy singular name', 'dw-catalog-wp' ),
+	private function register_category_taxonomy( $slug, $config ) {
+		$singular = $config['singular_name'];
+		$tax_slug = PC_Config::get_category_taxonomy( $slug );
+
+		$labels = array(
+			'name'              => sprintf( __( '%s Categories', 'dw-catalog-wp' ), $singular ),
+			'singular_name'     => sprintf( __( '%s Category', 'dw-catalog-wp' ), $singular ),
 			'search_items'      => __( 'Search Categories', 'dw-catalog-wp' ),
 			'all_items'         => __( 'All Categories', 'dw-catalog-wp' ),
 			'parent_item'       => __( 'Parent Category', 'dw-catalog-wp' ),
@@ -113,24 +109,28 @@ class PC_Post_Type {
 			'menu_name'         => __( 'Categories', 'dw-catalog-wp' ),
 		);
 
-		$category_args = array(
+		register_taxonomy( $tax_slug, array( $slug ), array(
 			'hierarchical'      => true,
-			'labels'            => $category_labels,
+			'labels'            => $labels,
 			'show_ui'           => true,
 			'show_admin_column' => true,
 			'query_var'         => true,
-			'rewrite'           => array( 'slug' => 'product-category' ), // Domain agnostic
-			'show_in_rest'      => true,
-		);
+			'rewrite'           => array( 'slug' => $slug . '-category' ),
+			'show_in_rest'      => ! empty( $config['show_in_rest'] ),
+		) );
+	}
 
-		register_taxonomy( 'product_category', array( $this->post_type ), $category_args );
+	/**
+	 * Register tag taxonomy for a post type.
+	 */
+	private function register_tag_taxonomy( $slug, $config ) {
+		$singular = $config['singular_name'];
+		$tax_slug = PC_Config::get_tag_taxonomy( $slug );
 
-		// Product Tag
-		$tag_labels = array(
-			'name'                       => _x( 'Product Tags', 'taxonomy general name', 'dw-catalog-wp' ),
-			'singular_name'              => _x( 'Product Tag', 'taxonomy singular name', 'dw-catalog-wp' ),
+		$labels = array(
+			'name'                       => sprintf( __( '%s Tags', 'dw-catalog-wp' ), $singular ),
+			'singular_name'              => sprintf( __( '%s Tag', 'dw-catalog-wp' ), $singular ),
 			'search_items'               => __( 'Search Tags', 'dw-catalog-wp' ),
-			'popular_items'              => __( 'Popular Tags', 'dw-catalog-wp' ),
 			'all_items'                  => __( 'All Tags', 'dw-catalog-wp' ),
 			'edit_item'                  => __( 'Edit Tag', 'dw-catalog-wp' ),
 			'update_item'                => __( 'Update Tag', 'dw-catalog-wp' ),
@@ -143,27 +143,15 @@ class PC_Post_Type {
 			'menu_name'                  => __( 'Tags', 'dw-catalog-wp' ),
 		);
 
-		$tag_args = array(
+		register_taxonomy( $tax_slug, array( $slug ), array(
 			'hierarchical'          => false,
-			'labels'                => $tag_labels,
+			'labels'                => $labels,
 			'show_ui'               => true,
 			'show_admin_column'     => true,
 			'update_count_callback' => '_update_post_term_count',
 			'query_var'             => true,
-			'rewrite'               => array( 'slug' => 'product-tag' ), // Domain agnostic
-			'show_in_rest'          => true,
-		);
-
-		register_taxonomy( 'product_tag', array( $this->post_type ), $tag_args );
-	}
-
-	/**
-	 * Get post type slug
-	 * 
-	 * @return string Post type slug
-	 */
-	public function get_post_type() {
-		return $this->post_type;
+			'rewrite'               => array( 'slug' => $slug . '-tag' ),
+			'show_in_rest'          => ! empty( $config['show_in_rest'] ),
+		) );
 	}
 }
-

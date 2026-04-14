@@ -1,227 +1,220 @@
 <?php
 /**
  * Admin Pages Class
- * 
- * Creates custom admin pages for product management.
- * Replaces default WordPress post editor with custom interface.
- * Domain-agnostic implementation.
- * 
- * @package DW_Product_Catalog
+ *
+ * Creates custom admin pages for each registered post type.
+ * Replaces default WordPress post list with custom interface.
+ *
+ * @package DW_Catalog_WP
  */
 
-// Exit if accessed directly
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-/**
- * PC_Admin_Pages Class
- * 
- * Manages custom admin pages for products.
- */
 class PC_Admin_Pages {
 
-	/**
-	 * Post type
-	 * 
-	 * @var string
-	 */
-	private $post_type = 'product';
-
-	/**
-	 * Constructor
-	 */
 	public function __construct() {
-		// Remove default post type menu
-		add_action( 'admin_menu', array( $this, 'remove_default_menu' ) );
-		
-		// Add custom admin menu
-		add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
-		
-		// Use Classic editor for products (Featured Image / Publish work natively; no custom script)
+		add_action( 'admin_menu', array( $this, 'remove_default_menus' ) );
+		add_action( 'admin_menu', array( $this, 'add_admin_menus' ) );
 		add_filter( 'use_block_editor_for_post_type', array( $this, 'disable_gutenberg' ), 10, 2 );
-		
-		add_action( 'admin_post_pc_delete_product', array( $this, 'handle_delete_product' ) );
-		
-		// Enqueue admin scripts
+		add_action( 'admin_post_dw_catalog_delete_item', array( $this, 'handle_delete_item' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_scripts' ) );
 	}
 
-	/**
-	 * Remove default post type menu
-	 */
-	public function remove_default_menu() {
-		remove_menu_page( 'edit.php?post_type=' . $this->post_type );
+	public function remove_default_menus() {
+		$post_types = PC_Config::get_post_types();
+		foreach ( $post_types as $slug => $config ) {
+			remove_menu_page( 'edit.php?post_type=' . $slug );
+		}
+	}
+
+	public function add_admin_menus() {
+		$post_types = PC_Config::get_post_types();
+		$position = 21;
+
+		foreach ( $post_types as $slug => $config ) {
+			$menu_slug = 'dw-catalog-' . $slug;
+			$menu_name = ! empty( $config['menu_name'] ) ? $config['menu_name'] : $config['plural_name'];
+			$icon = ! empty( $config['menu_icon'] ) ? $config['menu_icon'] : 'dashicons-admin-generic';
+
+			// Main menu
+			add_menu_page(
+				$menu_name,
+				$menu_name,
+				'edit_posts',
+				$menu_slug,
+				array( $this, 'render_list_page' ),
+				$icon,
+				$position++
+			);
+
+			// All items submenu (same as main)
+			add_submenu_page(
+				$menu_slug,
+				sprintf( __( 'All %s', 'dw-catalog-wp' ), $config['plural_name'] ),
+				sprintf( __( 'All %s', 'dw-catalog-wp' ), $config['plural_name'] ),
+				'edit_posts',
+				$menu_slug,
+				array( $this, 'render_list_page' )
+			);
+
+			// Add New
+			add_submenu_page(
+				$menu_slug,
+				sprintf( __( 'Add New %s', 'dw-catalog-wp' ), $config['singular_name'] ),
+				__( 'Add New', 'dw-catalog-wp' ),
+				'edit_posts',
+				$menu_slug . '-new',
+				function () use ( $slug ) {
+					if ( ! current_user_can( 'edit_posts' ) ) {
+						wp_die( __( 'Unauthorized', 'dw-catalog-wp' ) );
+					}
+					wp_safe_redirect( admin_url( 'post-new.php?post_type=' . $slug ) );
+					exit;
+				}
+			);
+
+			// Categories
+			if ( ! empty( $config['has_category'] ) ) {
+				$cat_tax = PC_Config::get_category_taxonomy( $slug );
+				add_submenu_page(
+					$menu_slug,
+					__( 'Categories', 'dw-catalog-wp' ),
+					__( 'Categories', 'dw-catalog-wp' ),
+					'manage_categories',
+					'edit-tags.php?taxonomy=' . $cat_tax . '&post_type=' . $slug
+				);
+			}
+
+			// Tags
+			if ( ! empty( $config['has_tag'] ) ) {
+				$tag_tax = PC_Config::get_tag_taxonomy( $slug );
+				add_submenu_page(
+					$menu_slug,
+					__( 'Tags', 'dw-catalog-wp' ),
+					__( 'Tags', 'dw-catalog-wp' ),
+					'manage_categories',
+					'edit-tags.php?taxonomy=' . $tag_tax . '&post_type=' . $slug
+				);
+			}
+		}
 	}
 
 	/**
-	 * Add custom admin menu
-	 */
-	public function add_admin_menu() {
-		// Main menu
-		add_menu_page(
-			__( 'Catalog WP', 'dw-catalog-wp' ),
-			__( 'Catalog WP', 'dw-catalog-wp' ),
-			'edit_posts',
-			'pc-products',
-			array( $this, 'render_list_page' ),
-			'dashicons-products',
-			20
-		);
-
-		// List submenu
-		add_submenu_page(
-			'pc-products',
-			__( 'All Products', 'dw-catalog-wp' ),
-			__( 'All Products', 'dw-catalog-wp' ),
-			'edit_posts',
-			'pc-products',
-			array( $this, 'render_list_page' )
-		);
-
-		// Add New → WordPress standard editor (no custom edit page)
-		add_submenu_page(
-			'pc-products',
-			__( 'Add New Product', 'dw-catalog-wp' ),
-			__( 'Add New', 'dw-catalog-wp' ),
-			'edit_posts',
-			'pc-products-new',
-			array( $this, 'redirect_to_new_product' )
-		);
-
-		// Edit (hidden) → redirect to standard editor
-		add_submenu_page(
-			null,
-			__( 'Edit Product', 'dw-catalog-wp' ),
-			__( 'Edit Product', 'dw-catalog-wp' ),
-			'edit_posts',
-			'pc-products-edit',
-			array( $this, 'redirect_to_edit_product' )
-		);
-
-		// Categories submenu
-		add_submenu_page(
-			'pc-products',
-			__( 'Product Categories', 'dw-catalog-wp' ),
-			__( 'Categories', 'dw-catalog-wp' ),
-			'manage_categories',
-			'edit-tags.php?taxonomy=product_category&post_type=' . $this->post_type
-		);
-
-		// Tags submenu
-		add_submenu_page(
-			'pc-products',
-			__( 'Product Tags', 'dw-catalog-wp' ),
-			__( 'Tags', 'dw-catalog-wp' ),
-			'manage_categories',
-			'edit-tags.php?taxonomy=product_tag&post_type=' . $this->post_type
-		);
-	}
-
-	/**
-	 * Disable Gutenberg for products
-	 * 
-	 * @param bool   $use_block_editor Whether to use block editor
-	 * @param string $post_type        Post type
-	 * @return bool
+	 * Disable Gutenberg for our post types (use Classic editor).
 	 */
 	public function disable_gutenberg( $use_block_editor, $post_type ) {
-		if ( $this->post_type === $post_type ) {
+		if ( PC_Config::is_our_post_type( $post_type ) ) {
 			return false;
 		}
 		return $use_block_editor;
 	}
 
 	/**
-	 * Render product list page
+	 * Determine the post type slug from the current page parameter.
+	 */
+	private function get_current_post_type_slug() {
+		$page = isset( $_GET['page'] ) ? sanitize_text_field( $_GET['page'] ) : '';
+		// Page format: dw-catalog-{slug}
+		if ( strpos( $page, 'dw-catalog-' ) === 0 ) {
+			return substr( $page, strlen( 'dw-catalog-' ) );
+		}
+		return '';
+	}
+
+	/**
+	 * Render product list page (works for any post type).
 	 */
 	public function render_list_page() {
-		// Check permissions
 		if ( ! current_user_can( 'edit_posts' ) ) {
-			wp_die( __( 'You do not have permission to access this page.', 'dw-catalog-wp' ) );
+			wp_die( __( 'Unauthorized', 'dw-catalog-wp' ) );
 		}
 
-		// Handle bulk actions
-		if ( isset( $_POST['action'] ) && $_POST['action'] === 'delete' && isset( $_POST['product_ids'] ) ) {
-			check_admin_referer( 'pc-bulk-action' );
-			foreach ( $_POST['product_ids'] as $product_id ) {
-				wp_delete_post( intval( $product_id ), true );
+		$pt_slug = $this->get_current_post_type_slug();
+		$pt_config = PC_Config::get_post_type( $pt_slug );
+		if ( ! $pt_config ) {
+			echo '<div class="wrap"><p>' . esc_html__( 'Post type not found.', 'dw-catalog-wp' ) . '</p></div>';
+			return;
+		}
+
+		$fields = PC_Config::get_fields( $pt_slug );
+		$list_fields = PC_Config::get_list_fields( $pt_slug );
+		$title_field = PC_Config::get_title_field( $pt_slug );
+		$menu_slug = 'dw-catalog-' . $pt_slug;
+
+		// Handle bulk delete
+		if ( isset( $_POST['action'] ) && $_POST['action'] === 'delete' && isset( $_POST['item_ids'] ) ) {
+			check_admin_referer( 'dw-catalog-bulk-action-' . $pt_slug );
+			foreach ( $_POST['item_ids'] as $item_id ) {
+				wp_delete_post( intval( $item_id ), true );
 			}
-			echo '<div class="notice notice-success"><p>' . esc_html__( 'Products deleted successfully.', 'dw-catalog-wp' ) . '</p></div>';
+			echo '<div class="notice notice-success"><p>' . esc_html__( 'Items deleted successfully.', 'dw-catalog-wp' ) . '</p></div>';
 		}
 
-		$search_name     = isset( $_REQUEST['pc_search_name'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['pc_search_name'] ) ) : '';
-		$search_item_code = isset( $_REQUEST['pc_search_item_code'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['pc_search_item_code'] ) ) : '';
-		$paged           = isset( $_GET['paged'] ) ? intval( $_GET['paged'] ) : 1;
+		// Search
+		$search_query = isset( $_REQUEST['dw_search'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['dw_search'] ) ) : '';
+		$paged = isset( $_GET['paged'] ) ? intval( $_GET['paged'] ) : 1;
 
 		$args = array(
-			'post_type'      => $this->post_type,
+			'post_type'      => $pt_slug,
 			'posts_per_page' => 20,
 			'paged'          => $paged,
 			'post_status'    => 'any',
 		);
 
-		// Item code: use meta_query (WordPress built-in, reliable for dw_pc_item_code)
-		if ( $search_item_code !== '' ) {
-			$args['meta_query'] = array(
-				array(
-					'key'     => 'dw_pc_item_code',
-					'value'   => $search_item_code,
-					'compare' => 'LIKE',
-				),
-			);
-		}
-
-		// Product name: post_title + dw_pc_product_name meta via custom WHERE
-		if ( $search_name !== '' ) {
-			$filter_cb = function( $where, $query ) use ( $search_name ) {
-				if ( $query->get( 'post_type' ) !== 'product' ) {
+		if ( $search_query !== '' ) {
+			// Search in post title and title meta field
+			$title_meta_key = $title_field ? $title_field['meta_key'] : '';
+			$filter_cb = function ( $where, $query ) use ( $search_query, $pt_slug, $title_meta_key ) {
+				if ( $query->get( 'post_type' ) !== $pt_slug ) {
 					return $where;
 				}
 				global $wpdb;
-				$like_name = '%' . $wpdb->esc_like( $search_name ) . '%';
+				$like = '%' . $wpdb->esc_like( $search_query ) . '%';
+				$meta_clause = '';
+				if ( $title_meta_key ) {
+					$meta_clause = $wpdb->prepare(
+						" OR {$wpdb->posts}.ID IN ( SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value LIKE %s )",
+						$title_meta_key,
+						$like
+					);
+				}
 				$where .= $wpdb->prepare(
-					" AND ( {$wpdb->posts}.post_title LIKE %s OR {$wpdb->posts}.ID IN ( SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = 'dw_pc_product_name' AND meta_value LIKE %s ) )",
-					$like_name,
-					$like_name
+					" AND ( {$wpdb->posts}.post_title LIKE %s{$meta_clause} )",
+					$like
 				);
 				return $where;
 			};
 			add_filter( 'posts_where', $filter_cb, 10, 2 );
 		}
 
-		$products = new WP_Query( $args );
+		$query = new WP_Query( $args );
 
 		if ( isset( $filter_cb ) ) {
 			remove_filter( 'posts_where', $filter_cb, 10 );
 		}
 		?>
 		<div class="wrap">
-			<h1 class="wp-heading-inline"><?php _e( 'Catalog WP', 'dw-catalog-wp' ); ?></h1>
-			<a href="<?php echo esc_url( admin_url( 'admin.php?page=pc-products-new' ) ); ?>" class="page-title-action">
+			<h1 class="wp-heading-inline"><?php echo esc_html( $pt_config['menu_name'] ); ?></h1>
+			<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . $menu_slug . '-new' ) ); ?>" class="page-title-action">
 				<?php _e( 'Add New', 'dw-catalog-wp' ); ?>
 			</a>
 			<hr class="wp-header-end">
 
-			<form method="get" action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>" class="pc-list-search" style="margin-bottom: 12px;">
-				<input type="hidden" name="page" value="pc-products">
-				<label for="pc_search_name"><?php esc_html_e( 'Product Name', 'dw-catalog-wp' ); ?></label>
-				<input type="search" id="pc_search_name" name="pc_search_name" value="<?php echo esc_attr( $search_name ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'Search by name…', 'dw-catalog-wp' ); ?>" style="width: 180px; margin-right: 8px;">
-				<label for="pc_search_item_code" style="margin-left: 8px;"><?php esc_html_e( 'Item Code', 'dw-catalog-wp' ); ?></label>
-				<input type="search" id="pc_search_item_code" name="pc_search_item_code" value="<?php echo esc_attr( $search_item_code ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'Search by item code…', 'dw-catalog-wp' ); ?>" style="width: 140px; margin-right: 8px;">
+			<form method="get" action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>" style="margin-bottom: 12px;">
+				<input type="hidden" name="page" value="<?php echo esc_attr( $menu_slug ); ?>">
+				<label for="dw_search"><?php _e( 'Search', 'dw-catalog-wp' ); ?></label>
+				<input type="search" id="dw_search" name="dw_search" value="<?php echo esc_attr( $search_query ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'Search...', 'dw-catalog-wp' ); ?>" style="width: 250px; margin-right: 8px;">
 				<input type="submit" class="button" value="<?php esc_attr_e( 'Search', 'dw-catalog-wp' ); ?>">
-				<?php if ( $search_name !== '' || $search_item_code !== '' ) : ?>
-					<a href="<?php echo esc_url( admin_url( 'admin.php?page=pc-products' ) ); ?>" class="button"><?php esc_html_e( 'Clear', 'dw-catalog-wp' ); ?></a>
+				<?php if ( $search_query !== '' ) : ?>
+					<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . $menu_slug ) ); ?>" class="button"><?php esc_html_e( 'Clear', 'dw-catalog-wp' ); ?></a>
 				<?php endif; ?>
 			</form>
 
-			<?php if ( $products->have_posts() ) : ?>
-				<form method="post" action="<?php echo esc_url( admin_url( 'admin.php?page=pc-products' ) ); ?>">
-					<?php wp_nonce_field( 'pc-bulk-action' ); ?>
-					<?php if ( $search_name !== '' || $search_item_code !== '' ) : ?>
-						<input type="hidden" name="pc_search_name" value="<?php echo esc_attr( $search_name ); ?>">
-						<input type="hidden" name="pc_search_item_code" value="<?php echo esc_attr( $search_item_code ); ?>">
-					<?php endif; ?>
+			<?php if ( $query->have_posts() ) : ?>
+				<form method="post" action="<?php echo esc_url( admin_url( 'admin.php?page=' . $menu_slug ) ); ?>">
+					<?php wp_nonce_field( 'dw-catalog-bulk-action-' . $pt_slug ); ?>
 					<div class="tablenav top">
 						<div class="alignleft actions bulkactions">
 							<select name="action">
@@ -235,66 +228,73 @@ class PC_Admin_Pages {
 					<table class="wp-list-table widefat fixed striped">
 						<thead>
 							<tr>
-								<td class="manage-column column-cb check-column">
-									<input type="checkbox" id="cb-select-all">
-								</td>
-								<th class="manage-column"><?php _e( 'Product Name', 'dw-catalog-wp' ); ?></th>
-								<th class="manage-column"><?php _e( 'Category', 'dw-catalog-wp' ); ?></th>
-								<th class="manage-column"><?php _e( 'Item Code', 'dw-catalog-wp' ); ?></th>
-								<th class="manage-column"><?php _e( 'Pack Size', 'dw-catalog-wp' ); ?></th>
-								<th class="manage-column"><?php _e( 'Brand', 'dw-catalog-wp' ); ?></th>
-								<th class="manage-column"><?php _e( 'Origin', 'dw-catalog-wp' ); ?></th>
-								<th class="manage-column"><?php _e( 'Status', 'dw-catalog-wp' ); ?></th>
+								<td class="manage-column column-cb check-column"><input type="checkbox" id="cb-select-all"></td>
+								<th class="manage-column"><?php echo esc_html( $pt_config['singular_name'] ); ?></th>
+								<?php
+								$pt_has_cat = ! empty( $pt_config['has_category'] );
+								if ( $pt_has_cat ) :
+								?>
+									<th class="manage-column"><?php _e( 'Category', 'dw-catalog-wp' ); ?></th>
+								<?php endif; ?>
+								<?php foreach ( $list_fields as $field ) : ?>
+									<?php if ( ! empty( $field['is_title_field'] ) ) continue; ?>
+									<th class="manage-column"><?php echo esc_html( $field['label'] ); ?></th>
+								<?php endforeach; ?>
 								<th class="manage-column"><?php _e( 'Actions', 'dw-catalog-wp' ); ?></th>
 								<th class="manage-column column-thumb"><?php _e( 'Image', 'dw-catalog-wp' ); ?></th>
 							</tr>
 						</thead>
 						<tbody>
-							<?php while ( $products->have_posts() ) : $products->the_post(); ?>
+							<?php while ( $query->have_posts() ) : $query->the_post(); ?>
 								<?php
 								$post_id = get_the_ID();
-								$product_name = PC_Product_Display::get_product_name( $post_id );
-								// If product_name is empty, use post_title as fallback
-								if ( empty( $product_name ) ) {
-									$product_name = get_the_title( $post_id );
+								$display_title = get_the_title( $post_id );
+								if ( $title_field ) {
+									$meta_title = get_post_meta( $post_id, $title_field['meta_key'], true );
+									if ( ! empty( $meta_title ) ) {
+										$display_title = $meta_title;
+									}
 								}
-								$categories = wp_get_post_terms( $post_id, 'product_category' );
-								$category_names = ! empty( $categories ) ? implode( ', ', wp_list_pluck( $categories, 'name' ) ) : '';
-								$item_code = PC_Product_Display::get_item_code( $post_id );
-								$pack_size = get_post_meta( $post_id, 'dw_pc_pack_size_raw', true );
-								$brand = PC_Product_Display::get_brand( $post_id );
-								$origin = PC_Product_Display::get_origin( $post_id );
-								$product_status = get_post_meta( $post_id, 'dw_pc_status', true );
-								$status_labels = array(
-									'active'       => __( 'Active', 'dw-catalog-wp' ),
-									'inactive'     => __( 'Inactive', 'dw-catalog-wp' ),
-									'discontinued' => __( 'Discontinued', 'dw-catalog-wp' ),
-								);
 								?>
 								<tr>
 									<th scope="row" class="check-column">
-										<input type="checkbox" name="product_ids[]" value="<?php echo esc_attr( $post_id ); ?>">
+										<input type="checkbox" name="item_ids[]" value="<?php echo esc_attr( $post_id ); ?>">
 									</th>
 									<td>
 										<strong>
 											<a href="<?php echo esc_url( get_edit_post_link( $post_id, 'raw' ) ); ?>">
-												<?php echo $product_name ? esc_html( $product_name ) : esc_html__( '(No Product Name)', 'dw-catalog-wp' ); ?>
+												<?php echo $display_title ? esc_html( $display_title ) : esc_html__( '(No Title)', 'dw-catalog-wp' ); ?>
 											</a>
 										</strong>
 									</td>
-									<td><?php echo $category_names ? esc_html( $category_names ) : '—'; ?></td>
-									<td><?php echo $item_code ? esc_html( $item_code ) : '—'; ?></td>
-									<td><?php echo $pack_size ? esc_html( $pack_size ) : '—'; ?></td>
-									<td><?php echo $brand ? esc_html( $brand ) : '—'; ?></td>
-									<td><?php echo $origin ? esc_html( $origin ) : '—'; ?></td>
-									<td><?php echo isset( $status_labels[ $product_status ] ) ? esc_html( $status_labels[ $product_status ] ) : ( $product_status ? esc_html( $product_status ) : '—' ); ?></td>
+									<?php if ( $pt_has_cat ) : ?>
+										<td>
+											<?php
+											$cat_tax = PC_Config::get_category_taxonomy( $pt_slug );
+											$terms = wp_get_post_terms( $post_id, $cat_tax );
+											$names = ! empty( $terms ) && ! is_wp_error( $terms ) ? implode( ', ', wp_list_pluck( $terms, 'name' ) ) : '';
+											echo $names ? esc_html( $names ) : '—';
+											?>
+										</td>
+									<?php endif; ?>
+									<?php foreach ( $list_fields as $field ) : ?>
+										<?php if ( ! empty( $field['is_title_field'] ) ) continue; ?>
+										<td>
+											<?php
+											$val = get_post_meta( $post_id, $field['meta_key'], true );
+											if ( $field['type'] === 'select' && $val !== '' ) {
+												$opts = PC_Config::parse_select_options( $field['options'] );
+												$val = isset( $opts[ $val ] ) ? $opts[ $val ] : $val;
+											}
+											echo $val !== '' ? esc_html( $val ) : '—';
+											?>
+										</td>
+									<?php endforeach; ?>
 									<td>
-										<a href="<?php echo esc_url( get_edit_post_link( $post_id, 'raw' ) ); ?>">
-											<?php _e( 'Edit', 'dw-catalog-wp' ); ?>
-										</a>
+										<a href="<?php echo esc_url( get_edit_post_link( $post_id, 'raw' ) ); ?>"><?php _e( 'Edit', 'dw-catalog-wp' ); ?></a>
 										|
-										<a href="<?php echo esc_url( admin_url( 'admin-post.php?action=pc_delete_product&product_id=' . $post_id . '&_wpnonce=' . wp_create_nonce( 'pc_delete_' . $post_id ) ) ); ?>" 
-										   onclick="return confirm('<?php esc_attr_e( 'Are you sure you want to delete this product?', 'dw-catalog-wp' ); ?>');">
+										<a href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=dw_catalog_delete_item&item_id=' . $post_id . '&post_type=' . $pt_slug ), 'dw_catalog_delete_' . $post_id ) ); ?>"
+										   onclick="return confirm('<?php esc_attr_e( 'Are you sure you want to delete this item?', 'dw-catalog-wp' ); ?>');">
 											<?php _e( 'Delete', 'dw-catalog-wp' ); ?>
 										</a>
 									</td>
@@ -313,20 +313,16 @@ class PC_Admin_Pages {
 					</table>
 
 					<?php
-					// Pagination
-					$pagination_base = add_query_arg( 'page', 'pc-products', admin_url( 'admin.php' ) );
-					if ( $search_name !== '' ) {
-						$pagination_base = add_query_arg( 'pc_search_name', $search_name, $pagination_base );
-					}
-					if ( $search_item_code !== '' ) {
-						$pagination_base = add_query_arg( 'pc_search_item_code', $search_item_code, $pagination_base );
+					$pagination_base = add_query_arg( array( 'page' => $menu_slug ), admin_url( 'admin.php' ) );
+					if ( $search_query !== '' ) {
+						$pagination_base = add_query_arg( 'dw_search', $search_query, $pagination_base );
 					}
 					$pagination_base = add_query_arg( 'paged', '%#%', $pagination_base );
 					$pagination = paginate_links( array(
 						'base'    => $pagination_base,
 						'format'  => '',
 						'current' => $paged,
-						'total'   => $products->max_num_pages,
+						'total'   => $query->max_num_pages,
 					) );
 					if ( $pagination ) {
 						echo '<div class="tablenav"><div class="tablenav-pages">' . $pagination . '</div></div>';
@@ -334,9 +330,9 @@ class PC_Admin_Pages {
 					?>
 				</form>
 			<?php else : ?>
-				<p><?php _e( 'No products found.', 'dw-catalog-wp' ); ?></p>
-				<a href="<?php echo esc_url( admin_url( 'post-new.php?post_type=product' ) ); ?>" class="button button-primary">
-					<?php _e( 'Add Your First Product', 'dw-catalog-wp' ); ?>
+				<p><?php printf( __( 'No %s found.', 'dw-catalog-wp' ), strtolower( esc_html( $pt_config['plural_name'] ) ) ); ?></p>
+				<a href="<?php echo esc_url( admin_url( 'post-new.php?post_type=' . $pt_slug ) ); ?>" class="button button-primary">
+					<?php printf( __( 'Add Your First %s', 'dw-catalog-wp' ), esc_html( $pt_config['singular_name'] ) ); ?>
 				</a>
 			<?php endif; ?>
 		</div>
@@ -345,93 +341,46 @@ class PC_Admin_Pages {
 	}
 
 	/**
-	 * Redirect "Add New" to WordPress standard editor (Featured Image / Publish work natively).
+	 * Handle delete item.
 	 */
-	public function redirect_to_new_product() {
-		if ( ! current_user_can( 'edit_posts' ) ) {
-			wp_die( __( 'You do not have permission to access this page.', 'dw-catalog-wp' ) );
-		}
-		wp_safe_redirect( admin_url( 'post-new.php?post_type=' . $this->post_type ) );
-		exit;
-	}
+	public function handle_delete_item() {
+		$item_id = isset( $_GET['item_id'] ) ? intval( $_GET['item_id'] ) : 0;
+		$pt_slug = isset( $_GET['post_type'] ) ? sanitize_key( $_GET['post_type'] ) : '';
 
-	/**
-	 * Redirect "Edit" (old URL) to WordPress standard editor.
-	 */
-	public function redirect_to_edit_product() {
-		$product_id = isset( $_GET['product_id'] ) ? intval( $_GET['product_id'] ) : 0;
-		if ( ! $product_id ) {
-			wp_die( __( 'Product not found.', 'dw-catalog-wp' ) );
+		if ( ! $item_id || ! $pt_slug ) {
+			wp_die( __( 'Invalid request.', 'dw-catalog-wp' ) );
 		}
-		if ( ! current_user_can( 'edit_posts' ) ) {
-			wp_die( __( 'You do not have permission to access this page.', 'dw-catalog-wp' ) );
+		if ( ! isset( $_GET['_wpnonce'] ) || ! wp_verify_nonce( $_GET['_wpnonce'], 'dw_catalog_delete_' . $item_id ) ) {
+			wp_die( __( 'Security check failed.', 'dw-catalog-wp' ) );
 		}
-		$post = get_post( $product_id );
-		if ( ! $post || $post->post_type !== $this->post_type ) {
-			wp_die( __( 'Product not found.', 'dw-catalog-wp' ) );
-		}
-		wp_safe_redirect( get_edit_post_link( $product_id, 'raw' ) );
-		exit;
-	}
-
-	/**
-	 * Handle delete product
-	 */
-	public function handle_delete_product() {
-		$product_id = isset( $_GET['product_id'] ) ? intval( $_GET['product_id'] ) : 0;
-
-		if ( ! $product_id ) {
-			wp_die( __( 'Product ID is required.', 'dw-catalog-wp' ) );
-		}
-
-		// Verify nonce
-		if ( ! isset( $_GET['_wpnonce'] ) || ! wp_verify_nonce( $_GET['_wpnonce'], 'pc_delete_' . $product_id ) ) {
-			wp_die( __( 'Security verification failed.', 'dw-catalog-wp' ) );
-		}
-
-		// Check permissions
 		if ( ! current_user_can( 'delete_posts' ) ) {
-			wp_die( __( 'You do not have permission to perform this action.', 'dw-catalog-wp' ) );
+			wp_die( __( 'Unauthorized', 'dw-catalog-wp' ) );
 		}
 
-		// Delete product
-		wp_delete_post( $product_id, true );
+		wp_delete_post( $item_id, true );
 
-		// Redirect
-		$redirect_url = add_query_arg(
-			array(
-				'page'    => 'pc-products',
-				'deleted' => '1',
-			),
-			admin_url( 'admin.php' )
-		);
-		wp_safe_redirect( $redirect_url );
+		wp_safe_redirect( admin_url( 'admin.php?page=dw-catalog-' . $pt_slug . '&deleted=1' ) );
 		exit;
 	}
 
 	/**
-	 * Enqueue admin scripts
-	 * Only used on the product list page (Add New / Edit redirect to standard editor).
-	 *
-	 * @param string $hook Current admin page hook
+	 * Enqueue admin scripts for the list pages.
 	 */
 	public function enqueue_admin_scripts( $hook ) {
-		if ( $hook !== 'toplevel_page_pc-products' ) {
+		$page = isset( $_GET['page'] ) ? $_GET['page'] : '';
+		$pt_slug = $this->get_current_post_type_slug();
+		if ( empty( $pt_slug ) || ! PC_Config::is_our_post_type( $pt_slug ) ) {
+			return;
+		}
+		// Only on our list pages (page = dw-catalog-{slug})
+		if ( $page !== 'dw-catalog-' . $pt_slug ) {
 			return;
 		}
 
 		$config = pc_get_plugin_config();
-		$css_url = PC_URL_Helper::get_css_url( 'admin.css' );
 		$css_path = pc_get_plugin_path() . 'assets/css/admin.css';
-
 		if ( file_exists( $css_path ) ) {
-			wp_enqueue_style(
-				'pc-admin-style',
-				$css_url,
-				array(),
-				$config['plugin_version']
-			);
+			wp_enqueue_style( 'pc-admin-style', PC_URL_Helper::get_css_url( 'admin.css' ), array(), $config['plugin_version'] );
 		}
 	}
 }
-
