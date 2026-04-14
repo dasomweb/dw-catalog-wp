@@ -3,7 +3,7 @@
  * Plugin Name: DW Catalog WP
  * Plugin URI: https://github.com/dasomweb/dw-catalog-wp
  * Description: Product catalog with dynamic custom fields per post type.
- * Version: 1.0.3
+ * Version: 1.0.4
  * Author: Dasom Web
  * Author URI: https://github.com/dasomweb
  * License: GPL v2 or later
@@ -27,7 +27,7 @@ function dwcat_get_config() {
 		'github_repo_owner'  => 'dasomweb',
 		'github_repo_name'   => 'dw-catalog-wp',
 		'plugin_slug'        => 'dw-catalog-wp',
-		'plugin_version'     => '1.0.3',
+		'plugin_version'     => '1.0.4',
 		'plugin_name'        => 'DW Catalog WP',
 		'plugin_text_domain' => 'dw-catalog-wp',
 		'github_branch'      => 'main',
@@ -143,16 +143,52 @@ function dwcat_init() {
 register_activation_hook( __FILE__, 'dwcat_activate' );
 function dwcat_activate() {
 	$config = dwcat_get_config();
+	$old_version = get_option( 'dwcat_version', '' );
+
 	update_option( 'dwcat_version', $config['plugin_version'] );
 	update_option( 'dwcat_activated', time() );
 
 	// Ensure default config is seeded
 	DWCAT_Config::get_post_types();
 
+	// Migration: seed default fields for existing post types that have no field config yet
+	dwcat_migrate( $old_version, $config['plugin_version'] );
+
 	// Register post types for rewrite flush
 	$pt = new DWCAT_Post_Type();
 	$pt->register_all();
 	flush_rewrite_rules();
+}
+
+/**
+ * Migration: runs on activation when upgrading from an older version.
+ * Ensures hardcoded fields from pre-1.0 are migrated to the dynamic field config.
+ */
+function dwcat_migrate( $old_version, $new_version ) {
+	// If upgrading from pre-1.0 (old pc_ era) or fresh install with no field config
+	$post_types = DWCAT_Config::get_post_types();
+	foreach ( $post_types as $slug => $config ) {
+		$fields = get_option( DWCAT_Config::OPTION_FIELDS_PREFIX . $slug, null );
+		if ( $fields === null || ( is_array( $fields ) && empty( $fields ) ) ) {
+			// No fields configured yet — seed defaults
+			$defaults = DWCAT_Config::get_default_fields( $slug );
+			if ( ! empty( $defaults ) ) {
+				update_option( DWCAT_Config::OPTION_FIELDS_PREFIX . $slug, $defaults, true );
+			}
+		}
+	}
+}
+
+// Version check on every admin load — handles upgrades without re-activation
+add_action( 'admin_init', 'dwcat_check_version' );
+function dwcat_check_version() {
+	$config = dwcat_get_config();
+	$stored = get_option( 'dwcat_version', '' );
+	if ( $stored !== $config['plugin_version'] ) {
+		dwcat_migrate( $stored, $config['plugin_version'] );
+		update_option( 'dwcat_version', $config['plugin_version'] );
+		flush_rewrite_rules();
+	}
 }
 
 // Deactivation hook

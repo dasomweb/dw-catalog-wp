@@ -98,6 +98,22 @@ class DWCAT_Admin_Pages {
 					'edit-tags.php?taxonomy=' . $tag_tax . '&post_type=' . $slug
 				);
 			}
+
+			// Custom Fields — redirect to manage-fields page for this post type
+			add_submenu_page(
+				$menu_slug,
+				__( 'Custom Fields', 'dw-catalog-wp' ),
+				__( 'Custom Fields', 'dw-catalog-wp' ),
+				'manage_options',
+				$menu_slug . '-custom-fields',
+				function () use ( $slug ) {
+					if ( ! current_user_can( 'manage_options' ) ) {
+						wp_die( __( 'Unauthorized', 'dw-catalog-wp' ) );
+					}
+					wp_safe_redirect( admin_url( 'admin.php?page=dw-catalog-manage-fields&post_type=' . $slug ) );
+					exit;
+				}
+			);
 		}
 	}
 
