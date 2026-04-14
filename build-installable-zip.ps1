@@ -21,21 +21,40 @@ if (Test-Path "composer.json") {
 
 # 푸시한 파일만 복사 (release.yml과 동일)
 Copy-Item "dw-catalog-wp.php" $pluginDir
-Copy-Item "index.php" $pluginDir
+if (Test-Path "uninstall.php") { Copy-Item "uninstall.php" $pluginDir }
 Copy-Item "includes" $pluginDir -Recurse -Force
 Copy-Item "assets" $pluginDir -Recurse -Force
 if (Test-Path "vendor") { Copy-Item "vendor" $pluginDir -Recurse -Force }
-if (Test-Path "uninstall.php") { Copy-Item "uninstall.php" $pluginDir }
 
 # WordPress용 요약
 @"
 === DW Catalog WP ===
+Contributors: dasomweb
+Tags: catalog, custom fields, custom post type
 Requires at least: 5.0
+Tested up to: 6.7
 Requires PHP: 7.4
 Stable tag: $ver
 License: GPLv2 or later
+License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Product catalog post type, custom fields, bulk import, GitHub updates.
+Product catalog with dynamic custom fields per post type.
+
+== Description ==
+
+DW Catalog WP lets you manage product catalogs with dynamic custom fields.
+Each post type gets its own admin menu, list page, bulk import, PDF export, and field reference.
+
+== Installation ==
+
+1. Upload the plugin zip via Plugins > Add New > Upload Plugin.
+2. Activate the plugin.
+3. Visit Settings > Permalinks to flush rewrite rules.
+
+== Changelog ==
+
+= $ver =
+* See GitHub Releases for details.
 "@ | Set-Content "$pluginDir\README.txt" -Encoding UTF8
 
 # ZIP filename = versioned (dw-catalog-wp-1.5.6.zip). Contents = single root folder "dw-catalog-wp/" so WordPress always installs to wp-content/plugins/dw-catalog-wp/

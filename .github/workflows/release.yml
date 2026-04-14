@@ -53,6 +53,7 @@ jobs:
           mkdir -p temp_plugin/${PLUGIN_NAME}
           rsync -av --exclude='.git*' \
             --exclude='.github' \
+            --exclude='.claude' \
             --exclude='*.DS_Store' \
             --exclude='*.log' \
             --exclude='node_modules' \
@@ -62,12 +63,49 @@ jobs:
             --exclude='DOMAIN-CHANGE-GUIDE.md' \
             --exclude='IMPLEMENTATION-SUMMARY.md' \
             --exclude='GITHUB-DEPLOYMENT-SUMMARY.md' \
+            --exclude='GITHUB-UPDATE-GUIDE.md' \
             --exclude='verify-domain-agnostic.php' \
             --exclude='create-release.sh' \
+            --exclude='build-installable-zip.ps1' \
+            --exclude='composer.json' \
+            --exclude='composer.lock' \
             --exclude='temp_plugin' \
             --exclude='*.zip' \
             ./ temp_plugin/${PLUGIN_NAME}/
           
+          # Generate README.txt (WordPress plugin standard)
+          cat > "temp_plugin/${PLUGIN_NAME}/README.txt" <<READMEEOF
+          === DW Catalog WP ===
+          Contributors: dasomweb
+          Tags: catalog, custom fields, custom post type
+          Requires at least: 5.0
+          Tested up to: 6.7
+          Requires PHP: 7.4
+          Stable tag: ${VERSION}
+          License: GPLv2 or later
+          License URI: https://www.gnu.org/licenses/gpl-2.0.html
+
+          Product catalog with dynamic custom fields per post type.
+
+          == Description ==
+
+          DW Catalog WP lets you manage product catalogs with dynamic custom fields.
+          Each post type gets its own admin menu, list page, bulk import, PDF export, and field reference.
+
+          == Installation ==
+
+          1. Upload the plugin zip via Plugins > Add New > Upload Plugin.
+          2. Activate the plugin.
+          3. Visit Settings > Permalinks to flush rewrite rules.
+
+          == Changelog ==
+
+          = ${VERSION} =
+          * See GitHub Releases for details.
+          READMEEOF
+          # Trim leading whitespace from heredoc
+          sed -i 's/^          //' "temp_plugin/${PLUGIN_NAME}/README.txt"
+
           cd temp_plugin
           zip -r "../$ZIP_NAME" "${PLUGIN_NAME}"
           cd ..
