@@ -35,8 +35,8 @@ class PC_PDF_Export {
 	public function add_admin_menu() {
 		add_submenu_page(
 			'pc-products',
-			__( 'PDF Export', 'dw-product-catalog' ),
-			__( 'PDF Export', 'dw-product-catalog' ),
+			__( 'PDF Export', 'dw-catalog-wp' ),
+			__( 'PDF Export', 'dw-catalog-wp' ),
 			'edit_posts',
 			'pc-pdf-export',
 			array( $this, 'render_page' )
@@ -50,14 +50,14 @@ class PC_PDF_Export {
 	 */
 	public static function get_exportable_fields() {
 		return array(
-			'post_title'           => __( 'Product Name', 'dw-product-catalog' ),
-			'dw_pc_item_code'      => __( 'Item Code', 'dw-product-catalog' ),
-			'dw_pc_pack_size_raw'  => __( 'Pack Size / Case Pack', 'dw-product-catalog' ),
-			'dw_pc_brand_raw'      => __( 'Brand', 'dw-product-catalog' ),
-			'dw_pc_origin_raw'     => __( 'Origin', 'dw-product-catalog' ),
-			'dw_pc_status'         => __( 'Status', 'dw-product-catalog' ),
-			'product_category'    => __( 'Category', 'dw-product-catalog' ),
-			'dw_pc_internal_note'  => __( 'ETC', 'dw-product-catalog' ),
+			'post_title'           => __( 'Product Name', 'dw-catalog-wp' ),
+			'dw_pc_item_code'      => __( 'Item Code', 'dw-catalog-wp' ),
+			'dw_pc_pack_size_raw'  => __( 'Pack Size / Case Pack', 'dw-catalog-wp' ),
+			'dw_pc_brand_raw'      => __( 'Brand', 'dw-catalog-wp' ),
+			'dw_pc_origin_raw'     => __( 'Origin', 'dw-catalog-wp' ),
+			'dw_pc_status'         => __( 'Status', 'dw-catalog-wp' ),
+			'product_category'    => __( 'Category', 'dw-catalog-wp' ),
+			'dw_pc_internal_note'  => __( 'ETC', 'dw-catalog-wp' ),
 		);
 	}
 
@@ -66,7 +66,7 @@ class PC_PDF_Export {
 	 */
 	public function render_page() {
 		if ( ! current_user_can( 'edit_posts' ) ) {
-			wp_die( esc_html__( 'You do not have permission to access this page.', 'dw-product-catalog' ) );
+			wp_die( esc_html__( 'You do not have permission to access this page.', 'dw-catalog-wp' ) );
 		}
 
 		$categories = get_terms( array(
@@ -81,14 +81,14 @@ class PC_PDF_Export {
 		$form_url = admin_url( 'admin-post.php?action=pc_pdf_export' );
 		?>
 		<div class="wrap">
-			<h1><?php esc_html_e( 'PDF Export', 'dw-product-catalog' ); ?></h1>
-			<p><?php esc_html_e( 'Export products by category to a US Letter PDF with card layout. Choose categories and which fields to include.', 'dw-product-catalog' ); ?></p>
+			<h1><?php esc_html_e( 'PDF Export', 'dw-catalog-wp' ); ?></h1>
+			<p><?php esc_html_e( 'Export products by category to a US Letter PDF with card layout. Choose categories and which fields to include.', 'dw-catalog-wp' ); ?></p>
 
 			<?php
 			$autoload = pc_get_plugin_path() . 'vendor/autoload.php';
 			if ( ! file_exists( $autoload ) ) {
 				echo '<div class="notice notice-warning"><p>';
-				echo esc_html__( 'PDF export requires Composer dependencies. Run "composer install" in the plugin directory, or use a release ZIP that includes them.', 'dw-product-catalog' );
+				echo esc_html__( 'PDF export requires Composer dependencies. Run "composer install" in the plugin directory, or use a release ZIP that includes them.', 'dw-catalog-wp' );
 				echo '</p></div>';
 			}
 			?>
@@ -96,11 +96,11 @@ class PC_PDF_Export {
 			<form method="post" action="<?php echo esc_url( $form_url ); ?>" id="pc-pdf-export-form" style="max-width: 720px;">
 				<?php wp_nonce_field( 'pc_pdf_export', 'pc_pdf_export_nonce' ); ?>
 
-				<h2 class="title"><?php esc_html_e( 'Categories', 'dw-product-catalog' ); ?></h2>
-				<p class="description"><?php esc_html_e( 'Select one or more categories. Products in these categories will be included.', 'dw-product-catalog' ); ?></p>
+				<h2 class="title"><?php esc_html_e( 'Categories', 'dw-catalog-wp' ); ?></h2>
+				<p class="description"><?php esc_html_e( 'Select one or more categories. Products in these categories will be included.', 'dw-catalog-wp' ); ?></p>
 				<div style="max-height: 200px; overflow-y: auto; border: 1px solid #c3c4c7; padding: 10px; background: #fff; margin-bottom: 20px;">
 					<?php if ( empty( $categories ) ) : ?>
-						<p><?php esc_html_e( 'No categories found.', 'dw-product-catalog' ); ?></p>
+						<p><?php esc_html_e( 'No categories found.', 'dw-catalog-wp' ); ?></p>
 					<?php else : ?>
 						<?php foreach ( $categories as $term ) : ?>
 							<label style="display: block; margin-bottom: 6px;">
@@ -114,17 +114,17 @@ class PC_PDF_Export {
 					<?php endif; ?>
 				</div>
 
-				<h2 class="title"><?php esc_html_e( 'Include featured image', 'dw-product-catalog' ); ?></h2>
+				<h2 class="title"><?php esc_html_e( 'Include featured image', 'dw-catalog-wp' ); ?></h2>
 				<label>
 					<input type="checkbox" name="pc_pdf_include_image" value="1" checked>
-					<?php esc_html_e( 'Show product image in each card', 'dw-product-catalog' ); ?>
+					<?php esc_html_e( 'Show product image in each card', 'dw-catalog-wp' ); ?>
 				</label>
 
-				<h2 class="title" style="margin-top: 24px;"><?php esc_html_e( 'Grid layout', 'dw-product-catalog' ); ?></h2>
-				<p class="description"><?php esc_html_e( 'Number of cards per row in the PDF.', 'dw-product-catalog' ); ?></p>
+				<h2 class="title" style="margin-top: 24px;"><?php esc_html_e( 'Grid layout', 'dw-catalog-wp' ); ?></h2>
+				<p class="description"><?php esc_html_e( 'Number of cards per row in the PDF.', 'dw-catalog-wp' ); ?></p>
 				<p>
 					<label for="pc_pdf_per_row">
-						<?php esc_html_e( 'Cards per row:', 'dw-product-catalog' ); ?>
+						<?php esc_html_e( 'Cards per row:', 'dw-catalog-wp' ); ?>
 					</label>
 					<select name="pc_pdf_per_row" id="pc_pdf_per_row">
 						<option value="1">1</option>
@@ -134,8 +134,8 @@ class PC_PDF_Export {
 					</select>
 				</p>
 
-				<h2 class="title" style="margin-top: 24px;"><?php esc_html_e( 'Fields to include', 'dw-product-catalog' ); ?></h2>
-				<p class="description"><?php esc_html_e( 'Select fields and optionally set a custom label for the PDF.', 'dw-product-catalog' ); ?></p>
+				<h2 class="title" style="margin-top: 24px;"><?php esc_html_e( 'Fields to include', 'dw-catalog-wp' ); ?></h2>
+				<p class="description"><?php esc_html_e( 'Select fields and optionally set a custom label for the PDF.', 'dw-catalog-wp' ); ?></p>
 				<table class="form-table" role="presentation">
 					<tbody>
 						<?php foreach ( $fields as $meta_key => $default_label ) : ?>
@@ -158,7 +158,7 @@ class PC_PDF_Export {
 				</table>
 
 				<p class="submit">
-					<button type="submit" name="pc_pdf_generate" class="button button-primary"><?php esc_html_e( 'Generate PDF', 'dw-product-catalog' ); ?></button>
+					<button type="submit" name="pc_pdf_generate" class="button button-primary"><?php esc_html_e( 'Generate PDF', 'dw-catalog-wp' ); ?></button>
 				</p>
 			</form>
 		</div>
@@ -170,28 +170,28 @@ class PC_PDF_Export {
 	 */
 	public function handle_export() {
 		if ( ! isset( $_POST['pc_pdf_export_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['pc_pdf_export_nonce'] ) ), 'pc_pdf_export' ) ) {
-			wp_die( esc_html__( 'Security check failed.', 'dw-product-catalog' ) );
+			wp_die( esc_html__( 'Security check failed.', 'dw-catalog-wp' ) );
 		}
 		if ( ! current_user_can( 'edit_posts' ) ) {
-			wp_die( esc_html__( 'You do not have permission to export.', 'dw-product-catalog' ) );
+			wp_die( esc_html__( 'You do not have permission to export.', 'dw-catalog-wp' ) );
 		}
 
 		$autoload = pc_get_plugin_path() . 'vendor/autoload.php';
 		if ( ! file_exists( $autoload ) ) {
-			wp_die( esc_html__( 'PDF library not found. Run composer install in the plugin directory.', 'dw-product-catalog' ) );
+			wp_die( esc_html__( 'PDF library not found. Run composer install in the plugin directory.', 'dw-catalog-wp' ) );
 		}
 
 		$category_ids = isset( $_POST['pc_pdf_categories'] ) && is_array( $_POST['pc_pdf_categories'] ) ? array_map( 'intval', $_POST['pc_pdf_categories'] ) : array();
 		$category_ids = array_filter( $category_ids );
 		if ( empty( $category_ids ) ) {
-			wp_die( esc_html__( 'Please select at least one category.', 'dw-product-catalog' ) );
+			wp_die( esc_html__( 'Please select at least one category.', 'dw-catalog-wp' ) );
 		}
 
 		$include_image = ! empty( $_POST['pc_pdf_include_image'] );
 		$per_row = isset( $_POST['pc_pdf_per_row'] ) ? max( 1, min( 4, (int) $_POST['pc_pdf_per_row'] ) ) : 2;
 		$selected_fields = isset( $_POST['pc_pdf_fields'] ) && is_array( $_POST['pc_pdf_fields'] ) ? array_map( 'sanitize_text_field', wp_unslash( $_POST['pc_pdf_fields'] ) ) : array();
 		if ( empty( $selected_fields ) && ! $include_image ) {
-			wp_die( esc_html__( 'Please select at least one field or include the product image.', 'dw-product-catalog' ) );
+			wp_die( esc_html__( 'Please select at least one field or include the product image.', 'dw-catalog-wp' ) );
 		}
 		$field_labels = isset( $_POST['pc_pdf_field_label'] ) && is_array( $_POST['pc_pdf_field_label'] ) ? array_map( 'sanitize_text_field', wp_unslash( $_POST['pc_pdf_field_label'] ) ) : array();
 		$all_fields = self::get_exportable_fields();
@@ -219,7 +219,7 @@ class PC_PDF_Export {
 		wp_reset_postdata();
 
 		if ( empty( $products ) ) {
-			wp_die( esc_html__( 'No products found in the selected categories.', 'dw-product-catalog' ) );
+			wp_die( esc_html__( 'No products found in the selected categories.', 'dw-catalog-wp' ) );
 		}
 
 		require_once $autoload;
@@ -327,10 +327,10 @@ class PC_PDF_Export {
 		$value = get_post_meta( $post_id, $key, true );
 		if ( $key === 'dw_pc_status' ) {
 			$status_labels = array(
-				'active'       => __( 'Active', 'dw-product-catalog' ),
-				'inactive'     => __( 'Inactive', 'dw-product-catalog' ),
-				'out_of_stock' => __( 'Out of Stock', 'dw-product-catalog' ),
-				'discontinued' => __( 'Discontinued', 'dw-product-catalog' ),
+				'active'       => __( 'Active', 'dw-catalog-wp' ),
+				'inactive'     => __( 'Inactive', 'dw-catalog-wp' ),
+				'out_of_stock' => __( 'Out of Stock', 'dw-catalog-wp' ),
+				'discontinued' => __( 'Discontinued', 'dw-catalog-wp' ),
 			);
 			$value = isset( $status_labels[ $value ] ) ? $status_labels[ $value ] : $value;
 		}

@@ -33,8 +33,8 @@ class PC_Field_Reference {
 	public function add_admin_menu() {
 		add_submenu_page(
 			'pc-products',
-			__( 'Field Reference', 'dw-product-catalog' ),
-			__( 'Field Reference', 'dw-product-catalog' ),
+			__( 'Field Reference', 'dw-catalog-wp' ),
+			__( 'Field Reference', 'dw-catalog-wp' ),
 			'edit_posts',
 			'pc-field-reference',
 			array( $this, 'render_page' )
@@ -49,83 +49,83 @@ class PC_Field_Reference {
 	public function get_custom_fields() {
 		return array(
 			array(
-				'label'       => __( 'Product Name', 'dw-product-catalog' ),
+				'label'       => __( 'Product Name', 'dw-catalog-wp' ),
 				'meta_key'    => 'dw_pc_product_name',
 				'type'        => 'text',
-				'description' => __( 'Product name. Saved as post title.', 'dw-product-catalog' ),
+				'description' => __( 'Product name. Saved as post title.', 'dw-catalog-wp' ),
 				'required'    => true,
 				'example'     => 'Premium Coffee Beans',
 			),
 			array(
-				'label'       => __( 'Category Name', 'dw-product-catalog' ),
+				'label'       => __( 'Category Name', 'dw-catalog-wp' ),
 				'meta_key'    => 'dw_pc_category_name',
 				'type'        => 'text',
-				'description' => __( 'Category display name. Created if missing (import/save).', 'dw-product-catalog' ),
+				'description' => __( 'Category display name. Created if missing (import/save).', 'dw-catalog-wp' ),
 				'required'    => false,
 				'example'     => 'Seafood',
 			),
 			array(
-				'label'       => __( 'Category Slug', 'dw-product-catalog' ),
+				'label'       => __( 'Category Slug', 'dw-catalog-wp' ),
 				'meta_key'    => 'dw_pc_category_slug',
 				'type'        => 'slug',
-				'description' => __( 'Category code / slug. Created if missing (import/save).', 'dw-product-catalog' ),
+				'description' => __( 'Category code / slug. Created if missing (import/save).', 'dw-catalog-wp' ),
 				'required'    => false,
 				'example'     => 'category-code',
 			),
 			array(
-				'label'       => __( 'Item Code', 'dw-product-catalog' ),
+				'label'       => __( 'Item Code', 'dw-catalog-wp' ),
 				'meta_key'    => 'dw_pc_item_code',
 				'type'        => 'text',
-				'description' => __( 'Item code. Used as product URL slug (post slug).', 'dw-product-catalog' ),
+				'description' => __( 'Item code. Used as product URL slug (post slug).', 'dw-catalog-wp' ),
 				'required'    => false,
 				'example'     => 'ITEM-001',
 			),
 			array(
-				'label'       => __( 'Pack Size / Case Pack', 'dw-product-catalog' ),
+				'label'       => __( 'Pack Size / Case Pack', 'dw-catalog-wp' ),
 				'meta_key'    => 'dw_pc_pack_size_raw',
 				'type'        => 'text',
-				'description' => __( 'Pack size or case pack', 'dw-product-catalog' ),
+				'description' => __( 'Pack size or case pack', 'dw-catalog-wp' ),
 				'required'    => false,
 				'example'     => '10pc/cs',
 			),
 			array(
-				'label'       => __( 'Brand', 'dw-product-catalog' ),
+				'label'       => __( 'Brand', 'dw-catalog-wp' ),
 				'meta_key'    => 'dw_pc_brand_raw',
 				'type'        => 'text',
-				'description' => __( 'Brand', 'dw-product-catalog' ),
+				'description' => __( 'Brand', 'dw-catalog-wp' ),
 				'required'    => false,
 				'example'     => 'Brand Name',
 			),
 			array(
-				'label'       => __( 'Origin', 'dw-product-catalog' ),
+				'label'       => __( 'Origin', 'dw-catalog-wp' ),
 				'meta_key'    => 'dw_pc_origin_raw',
 				'type'        => 'text',
-				'description' => __( 'Country or region', 'dw-product-catalog' ),
+				'description' => __( 'Country or region', 'dw-catalog-wp' ),
 				'required'    => false,
 				'example'     => 'USA, Japan',
 			),
 			array(
-				'label'       => __( 'Status', 'dw-product-catalog' ),
+				'label'       => __( 'Status', 'dw-catalog-wp' ),
 				'meta_key'    => 'dw_pc_status',
 				'type'        => 'select',
-				'description' => __( 'Active, Inactive, Out of Stock, Discontinued', 'dw-product-catalog' ),
+				'description' => __( 'Active, Inactive, Out of Stock, Discontinued', 'dw-catalog-wp' ),
 				'required'    => false,
 				'options'     => array( 'active' => 'Active', 'inactive' => 'Inactive', 'out_of_stock' => 'Out of Stock', 'discontinued' => 'Discontinued' ),
 				'example'     => 'active',
 			),
 			array(
-				'label'       => __( 'ETC', 'dw-product-catalog' ),
+				'label'       => __( 'ETC', 'dw-catalog-wp' ),
 				'meta_key'    => 'dw_pc_internal_note',
 				'type'        => 'textarea',
-				'description' => __( 'Internal notes (ETC)', 'dw-product-catalog' ),
+				'description' => __( 'Internal notes (ETC)', 'dw-catalog-wp' ),
 				'required'    => false,
 				'example'     => 'Note',
 			),
 			array(
-				'label'       => __( 'Featured Image', 'dw-product-catalog' ),
+				'label'       => __( 'Featured Image', 'dw-catalog-wp' ),
 				'meta_key'    => 'featured_image_url',
 				'type'        => 'url',
-				'description' => __( 'Featured image URL (bulk import)', 'dw-product-catalog' ),
+				'description' => __( 'Featured image URL (bulk import)', 'dw-catalog-wp' ),
 				'required'    => false,
 				'example'     => 'https://example.com/image.jpg',
 			),
@@ -138,26 +138,26 @@ class PC_Field_Reference {
 	public function render_page() {
 		// Check permissions
 		if ( ! current_user_can( 'edit_posts' ) ) {
-			wp_die( __( 'You do not have permission to access this page.', 'dw-product-catalog' ) );
+			wp_die( __( 'You do not have permission to access this page.', 'dw-catalog-wp' ) );
 		}
 
 		$fields = $this->get_custom_fields();
 		?>
 		<div class="wrap">
-			<h1><?php _e( 'Field Reference', 'dw-product-catalog' ); ?></h1>
+			<h1><?php _e( 'Field Reference', 'dw-catalog-wp' ); ?></h1>
 			<p class="description">
-				<?php _e( 'This page lists all custom fields used in the Product Catalog plugin. Use these field names when importing data or accessing product information programmatically.', 'dw-product-catalog' ); ?>
+				<?php _e( 'This page lists all custom fields used in the Catalog WP plugin. Use these field names when importing data or accessing product information programmatically.', 'dw-catalog-wp' ); ?>
 			</p>
 
 			<div class="pc-field-reference">
 				<table class="wp-list-table widefat fixed striped">
 					<thead>
 						<tr>
-							<th class="manage-column"><?php _e( 'Label', 'dw-product-catalog' ); ?></th>
-							<th class="manage-column"><?php _e( 'Meta Key', 'dw-product-catalog' ); ?></th>
-							<th class="manage-column"><?php _e( 'Type', 'dw-product-catalog' ); ?></th>
-							<th class="manage-column"><?php _e( 'Description', 'dw-product-catalog' ); ?></th>
-							<th class="manage-column"><?php _e( 'Example', 'dw-product-catalog' ); ?></th>
+							<th class="manage-column"><?php _e( 'Label', 'dw-catalog-wp' ); ?></th>
+							<th class="manage-column"><?php _e( 'Meta Key', 'dw-catalog-wp' ); ?></th>
+							<th class="manage-column"><?php _e( 'Type', 'dw-catalog-wp' ); ?></th>
+							<th class="manage-column"><?php _e( 'Description', 'dw-catalog-wp' ); ?></th>
+							<th class="manage-column"><?php _e( 'Example', 'dw-catalog-wp' ); ?></th>
 						</tr>
 					</thead>
 					<tbody>
@@ -176,7 +176,7 @@ class PC_Field_Reference {
 									<?php echo esc_html( $field['type'] ); ?>
 									<?php if ( isset( $field['options'] ) && is_array( $field['options'] ) ) : ?>
 										<br><small>
-											<?php _e( 'Options:', 'dw-product-catalog' ); ?>
+											<?php _e( 'Options:', 'dw-catalog-wp' ); ?>
 											<?php echo esc_html( implode( ', ', array_keys( $field['options'] ) ) ); ?>
 										</small>
 									<?php endif; ?>
@@ -195,16 +195,16 @@ class PC_Field_Reference {
 				</table>
 
 				<div class="pc-field-reference-info" style="margin-top: 30px;">
-					<h2><?php _e( 'Usage Examples', 'dw-product-catalog' ); ?></h2>
+					<h2><?php _e( 'Usage Examples', 'dw-catalog-wp' ); ?></h2>
 					
-					<h3><?php _e( 'Get Field Value', 'dw-product-catalog' ); ?></h3>
+					<h3><?php _e( 'Get Field Value', 'dw-catalog-wp' ); ?></h3>
 					<pre><code>$product_name = get_post_meta( $post_id, 'dw_pc_product_name', true );
 $item_code = get_post_meta( $post_id, 'dw_pc_item_code', true );
 $brand = get_post_meta( $post_id, 'dw_pc_brand_raw', true );
 $status = get_post_meta( $post_id, 'dw_pc_status', true );
 $internal_note = get_post_meta( $post_id, 'dw_pc_internal_note', true );</code></pre>
 
-					<h3><?php _e( 'Using Helper Functions', 'dw-product-catalog' ); ?></h3>
+					<h3><?php _e( 'Using Helper Functions', 'dw-catalog-wp' ); ?></h3>
 					<pre><code>$product_name = PC_Product_Display::get_product_name( $post_id );
 $item_code = PC_Product_Display::get_item_code( $post_id );
 $pack_size = PC_Product_Display::get_pack_size_raw( $post_id );
@@ -214,8 +214,8 @@ $status = PC_Product_Display::get_status( $post_id );
 $category_slug = PC_Product_Display::get_category_slug( $post_id );
 $internal_note = PC_Product_Display::get_internal_note( $post_id );</code></pre>
 
-					<h3><?php _e( 'Kadence Blocks Pro Dynamic Field', 'dw-product-catalog' ); ?></h3>
-					<p><?php _e( 'Use the meta key directly in Kadence Blocks Pro Dynamic Field:', 'dw-product-catalog' ); ?></p>
+					<h3><?php _e( 'Kadence Blocks Pro Dynamic Field', 'dw-catalog-wp' ); ?></h3>
+					<p><?php _e( 'Use the meta key directly in Kadence Blocks Pro Dynamic Field:', 'dw-catalog-wp' ); ?></p>
 					<ul>
 						<li><code>dw_pc_product_name</code></li>
 						<li><code>dw_pc_item_code</code></li>
@@ -227,20 +227,20 @@ $internal_note = PC_Product_Display::get_internal_note( $post_id );</code></pre>
 						<li><code>dw_pc_internal_note</code></li>
 					</ul>
 
-					<h3><?php _e( 'Excel Import Format', 'dw-product-catalog' ); ?></h3>
-					<p><?php _e( 'When importing from Excel, use these column headers:', 'dw-product-catalog' ); ?></p>
+					<h3><?php _e( 'Excel Import Format', 'dw-catalog-wp' ); ?></h3>
+					<p><?php _e( 'When importing from Excel, use these column headers:', 'dw-catalog-wp' ); ?></p>
 					<ul>
-						<li><code>dw_pc_product_name</code> - <?php _e( 'Product Name (required - will be used as post title)', 'dw-product-catalog' ); ?></li>
-						<li><code>post_content</code> - <?php _e( 'Product Description', 'dw-product-catalog' ); ?></li>
-						<li><code>post_status</code> - <?php _e( 'Status: publish, draft, or private', 'dw-product-catalog' ); ?></li>
-						<li><code>featured_image_url</code> - <?php _e( 'Featured Image URL (will be downloaded and set as featured image)', 'dw-product-catalog' ); ?></li>
+						<li><code>dw_pc_product_name</code> - <?php _e( 'Product Name (required - will be used as post title)', 'dw-catalog-wp' ); ?></li>
+						<li><code>post_content</code> - <?php _e( 'Product Description', 'dw-catalog-wp' ); ?></li>
+						<li><code>post_status</code> - <?php _e( 'Status: publish, draft, or private', 'dw-catalog-wp' ); ?></li>
+						<li><code>featured_image_url</code> - <?php _e( 'Featured Image URL (will be downloaded and set as featured image)', 'dw-catalog-wp' ); ?></li>
 						<?php foreach ( $fields as $field ) : ?>
 							<?php if ( $field['meta_key'] !== 'featured_image_url' && $field['meta_key'] !== 'dw_pc_product_name' ) : ?>
 								<li><code><?php echo esc_html( $field['meta_key'] ); ?></code> - <?php echo esc_html( $field['label'] ); ?></li>
 							<?php endif; ?>
 						<?php endforeach; ?>
 					</ul>
-					<p><strong><?php _e( 'Note:', 'dw-product-catalog' ); ?></strong> <?php _e( 'Product Name (dw_pc_product_name) is used as the post title. Item Code (dw_pc_item_code) is used as the product URL slug (post slug). Category Name and Category Slug are created if they do not exist.', 'dw-product-catalog' ); ?></p>
+					<p><strong><?php _e( 'Note:', 'dw-catalog-wp' ); ?></strong> <?php _e( 'Product Name (dw_pc_product_name) is used as the post title. Item Code (dw_pc_item_code) is used as the product URL slug (post slug). Category Name and Category Slug are created if they do not exist.', 'dw-catalog-wp' ); ?></p>
 				</div>
 			</div>
 		</div>

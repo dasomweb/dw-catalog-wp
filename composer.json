@@ -1,5 +1,5 @@
 {
-    "name": "dasomweb/dw-product-catalog",
+    "name": "dasomweb/dw-catalog-wp",
     "description": "Product catalog plugin PDF export dependency",
     "require": {
         "dompdf/dompdf": "^2.0"

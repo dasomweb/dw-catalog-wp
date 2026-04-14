@@ -25,7 +25,7 @@ class PC_Meta_Box {
 	public function add_meta_boxes() {
 		add_meta_box(
 			'pc_product_details',
-			__( 'Product Details', 'dw-product-catalog' ),
+			__( 'Product Details', 'dw-catalog-wp' ),
 			array( $this, 'render_product_details_meta_box' ),
 			$this->post_type,
 			'normal',
@@ -60,47 +60,47 @@ class PC_Meta_Box {
 			<table class="form-table">
 				<tbody>
 					<tr>
-						<th scope="row"><label for="pc_product_name"><?php _e( 'Product Name', 'dw-product-catalog' ); ?></label></th>
+						<th scope="row"><label for="pc_product_name"><?php _e( 'Product Name', 'dw-catalog-wp' ); ?></label></th>
 						<td><input type="text" id="pc_product_name" name="pc_product_name" value="<?php echo esc_attr( $product_name ); ?>" class="regular-text" /></td>
 					</tr>
 					<tr>
-						<th scope="row"><label for="pc_item_code"><?php _e( 'Item Code', 'dw-product-catalog' ); ?></label></th>
+						<th scope="row"><label for="pc_item_code"><?php _e( 'Item Code', 'dw-catalog-wp' ); ?></label></th>
 						<td><input type="text" id="pc_item_code" name="pc_item_code" value="<?php echo esc_attr( $item_code ); ?>" class="regular-text" /></td>
 					</tr>
 					<tr>
-						<th scope="row"><label for="pc_pack_size_raw"><?php _e( 'Pack Size / Case Pack', 'dw-product-catalog' ); ?></label></th>
+						<th scope="row"><label for="pc_pack_size_raw"><?php _e( 'Pack Size / Case Pack', 'dw-catalog-wp' ); ?></label></th>
 						<td><input type="text" id="pc_pack_size_raw" name="pc_pack_size_raw" value="<?php echo esc_attr( $pack_size_raw ); ?>" class="regular-text" /></td>
 					</tr>
 					<tr>
-						<th scope="row"><label for="pc_brand_raw"><?php _e( 'Brand', 'dw-product-catalog' ); ?></label></th>
+						<th scope="row"><label for="pc_brand_raw"><?php _e( 'Brand', 'dw-catalog-wp' ); ?></label></th>
 						<td><input type="text" id="pc_brand_raw" name="pc_brand_raw" value="<?php echo esc_attr( $brand_raw ); ?>" class="regular-text" /></td>
 					</tr>
 					<tr>
-						<th scope="row"><label for="pc_origin_raw"><?php _e( 'Origin', 'dw-product-catalog' ); ?></label></th>
+						<th scope="row"><label for="pc_origin_raw"><?php _e( 'Origin', 'dw-catalog-wp' ); ?></label></th>
 						<td><input type="text" id="pc_origin_raw" name="pc_origin_raw" value="<?php echo esc_attr( $origin_raw ); ?>" class="regular-text" /></td>
 					</tr>
 					<tr>
-						<th scope="row"><label for="pc_status"><?php _e( 'Status', 'dw-product-catalog' ); ?></label></th>
+						<th scope="row"><label for="pc_status"><?php _e( 'Status', 'dw-catalog-wp' ); ?></label></th>
 						<td>
 							<select name="pc_status" id="pc_status">
-								<option value="" <?php selected( $status, '' ); ?>><?php _e( '— Select —', 'dw-product-catalog' ); ?></option>
-								<option value="active" <?php selected( $status, 'active' ); ?>><?php _e( 'Active', 'dw-product-catalog' ); ?></option>
-								<option value="inactive" <?php selected( $status, 'inactive' ); ?>><?php _e( 'Inactive', 'dw-product-catalog' ); ?></option>
-								<option value="out_of_stock" <?php selected( $status, 'out_of_stock' ); ?>><?php _e( 'Out of Stock', 'dw-product-catalog' ); ?></option>
-								<option value="discontinued" <?php selected( $status, 'discontinued' ); ?>><?php _e( 'Discontinued', 'dw-product-catalog' ); ?></option>
+								<option value="" <?php selected( $status, '' ); ?>><?php _e( '— Select —', 'dw-catalog-wp' ); ?></option>
+								<option value="active" <?php selected( $status, 'active' ); ?>><?php _e( 'Active', 'dw-catalog-wp' ); ?></option>
+								<option value="inactive" <?php selected( $status, 'inactive' ); ?>><?php _e( 'Inactive', 'dw-catalog-wp' ); ?></option>
+								<option value="out_of_stock" <?php selected( $status, 'out_of_stock' ); ?>><?php _e( 'Out of Stock', 'dw-catalog-wp' ); ?></option>
+								<option value="discontinued" <?php selected( $status, 'discontinued' ); ?>><?php _e( 'Discontinued', 'dw-catalog-wp' ); ?></option>
 							</select>
 						</td>
 					</tr>
 					<tr>
-						<th scope="row"><label for="pc_category_name"><?php _e( 'Category Name', 'dw-product-catalog' ); ?></label></th>
-						<td><input type="text" id="pc_category_name" name="pc_category_name" value="<?php echo esc_attr( $category_name ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'e.g., Seafood', 'dw-product-catalog' ); ?>" /></td>
+						<th scope="row"><label for="pc_category_name"><?php _e( 'Category Name', 'dw-catalog-wp' ); ?></label></th>
+						<td><input type="text" id="pc_category_name" name="pc_category_name" value="<?php echo esc_attr( $category_name ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'e.g., Seafood', 'dw-catalog-wp' ); ?>" /></td>
 					</tr>
 					<tr>
-						<th scope="row"><label for="pc_category_slug"><?php _e( 'Category Slug', 'dw-product-catalog' ); ?></label></th>
-						<td><input type="text" id="pc_category_slug" name="pc_category_slug" value="<?php echo esc_attr( $category_slug ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'e.g., category-code', 'dw-product-catalog' ); ?>" /></td>
+						<th scope="row"><label for="pc_category_slug"><?php _e( 'Category Slug', 'dw-catalog-wp' ); ?></label></th>
+						<td><input type="text" id="pc_category_slug" name="pc_category_slug" value="<?php echo esc_attr( $category_slug ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'e.g., category-code', 'dw-catalog-wp' ); ?>" /></td>
 					</tr>
 					<tr>
-						<th scope="row"><label for="pc_internal_note"><?php _e( 'ETC', 'dw-product-catalog' ); ?></label></th>
+						<th scope="row"><label for="pc_internal_note"><?php _e( 'ETC', 'dw-catalog-wp' ); ?></label></th>
 						<td><textarea id="pc_internal_note" name="pc_internal_note" rows="4" class="large-text"><?php echo esc_textarea( $internal_note ); ?></textarea></td>
 					</tr>
 				</tbody>

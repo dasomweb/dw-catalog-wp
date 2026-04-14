@@ -45,9 +45,9 @@ jobs:
       - name: Create plugin zip file
         id: create_zip
         run: |
-          # 배포용 ZIP 파일명 = 반드시 버전 포함 (예: dw-product-catalog-1.5.7.zip)
-          # ZIP 내용 = 루트 폴더 하나 "dw-product-catalog/" → 설치 경로 항상 wp-content/plugins/dw-product-catalog/
-          PLUGIN_NAME="dw-product-catalog"
+          # 배포용 ZIP 파일명 = 반드시 버전 포함 (예: dw-catalog-wp-1.5.7.zip)
+          # ZIP 내용 = 루트 폴더 하나 "dw-catalog-wp/" → 설치 경로 항상 wp-content/plugins/dw-catalog-wp/
+          PLUGIN_NAME="dw-catalog-wp"
           ZIP_NAME="${PLUGIN_NAME}-${VERSION}.zip"
           
           mkdir -p temp_plugin/${PLUGIN_NAME}
@@ -85,18 +85,18 @@ jobs:
           files: ${{ steps.create_zip.outputs.zip_file }}
           name: Release v${{ steps.tag_version.outputs.version }}
           body: |
-            ## DW Product Catalog v${{ steps.tag_version.outputs.version }}
+            ## DW Catalog WP v${{ steps.tag_version.outputs.version }}
             
             ### 설치 방법 (Installation)
             
-            1. **dw-product-catalog-${{ steps.tag_version.outputs.version }}.zip** 다운로드
+            1. **dw-catalog-wp-${{ steps.tag_version.outputs.version }}.zip** 다운로드
             2. WordPress 관리자 > 플러그인 > 새로 추가 > 플러그인 업로드
             3. ZIP 업로드 후 설치·활성화  
-            → 설치 경로는 항상 `wp-content/plugins/dw-product-catalog/` (ZIP 안에 폴더명이 고정되어 있음)
+            → 설치 경로는 항상 `wp-content/plugins/dw-catalog-wp/` (ZIP 안에 폴더명이 고정되어 있음)
             
             ### 업데이트 (Update)
             
-            새 버전 ZIP을 업로드하면 기존 `dw-product-catalog` 폴더가 덮어써져 업데이트됩니다.
+            새 버전 ZIP을 업로드하면 기존 `dw-catalog-wp` 폴더가 덮어써져 업데이트됩니다.
             
             ### 변경사항 (Changelog)
             

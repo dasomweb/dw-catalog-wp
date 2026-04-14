@@ -2,7 +2,7 @@
 /**
  * Post Type Registration Class
  * 
- * Registers the Product Catalog custom post type.
+ * Registers the Catalog WP custom post type.
  * Domain-agnostic implementation.
  * 
  * @package DW_Product_Catalog
@@ -44,30 +44,30 @@ class PC_Post_Type {
 		$config = pc_get_plugin_config();
 		
 		$labels = array(
-			'name'                  => _x( 'Products', 'Post type general name', 'dw-product-catalog' ),
-			'singular_name'         => _x( 'Product', 'Post type singular name', 'dw-product-catalog' ),
-			'menu_name'             => _x( 'Product Catalog', 'Admin Menu text', 'dw-product-catalog' ),
-			'name_admin_bar'        => _x( 'Product', 'Add New on Toolbar', 'dw-product-catalog' ),
-			'add_new'               => __( 'Add New', 'dw-product-catalog' ),
-			'add_new_item'          => __( 'Add New Product', 'dw-product-catalog' ),
-			'new_item'              => __( 'New Product', 'dw-product-catalog' ),
-			'edit_item'             => __( 'Edit Product', 'dw-product-catalog' ),
-			'view_item'             => __( 'View Product', 'dw-product-catalog' ),
-			'all_items'             => __( 'All Products', 'dw-product-catalog' ),
-			'search_items'          => __( 'Search Products', 'dw-product-catalog' ),
-			'parent_item_colon'     => __( 'Parent Product:', 'dw-product-catalog' ),
-			'not_found'             => __( 'No products found.', 'dw-product-catalog' ),
-			'not_found_in_trash'    => __( 'No products found in Trash.', 'dw-product-catalog' ),
-			'featured_image'        => _x( 'Product Image', 'Overrides the "Featured Image" phrase', 'dw-product-catalog' ),
-			'set_featured_image'    => _x( 'Set product image', 'Overrides the "Set featured image" phrase', 'dw-product-catalog' ),
-			'remove_featured_image' => _x( 'Remove product image', 'Overrides the "Remove featured image" phrase', 'dw-product-catalog' ),
-			'use_featured_image'    => _x( 'Use as product image', 'Overrides the "Use as featured image" phrase', 'dw-product-catalog' ),
-			'archives'              => _x( 'Product Archives', 'The post type archive label used in nav menus', 'dw-product-catalog' ),
-			'insert_into_item'      => _x( 'Insert into product', 'Overrides the "Insert into post"/"Insert into page" phrase', 'dw-product-catalog' ),
-			'uploaded_to_this_item' => _x( 'Uploaded to this product', 'Overrides the "Uploaded to this post"/"Uploaded to this page" phrase', 'dw-product-catalog' ),
-			'filter_items_list'     => _x( 'Filter products list', 'Screen reader text for the filter links', 'dw-product-catalog' ),
-			'items_list_navigation' => _x( 'Products list navigation', 'Screen reader text for the pagination', 'dw-product-catalog' ),
-			'items_list'            => _x( 'Products list', 'Screen reader text for the items list', 'dw-product-catalog' ),
+			'name'                  => _x( 'Products', 'Post type general name', 'dw-catalog-wp' ),
+			'singular_name'         => _x( 'Product', 'Post type singular name', 'dw-catalog-wp' ),
+			'menu_name'             => _x( 'Catalog WP', 'Admin Menu text', 'dw-catalog-wp' ),
+			'name_admin_bar'        => _x( 'Product', 'Add New on Toolbar', 'dw-catalog-wp' ),
+			'add_new'               => __( 'Add New', 'dw-catalog-wp' ),
+			'add_new_item'          => __( 'Add New Product', 'dw-catalog-wp' ),
+			'new_item'              => __( 'New Product', 'dw-catalog-wp' ),
+			'edit_item'             => __( 'Edit Product', 'dw-catalog-wp' ),
+			'view_item'             => __( 'View Product', 'dw-catalog-wp' ),
+			'all_items'             => __( 'All Products', 'dw-catalog-wp' ),
+			'search_items'          => __( 'Search Products', 'dw-catalog-wp' ),
+			'parent_item_colon'     => __( 'Parent Product:', 'dw-catalog-wp' ),
+			'not_found'             => __( 'No products found.', 'dw-catalog-wp' ),
+			'not_found_in_trash'    => __( 'No products found in Trash.', 'dw-catalog-wp' ),
+			'featured_image'        => _x( 'Product Image', 'Overrides the "Featured Image" phrase', 'dw-catalog-wp' ),
+			'set_featured_image'    => _x( 'Set product image', 'Overrides the "Set featured image" phrase', 'dw-catalog-wp' ),
+			'remove_featured_image' => _x( 'Remove product image', 'Overrides the "Remove featured image" phrase', 'dw-catalog-wp' ),
+			'use_featured_image'    => _x( 'Use as product image', 'Overrides the "Use as featured image" phrase', 'dw-catalog-wp' ),
+			'archives'              => _x( 'Product Archives', 'The post type archive label used in nav menus', 'dw-catalog-wp' ),
+			'insert_into_item'      => _x( 'Insert into product', 'Overrides the "Insert into post"/"Insert into page" phrase', 'dw-catalog-wp' ),
+			'uploaded_to_this_item' => _x( 'Uploaded to this product', 'Overrides the "Uploaded to this post"/"Uploaded to this page" phrase', 'dw-catalog-wp' ),
+			'filter_items_list'     => _x( 'Filter products list', 'Screen reader text for the filter links', 'dw-catalog-wp' ),
+			'items_list_navigation' => _x( 'Products list navigation', 'Screen reader text for the pagination', 'dw-catalog-wp' ),
+			'items_list'            => _x( 'Products list', 'Screen reader text for the items list', 'dw-catalog-wp' ),
 		);
 
 		$args = array(
@@ -100,17 +100,17 @@ class PC_Post_Type {
 	public function register_taxonomies() {
 		// Product Category
 		$category_labels = array(
-			'name'              => _x( 'Product Categories', 'taxonomy general name', 'dw-product-catalog' ),
-			'singular_name'     => _x( 'Product Category', 'taxonomy singular name', 'dw-product-catalog' ),
-			'search_items'      => __( 'Search Categories', 'dw-product-catalog' ),
-			'all_items'         => __( 'All Categories', 'dw-product-catalog' ),
-			'parent_item'       => __( 'Parent Category', 'dw-product-catalog' ),
-			'parent_item_colon' => __( 'Parent Category:', 'dw-product-catalog' ),
-			'edit_item'         => __( 'Edit Category', 'dw-product-catalog' ),
-			'update_item'       => __( 'Update Category', 'dw-product-catalog' ),
-			'add_new_item'      => __( 'Add New Category', 'dw-product-catalog' ),
-			'new_item_name'     => __( 'New Category Name', 'dw-product-catalog' ),
-			'menu_name'         => __( 'Categories', 'dw-product-catalog' ),
+			'name'              => _x( 'Product Categories', 'taxonomy general name', 'dw-catalog-wp' ),
+			'singular_name'     => _x( 'Product Category', 'taxonomy singular name', 'dw-catalog-wp' ),
+			'search_items'      => __( 'Search Categories', 'dw-catalog-wp' ),
+			'all_items'         => __( 'All Categories', 'dw-catalog-wp' ),
+			'parent_item'       => __( 'Parent Category', 'dw-catalog-wp' ),
+			'parent_item_colon' => __( 'Parent Category:', 'dw-catalog-wp' ),
+			'edit_item'         => __( 'Edit Category', 'dw-catalog-wp' ),
+			'update_item'       => __( 'Update Category', 'dw-catalog-wp' ),
+			'add_new_item'      => __( 'Add New Category', 'dw-catalog-wp' ),
+			'new_item_name'     => __( 'New Category Name', 'dw-catalog-wp' ),
+			'menu_name'         => __( 'Categories', 'dw-catalog-wp' ),
 		);
 
 		$category_args = array(
@@ -127,20 +127,20 @@ class PC_Post_Type {
 
 		// Product Tag
 		$tag_labels = array(
-			'name'                       => _x( 'Product Tags', 'taxonomy general name', 'dw-product-catalog' ),
-			'singular_name'              => _x( 'Product Tag', 'taxonomy singular name', 'dw-product-catalog' ),
-			'search_items'               => __( 'Search Tags', 'dw-product-catalog' ),
-			'popular_items'              => __( 'Popular Tags', 'dw-product-catalog' ),
-			'all_items'                  => __( 'All Tags', 'dw-product-catalog' ),
-			'edit_item'                  => __( 'Edit Tag', 'dw-product-catalog' ),
-			'update_item'                => __( 'Update Tag', 'dw-product-catalog' ),
-			'add_new_item'               => __( 'Add New Tag', 'dw-product-catalog' ),
-			'new_item_name'              => __( 'New Tag Name', 'dw-product-catalog' ),
-			'separate_items_with_commas' => __( 'Separate tags with commas', 'dw-product-catalog' ),
-			'add_or_remove_items'        => __( 'Add or remove tags', 'dw-product-catalog' ),
-			'choose_from_most_used'      => __( 'Choose from the most used tags', 'dw-product-catalog' ),
-			'not_found'                  => __( 'No tags found.', 'dw-product-catalog' ),
-			'menu_name'                  => __( 'Tags', 'dw-product-catalog' ),
+			'name'                       => _x( 'Product Tags', 'taxonomy general name', 'dw-catalog-wp' ),
+			'singular_name'              => _x( 'Product Tag', 'taxonomy singular name', 'dw-catalog-wp' ),
+			'search_items'               => __( 'Search Tags', 'dw-catalog-wp' ),
+			'popular_items'              => __( 'Popular Tags', 'dw-catalog-wp' ),
+			'all_items'                  => __( 'All Tags', 'dw-catalog-wp' ),
+			'edit_item'                  => __( 'Edit Tag', 'dw-catalog-wp' ),
+			'update_item'                => __( 'Update Tag', 'dw-catalog-wp' ),
+			'add_new_item'               => __( 'Add New Tag', 'dw-catalog-wp' ),
+			'new_item_name'              => __( 'New Tag Name', 'dw-catalog-wp' ),
+			'separate_items_with_commas' => __( 'Separate tags with commas', 'dw-catalog-wp' ),
+			'add_or_remove_items'        => __( 'Add or remove tags', 'dw-catalog-wp' ),
+			'choose_from_most_used'      => __( 'Choose from the most used tags', 'dw-catalog-wp' ),
+			'not_found'                  => __( 'No tags found.', 'dw-catalog-wp' ),
+			'menu_name'                  => __( 'Tags', 'dw-catalog-wp' ),
 		);
 
 		$tag_args = array(

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# DW Product Catalog - Release Script
+# DW Catalog WP - Release Script
 # 사용법: ./create-release.sh [version]
 # Usage: ./create-release.sh [version]
 
@@ -21,8 +21,8 @@ if [ -z "$1" ]; then
 fi
 
 VERSION=$1
-PLUGIN_FILE="dw-product-catalog.php"
-ZIP_NAME="dw-product-catalog-${VERSION}.zip"
+PLUGIN_FILE="dw-catalog-wp.php"
+ZIP_NAME="dw-catalog-wp-${VERSION}.zip"
 
 echo -e "${GREEN}Creating release for version ${VERSION}...${NC}"
 
@@ -148,7 +148,7 @@ fi
 echo ""
 echo "Next steps:"
 echo "1. Check GitHub Actions for automatic release creation"
-echo "2. Or manually create release at: https://github.com/dasomweb/DW-Product-Catalog/releases/new"
+echo "2. Or manually create release at: https://github.com/dasomweb/dw-catalog-wp/releases/new"
 if [ -f "$ZIP_NAME" ]; then
     echo "3. Upload $ZIP_NAME to the release"
 fi

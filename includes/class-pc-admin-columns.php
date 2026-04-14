@@ -27,12 +27,12 @@ class PC_Admin_Columns {
 		foreach ( $columns as $key => $value ) {
 			$new_columns[ $key ] = $value;
 			if ( 'title' === $key ) {
-				$new_columns['pc_category']     = __( 'Category', 'dw-product-catalog' );
-				$new_columns['pc_item_code']    = __( 'Item Code', 'dw-product-catalog' );
-				$new_columns['pc_pack_size']    = __( 'Pack Size', 'dw-product-catalog' );
-				$new_columns['pc_brand']        = __( 'Brand', 'dw-product-catalog' );
-				$new_columns['pc_origin']      = __( 'Origin', 'dw-product-catalog' );
-				$new_columns['pc_status']       = __( 'Status', 'dw-product-catalog' );
+				$new_columns['pc_category']     = __( 'Category', 'dw-catalog-wp' );
+				$new_columns['pc_item_code']    = __( 'Item Code', 'dw-catalog-wp' );
+				$new_columns['pc_pack_size']    = __( 'Pack Size', 'dw-catalog-wp' );
+				$new_columns['pc_brand']        = __( 'Brand', 'dw-catalog-wp' );
+				$new_columns['pc_origin']      = __( 'Origin', 'dw-catalog-wp' );
+				$new_columns['pc_status']       = __( 'Status', 'dw-catalog-wp' );
 			}
 		}
 		return $new_columns;
@@ -64,10 +64,10 @@ class PC_Admin_Columns {
 			case 'pc_status':
 				$value = PC_Product_Display::get_status( $post_id );
 				$labels = array(
-					'active'        => __( 'Active', 'dw-product-catalog' ),
-					'inactive'      => __( 'Inactive', 'dw-product-catalog' ),
-					'out_of_stock'  => __( 'Out of Stock', 'dw-product-catalog' ),
-					'discontinued'  => __( 'Discontinued', 'dw-product-catalog' ),
+					'active'        => __( 'Active', 'dw-catalog-wp' ),
+					'inactive'      => __( 'Inactive', 'dw-catalog-wp' ),
+					'out_of_stock'  => __( 'Out of Stock', 'dw-catalog-wp' ),
+					'discontinued'  => __( 'Discontinued', 'dw-catalog-wp' ),
 				);
 				echo $value ? ( isset( $labels[ $value ] ) ? esc_html( $labels[ $value ] ) : esc_html( $value ) ) : '—';
 				break;

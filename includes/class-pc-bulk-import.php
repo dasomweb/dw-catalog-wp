@@ -42,8 +42,8 @@ class PC_Bulk_Import {
 	public function add_admin_menu() {
 		add_submenu_page(
 			'pc-products',
-			__( 'Bulk Import', 'dw-product-catalog' ),
-			__( 'Bulk Import', 'dw-product-catalog' ),
+			__( 'Bulk Import', 'dw-catalog-wp' ),
+			__( 'Bulk Import', 'dw-catalog-wp' ),
 			'edit_posts',
 			'pc-bulk-import',
 			array( $this, 'render_page' )
@@ -80,7 +80,7 @@ class PC_Bulk_Import {
 	public function render_page() {
 		// Check permissions
 		if ( ! current_user_can( 'edit_posts' ) ) {
-			wp_die( __( 'You do not have permission to access this page.', 'dw-product-catalog' ) );
+			wp_die( __( 'You do not have permission to access this page.', 'dw-catalog-wp' ) );
 		}
 
 		// Show import results
@@ -92,18 +92,18 @@ class PC_Bulk_Import {
 
 			echo '<div class="notice notice-info"><p>';
 			if ( $imported > 0 ) {
-				echo '<strong>' . sprintf( __( '%d products imported successfully.', 'dw-product-catalog' ), $imported ) . '</strong><br>';
+				echo '<strong>' . sprintf( __( '%d products imported successfully.', 'dw-catalog-wp' ), $imported ) . '</strong><br>';
 			}
 			if ( $skipped > 0 ) {
-				echo sprintf( __( '%d products skipped (duplicates).', 'dw-product-catalog' ), $skipped ) . '<br>';
+				echo sprintf( __( '%d products skipped (duplicates).', 'dw-catalog-wp' ), $skipped ) . '<br>';
 			}
 			if ( $failed > 0 ) {
-				echo '<strong style="color: #d63638;">' . sprintf( __( '%d products failed to import.', 'dw-product-catalog' ), $failed ) . '</strong><br>';
+				echo '<strong style="color: #d63638;">' . sprintf( __( '%d products failed to import.', 'dw-catalog-wp' ), $failed ) . '</strong><br>';
 			}
 			echo '</p></div>';
 
 			if ( ! empty( $errors ) ) {
-				echo '<div class="notice notice-error"><p><strong>' . __( 'Errors:', 'dw-product-catalog' ) . '</strong></p><ul>';
+				echo '<div class="notice notice-error"><p><strong>' . __( 'Errors:', 'dw-catalog-wp' ) . '</strong></p><ul>';
 				foreach ( $errors as $error ) {
 					if ( ! empty( $error ) ) {
 						echo '<li>' . esc_html( $error ) . '</li>';
@@ -114,41 +114,41 @@ class PC_Bulk_Import {
 		}
 		?>
 		<div class="wrap">
-			<h1><?php _e( 'Bulk Import Products', 'dw-product-catalog' ); ?></h1>
+			<h1><?php _e( 'Bulk Import Products', 'dw-catalog-wp' ); ?></h1>
 
 			<div class="pc-import-instructions" style="background: #fff; padding: 20px; margin: 20px 0; border: 1px solid #ccd0d4; box-shadow: 0 1px 1px rgba(0,0,0,.04);">
-				<h2><?php _e( 'Import Instructions', 'dw-product-catalog' ); ?></h2>
+				<h2><?php _e( 'Import Instructions', 'dw-catalog-wp' ); ?></h2>
 				<ol>
-					<li><?php _e( 'Prepare your Excel file (.xlsx) or CSV file (.csv)', 'dw-product-catalog' ); ?></li>
-					<li><?php _e( 'Ensure the first row contains column headers', 'dw-product-catalog' ); ?></li>
-					<li><?php _e( 'Required column: <code>dw_pc_product_name</code> (will be used as post title)', 'dw-product-catalog' ); ?></li>
-					<li><?php _e( 'Optional columns:', 'dw-product-catalog' ); ?>
+					<li><?php _e( 'Prepare your Excel file (.xlsx) or CSV file (.csv)', 'dw-catalog-wp' ); ?></li>
+					<li><?php _e( 'Ensure the first row contains column headers', 'dw-catalog-wp' ); ?></li>
+					<li><?php _e( 'Required column: <code>dw_pc_product_name</code> (will be used as post title)', 'dw-catalog-wp' ); ?></li>
+					<li><?php _e( 'Optional columns:', 'dw-catalog-wp' ); ?>
 						<ul>
-							<li><code>post_content</code> - <?php _e( 'Product description', 'dw-product-catalog' ); ?></li>
-							<li><code>post_status</code> - <?php _e( 'publish, draft, or private', 'dw-product-catalog' ); ?></li>
-							<li><code>featured_image_url</code> <?php _e( 'or <code>image_url</code>', 'dw-product-catalog' ); ?> - <?php _e( 'Public image URL (downloaded and added to Media library as featured image)', 'dw-product-catalog' ); ?></li>
-							<li><code>dw_pc_item_code</code> - <?php _e( 'Item Code', 'dw-product-catalog' ); ?></li>
-							<li><code>dw_pc_pack_size_raw</code> - <?php _e( 'Pack Size / Case Pack', 'dw-product-catalog' ); ?></li>
-							<li><code>dw_pc_brand_raw</code> - <?php _e( 'Brand', 'dw-product-catalog' ); ?></li>
-							<li><code>dw_pc_origin_raw</code> - <?php _e( 'Origin', 'dw-product-catalog' ); ?></li>
-							<li><code>dw_pc_status</code> - <?php _e( 'Status (active, inactive, out_of_stock, discontinued)', 'dw-product-catalog' ); ?></li>
-							<li><code>dw_pc_category_name</code> - <?php _e( 'Category Name (created if missing)', 'dw-product-catalog' ); ?></li>
-							<li><code>dw_pc_category_slug</code> - <?php _e( 'Category Slug (created if missing)', 'dw-product-catalog' ); ?></li>
-							<li><code>dw_pc_internal_note</code> - <?php _e( 'ETC', 'dw-product-catalog' ); ?></li>
+							<li><code>post_content</code> - <?php _e( 'Product description', 'dw-catalog-wp' ); ?></li>
+							<li><code>post_status</code> - <?php _e( 'publish, draft, or private', 'dw-catalog-wp' ); ?></li>
+							<li><code>featured_image_url</code> <?php _e( 'or <code>image_url</code>', 'dw-catalog-wp' ); ?> - <?php _e( 'Public image URL (downloaded and added to Media library as featured image)', 'dw-catalog-wp' ); ?></li>
+							<li><code>dw_pc_item_code</code> - <?php _e( 'Item Code', 'dw-catalog-wp' ); ?></li>
+							<li><code>dw_pc_pack_size_raw</code> - <?php _e( 'Pack Size / Case Pack', 'dw-catalog-wp' ); ?></li>
+							<li><code>dw_pc_brand_raw</code> - <?php _e( 'Brand', 'dw-catalog-wp' ); ?></li>
+							<li><code>dw_pc_origin_raw</code> - <?php _e( 'Origin', 'dw-catalog-wp' ); ?></li>
+							<li><code>dw_pc_status</code> - <?php _e( 'Status (active, inactive, out_of_stock, discontinued)', 'dw-catalog-wp' ); ?></li>
+							<li><code>dw_pc_category_name</code> - <?php _e( 'Category Name (created if missing)', 'dw-catalog-wp' ); ?></li>
+							<li><code>dw_pc_category_slug</code> - <?php _e( 'Category Slug (created if missing)', 'dw-catalog-wp' ); ?></li>
+							<li><code>dw_pc_internal_note</code> - <?php _e( 'ETC', 'dw-catalog-wp' ); ?></li>
 						</ul>
 					</li>
 					<li>
 						<a href="<?php echo esc_url( admin_url( 'admin.php?page=pc-field-reference' ) ); ?>">
-							<?php _e( 'View Field Reference', 'dw-product-catalog' ); ?>
+							<?php _e( 'View Field Reference', 'dw-catalog-wp' ); ?>
 						</a>
-						<?php _e( 'for detailed field information', 'dw-product-catalog' ); ?>
+						<?php _e( 'for detailed field information', 'dw-catalog-wp' ); ?>
 					</li>
 				</ol>
 
-				<p class="description" style="margin-top:8px;"><?php _e( 'Image URLs must be publicly accessible (no login required) so the server can download them into the Media library.', 'dw-product-catalog' ); ?></p>
+				<p class="description" style="margin-top:8px;"><?php _e( 'Image URLs must be publicly accessible (no login required) so the server can download them into the Media library.', 'dw-catalog-wp' ); ?></p>
 
-				<h3><?php _e( 'Sample CSV Format', 'dw-product-catalog' ); ?></h3>
-				<p class="description"><?php _e( 'Default delimiter is semicolon (;). Select the delimiter that matches your file. Column headers are trimmed; BOM is stripped so headers like featured_image_url are recognized.', 'dw-product-catalog' ); ?></p>
+				<h3><?php _e( 'Sample CSV Format', 'dw-catalog-wp' ); ?></h3>
+				<p class="description"><?php _e( 'Default delimiter is semicolon (;). Select the delimiter that matches your file. Column headers are trimmed; BOM is stripped so headers like featured_image_url are recognized.', 'dw-catalog-wp' ); ?></p>
 				<pre style="background: #f5f5f5; padding: 10px; overflow-x: auto;"><code>dw_pc_product_name;post_content;featured_image_url;dw_pc_item_code;dw_pc_pack_size_raw;dw_pc_brand_raw;dw_pc_origin_raw;dw_pc_status;dw_pc_category_name;dw_pc_category_slug;dw_pc_internal_note
 "Premium Coffee Beans";"High quality coffee";"https://example.com/image1.jpg";"ITEM-001";"10pc/cs";"Brand A";"Colombia";"active";"Beverages";"category-code";""
 "Salmon Fillet";"Fresh salmon";"https://example.com/image2.jpg";"ITEM-002";"1/15lb/cs";"Brand B";"Norway";"active";"Seafood";"";"Note"</code></pre>
@@ -162,7 +162,7 @@ class PC_Bulk_Import {
 					<tbody>
 						<tr>
 							<th scope="row">
-								<label for="import_file"><?php _e( 'Import File', 'dw-product-catalog' ); ?></label>
+								<label for="import_file"><?php _e( 'Import File', 'dw-catalog-wp' ); ?></label>
 							</th>
 							<td>
 								<input 
@@ -173,55 +173,55 @@ class PC_Bulk_Import {
 									required
 								/>
 								<p class="description">
-									<?php _e( 'Upload a CSV or Excel file (.csv, .xlsx, .xls)', 'dw-product-catalog' ); ?>
+									<?php _e( 'Upload a CSV or Excel file (.csv, .xlsx, .xls)', 'dw-catalog-wp' ); ?>
 								</p>
 							</td>
 						</tr>
 						<tr>
 							<th scope="row">
-								<label for="csv_delimiter"><?php _e( 'CSV Delimiter', 'dw-product-catalog' ); ?></label>
+								<label for="csv_delimiter"><?php _e( 'CSV Delimiter', 'dw-catalog-wp' ); ?></label>
 							</th>
 							<td>
 								<select name="csv_delimiter" id="csv_delimiter">
-									<option value="semicolon" selected><?php _e( 'Semicolon (;)', 'dw-product-catalog' ); ?></option>
-									<option value="comma"><?php _e( 'Comma (,)', 'dw-product-catalog' ); ?></option>
-									<option value="tab"><?php _e( 'Tab', 'dw-product-catalog' ); ?></option>
+									<option value="semicolon" selected><?php _e( 'Semicolon (;)', 'dw-catalog-wp' ); ?></option>
+									<option value="comma"><?php _e( 'Comma (,)', 'dw-catalog-wp' ); ?></option>
+									<option value="tab"><?php _e( 'Tab', 'dw-catalog-wp' ); ?></option>
 								</select>
 								<p class="description">
-									<?php _e( 'Column separator for CSV files. Default: semicolon (;)', 'dw-product-catalog' ); ?>
+									<?php _e( 'Column separator for CSV files. Default: semicolon (;)', 'dw-catalog-wp' ); ?>
 								</p>
 							</td>
 						</tr>
 						<tr>
 							<th scope="row">
-								<label for="default_status"><?php _e( 'Default Status', 'dw-product-catalog' ); ?></label>
+								<label for="default_status"><?php _e( 'Default Status', 'dw-catalog-wp' ); ?></label>
 							</th>
 							<td>
 								<select name="default_status" id="default_status">
-									<option value="publish"><?php _e( 'Published', 'dw-product-catalog' ); ?></option>
-									<option value="draft"><?php _e( 'Draft', 'dw-product-catalog' ); ?></option>
-									<option value="private"><?php _e( 'Private', 'dw-product-catalog' ); ?></option>
+									<option value="publish"><?php _e( 'Published', 'dw-catalog-wp' ); ?></option>
+									<option value="draft"><?php _e( 'Draft', 'dw-catalog-wp' ); ?></option>
+									<option value="private"><?php _e( 'Private', 'dw-catalog-wp' ); ?></option>
 								</select>
 								<p class="description">
-									<?php _e( 'Status to use if not specified in the file', 'dw-product-catalog' ); ?>
+									<?php _e( 'Status to use if not specified in the file', 'dw-catalog-wp' ); ?>
 								</p>
 							</td>
 						</tr>
 						<tr>
 							<th scope="row">
-								<label for="skip_duplicates"><?php _e( 'Skip Duplicates', 'dw-product-catalog' ); ?></label>
+								<label for="skip_duplicates"><?php _e( 'Skip Duplicates', 'dw-catalog-wp' ); ?></label>
 							</th>
 							<td>
 								<label>
 									<input type="checkbox" name="skip_duplicates" value="1" checked>
-									<?php _e( 'Skip products with duplicate titles', 'dw-product-catalog' ); ?>
+									<?php _e( 'Skip products with duplicate titles', 'dw-catalog-wp' ); ?>
 								</label>
 							</td>
 						</tr>
 					</tbody>
 				</table>
 
-				<?php submit_button( __( 'Import Products', 'dw-product-catalog' ), 'primary', 'submit', false ); ?>
+				<?php submit_button( __( 'Import Products', 'dw-catalog-wp' ), 'primary', 'submit', false ); ?>
 			</form>
 		</div>
 		<?php
@@ -233,17 +233,17 @@ class PC_Bulk_Import {
 	public function handle_import() {
 		// Check nonce
 		if ( ! isset( $_POST['pc_import_nonce'] ) || ! wp_verify_nonce( $_POST['pc_import_nonce'], 'pc_import_products' ) ) {
-			wp_die( __( 'Security verification failed.', 'dw-product-catalog' ) );
+			wp_die( __( 'Security verification failed.', 'dw-catalog-wp' ) );
 		}
 
 		// Check permissions
 		if ( ! current_user_can( 'edit_posts' ) ) {
-			wp_die( __( 'You do not have permission to perform this action.', 'dw-product-catalog' ) );
+			wp_die( __( 'You do not have permission to perform this action.', 'dw-catalog-wp' ) );
 		}
 
 		// Check file upload
 		if ( ! isset( $_FILES['import_file'] ) || $_FILES['import_file']['error'] !== UPLOAD_ERR_OK ) {
-			wp_die( __( 'File upload failed. Please try again.', 'dw-product-catalog' ) );
+			wp_die( __( 'File upload failed. Please try again.', 'dw-catalog-wp' ) );
 		}
 
 		$file = $_FILES['import_file'];
@@ -267,7 +267,7 @@ class PC_Bulk_Import {
 		} elseif ( in_array( $file_ext, array( 'xlsx', 'xls' ), true ) ) {
 			$result = $this->import_excel( $file, $default_status, $skip_duplicates );
 		} else {
-			wp_die( __( 'Unsupported file format. Please use CSV or Excel files.', 'dw-product-catalog' ) );
+			wp_die( __( 'Unsupported file format. Please use CSV or Excel files.', 'dw-catalog-wp' ) );
 		}
 
 		// Redirect with results
@@ -306,7 +306,7 @@ class PC_Bulk_Import {
 				'imported' => 0,
 				'failed'   => 0,
 				'skipped'  => 0,
-				'errors'   => array( __( 'Could not open file.', 'dw-product-catalog' ) ),
+				'errors'   => array( __( 'Could not open file.', 'dw-catalog-wp' ) ),
 			);
 		}
 
@@ -318,7 +318,7 @@ class PC_Bulk_Import {
 				'imported' => 0,
 				'failed'   => 0,
 				'skipped'  => 0,
-				'errors'   => array( __( 'Could not read CSV headers.', 'dw-product-catalog' ) ),
+				'errors'   => array( __( 'Could not read CSV headers.', 'dw-catalog-wp' ) ),
 			);
 		}
 		// Normalize headers: trim, strip BOM (Excel UTF-8 often adds BOM so column names match)
@@ -329,7 +329,7 @@ class PC_Bulk_Import {
 				'imported' => 0,
 				'failed'   => 0,
 				'skipped'  => 0,
-				'errors'   => array( __( 'CSV file must contain an "dw_pc_product_name" column.', 'dw-product-catalog' ) ),
+				'errors'   => array( __( 'CSV file must contain an "dw_pc_product_name" column.', 'dw-catalog-wp' ) ),
 			);
 		}
 
@@ -339,7 +339,7 @@ class PC_Bulk_Import {
 			$row_num++;
 			
 			if ( count( $row ) !== count( $headers ) ) {
-				$errors[] = sprintf( __( 'Row %d: Column count mismatch', 'dw-product-catalog' ), $row_num );
+				$errors[] = sprintf( __( 'Row %d: Column count mismatch', 'dw-catalog-wp' ), $row_num );
 				$failed++;
 				continue;
 			}
@@ -351,14 +351,14 @@ class PC_Bulk_Import {
 			if ( $result['success'] ) {
 				$imported++;
 				if ( ! empty( $result['warning'] ) ) {
-					$errors[] = sprintf( __( 'Row %d: %s', 'dw-product-catalog' ), $row_num, $result['warning'] );
+					$errors[] = sprintf( __( 'Row %d: %s', 'dw-catalog-wp' ), $row_num, $result['warning'] );
 				}
 			} elseif ( $result['skipped'] ) {
 				$skipped++;
 			} else {
 				$failed++;
 				if ( ! empty( $result['error'] ) ) {
-					$errors[] = sprintf( __( 'Row %d: %s', 'dw-product-catalog' ), $row_num, $result['error'] );
+					$errors[] = sprintf( __( 'Row %d: %s', 'dw-catalog-wp' ), $row_num, $result['error'] );
 				}
 			}
 		}
@@ -389,7 +389,7 @@ class PC_Bulk_Import {
 			'imported' => 0,
 			'failed'   => 0,
 			'skipped'  => 0,
-			'errors'   => array( __( 'Excel import requires additional library. Please convert to CSV format.', 'dw-product-catalog' ) ),
+			'errors'   => array( __( 'Excel import requires additional library. Please convert to CSV format.', 'dw-catalog-wp' ) ),
 		);
 	}
 
@@ -437,7 +437,7 @@ class PC_Bulk_Import {
 			return array(
 				'success' => false,
 				'skipped' => false,
-				'error'   => __( 'Product Name is required', 'dw-product-catalog' ),
+				'error'   => __( 'Product Name is required', 'dw-catalog-wp' ),
 			);
 		}
 		
@@ -451,7 +451,7 @@ class PC_Bulk_Import {
 				return array(
 					'success' => false,
 					'skipped' => true,
-					'error'   => __( 'Duplicate title skipped', 'dw-product-catalog' ),
+					'error'   => __( 'Duplicate title skipped', 'dw-catalog-wp' ),
 				);
 			}
 		}
@@ -509,7 +509,7 @@ class PC_Bulk_Import {
 				if ( $attachment_id && ! is_wp_error( $attachment_id ) ) {
 					set_post_thumbnail( $post_id, $attachment_id );
 				} elseif ( is_wp_error( $attachment_id ) ) {
-					$image_warning = sprintf( __( 'Image import failed: %s', 'dw-product-catalog' ), $attachment_id->get_error_message() );
+					$image_warning = sprintf( __( 'Image import failed: %s', 'dw-catalog-wp' ), $attachment_id->get_error_message() );
 				}
 			}
 		}

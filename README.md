@@ -1,4 +1,4 @@
-# DW Product Catalog
+# DW Catalog WP
 
 WordPress 플러그인 - 도메인 변경에 친화적인 제품 카탈로그 플러그인
 
@@ -47,7 +47,7 @@ This plugin is automatically deployed and updated through GitHub Releases.
 2. 태그 선택 또는 새 태그 생성 (예: `v1.0.0`)
 3. 릴리스 제목 및 설명 작성
 4. 플러그인 ZIP 파일을 수동으로 업로드
-   - ZIP 파일명: `dw-product-catalog-{version}.zip`
+   - ZIP 파일명: `dw-catalog-wp-{version}.zip`
    - ZIP에는 `.git`, `.github` 폴더 제외
 
 ### 📥 설치 방법 (Installation)
@@ -73,19 +73,19 @@ This plugin is automatically deployed and updated through GitHub Releases.
 
 ```bash
 # 저장소 클론
-git clone https://github.com/dasomweb/DW-Product-Catalog.git
-cd DW-Product-Catalog
+git clone https://github.com/dasomweb/dw-catalog-wp.git
+cd dw-catalog-wp
 
 # WordPress 플러그인 디렉토리에 심볼릭 링크 생성 (선택사항)
 # Create symbolic link to WordPress plugins directory (optional)
-ln -s $(pwd) /path/to/wordpress/wp-content/plugins/dw-product-catalog
+ln -s $(pwd) /path/to/wordpress/wp-content/plugins/dw-catalog-wp
 ```
 
 ### 📋 릴리스 체크리스트 (Release Checklist)
 
 릴리스 전 확인사항:
 
-- [ ] 플러그인 버전 번호 업데이트 (`dw-product-catalog.php`)
+- [ ] 플러그인 버전 번호 업데이트 (`dw-catalog-wp.php`)
 - [ ] `pc_get_plugin_config()` 함수의 버전 번호 업데이트
 - [ ] 변경사항 문서화 (CHANGELOG 또는 릴리스 노트)
 - [ ] 코드 테스트 완료
@@ -97,7 +97,7 @@ ln -s $(pwd) /path/to/wordpress/wp-content/plugins/dw-product-catalog
 
 버전 번호는 다음 위치에서 관리됩니다:
 
-1. **플러그인 헤더** (`dw-product-catalog.php`):
+1. **플러그인 헤더** (`dw-catalog-wp.php`):
    ```php
    * Version: 1.0.0
    ```
@@ -147,7 +147,7 @@ GPL v2 or later
 
 ### 📞 지원 (Support)
 
-이슈가 있으시면 [GitHub Issues](https://github.com/dasomweb/DW-Product-Catalog/issues)에 등록해주세요.
+이슈가 있으시면 [GitHub Issues](https://github.com/dasomweb/dw-catalog-wp/issues)에 등록해주세요.
 
 ---
 

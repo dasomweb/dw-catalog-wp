@@ -1,14 +1,14 @@
 <?php
 /**
- * Plugin Name: DW Product Catalog
- * Plugin URI: https://github.com/dasomweb/DW-Product-Catalog
+ * Plugin Name: DW Catalog WP
+ * Plugin URI: https://github.com/dasomweb/dw-catalog-wp
  * Description: Domain-change friendly product catalog plugin
  * Version: 1.8.0
  * Author: Dasom Web
  * Author URI: https://github.com/dasomweb
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
- * Text Domain: dw-product-catalog
+ * Text Domain: dw-catalog-wp
  * Domain Path: /languages
  * Requires at least: 5.0
  * Requires PHP: 7.4
@@ -31,13 +31,13 @@ function pc_get_plugin_config() {
 	return array(
 		// GitHub Repository Information
 		'github_repo_owner' => 'dasomweb',
-		'github_repo_name'  => 'DW-Product-Catalog',
+		'github_repo_name'  => 'dw-catalog-wp',
 		
 		// Plugin Information
-		'plugin_slug'       => 'dw-product-catalog',
+		'plugin_slug'       => 'dw-catalog-wp',
 		'plugin_version'    => '1.8.0',
-		'plugin_name'       => 'DW Product Catalog',
-		'plugin_text_domain' => 'dw-product-catalog',
+		'plugin_name'       => 'DW Catalog WP',
+		'plugin_text_domain' => 'dw-catalog-wp',
 		
 		// Update Settings
 		'github_branch'     => 'main',
