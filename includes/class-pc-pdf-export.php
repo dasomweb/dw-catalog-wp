@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-class PC_PDF_Export {
+class DWCAT_PDF_Export {
 
 	public function __construct() {
 		add_action( 'admin_menu', array( $this, 'add_admin_menus' ) );
@@ -23,7 +23,7 @@ class PC_PDF_Export {
 	 * Add PDF Export submenu to each post type menu.
 	 */
 	public function add_admin_menus() {
-		$post_types = PC_Config::get_post_types();
+		$post_types = DWCAT_Config::get_post_types();
 		foreach ( $post_types as $slug => $config ) {
 			if ( empty( $config['has_category'] ) ) {
 				continue; // PDF export requires categories
@@ -54,19 +54,19 @@ class PC_PDF_Export {
 		}
 
 		$pt_slug = $this->get_post_type_from_page();
-		$pt_config = PC_Config::get_post_type( $pt_slug );
+		$pt_config = DWCAT_Config::get_post_type( $pt_slug );
 		if ( ! $pt_config ) {
 			echo '<div class="wrap"><p>' . esc_html__( 'Post type not found.', 'dw-catalog-wp' ) . '</p></div>';
 			return;
 		}
 
-		$cat_tax = PC_Config::get_category_taxonomy( $pt_slug );
+		$cat_tax = DWCAT_Config::get_category_taxonomy( $pt_slug );
 		$categories = get_terms( array( 'taxonomy' => $cat_tax, 'hide_empty' => false ) );
 		if ( is_wp_error( $categories ) ) {
 			$categories = array();
 		}
 
-		$export_fields = PC_Config::get_export_fields( $pt_slug );
+		$export_fields = DWCAT_Config::get_export_fields( $pt_slug );
 		// Add post_title and category as export options
 		$field_options = array(
 			'post_title' => __( 'Title', 'dw-catalog-wp' ),
@@ -82,7 +82,7 @@ class PC_PDF_Export {
 			<h1><?php printf( __( 'PDF Export — %s', 'dw-catalog-wp' ), esc_html( $pt_config['plural_name'] ) ); ?></h1>
 
 			<?php
-			$autoload = pc_get_plugin_path() . 'vendor/autoload.php';
+			$autoload = dwcat_get_path() . 'vendor/autoload.php';
 			if ( ! file_exists( $autoload ) ) {
 				echo '<div class="notice notice-warning"><p>' . esc_html__( 'PDF export requires Composer dependencies. Run "composer install" in the plugin directory.', 'dw-catalog-wp' ) . '</p></div>';
 			}
@@ -150,18 +150,18 @@ class PC_PDF_Export {
 			wp_die( __( 'Unauthorized', 'dw-catalog-wp' ) );
 		}
 
-		$autoload = pc_get_plugin_path() . 'vendor/autoload.php';
+		$autoload = dwcat_get_path() . 'vendor/autoload.php';
 		if ( ! file_exists( $autoload ) ) {
 			wp_die( __( 'PDF library not found. Run composer install.', 'dw-catalog-wp' ) );
 		}
 
 		$pt_slug = sanitize_key( $_POST['post_type_slug'] );
-		$pt_config = PC_Config::get_post_type( $pt_slug );
+		$pt_config = DWCAT_Config::get_post_type( $pt_slug );
 		if ( ! $pt_config ) {
 			wp_die( __( 'Invalid post type.', 'dw-catalog-wp' ) );
 		}
 
-		$cat_tax = PC_Config::get_category_taxonomy( $pt_slug );
+		$cat_tax = DWCAT_Config::get_category_taxonomy( $pt_slug );
 		$cat_ids = isset( $_POST['pdf_categories'] ) ? array_map( 'intval', $_POST['pdf_categories'] ) : array();
 		$cat_ids = array_filter( $cat_ids );
 		if ( empty( $cat_ids ) ) {
@@ -203,7 +203,7 @@ class PC_PDF_Export {
 		$rows = array();
 		$cells = array();
 		$count = 0;
-		$all_fields = PC_Config::get_fields( $pt_slug );
+		$all_fields = DWCAT_Config::get_fields( $pt_slug );
 
 		foreach ( $products as $post ) {
 			$pid = $post->ID;
@@ -270,7 +270,7 @@ class PC_PDF_Export {
 		// Resolve select labels
 		foreach ( $all_fields as $f ) {
 			if ( $f['meta_key'] === $key && $f['type'] === 'select' && $value !== '' ) {
-				$opts = PC_Config::parse_select_options( $f['options'] );
+				$opts = DWCAT_Config::parse_select_options( $f['options'] );
 				$value = isset( $opts[ $value ] ) ? $opts[ $value ] : $value;
 				break;
 			}

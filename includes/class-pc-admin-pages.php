@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-class PC_Admin_Pages {
+class DWCAT_Admin_Pages {
 
 	public function __construct() {
 		add_action( 'admin_menu', array( $this, 'remove_default_menus' ) );
@@ -23,14 +23,14 @@ class PC_Admin_Pages {
 	}
 
 	public function remove_default_menus() {
-		$post_types = PC_Config::get_post_types();
+		$post_types = DWCAT_Config::get_post_types();
 		foreach ( $post_types as $slug => $config ) {
 			remove_menu_page( 'edit.php?post_type=' . $slug );
 		}
 	}
 
 	public function add_admin_menus() {
-		$post_types = PC_Config::get_post_types();
+		$post_types = DWCAT_Config::get_post_types();
 		$position = 21;
 
 		foreach ( $post_types as $slug => $config ) {
@@ -77,7 +77,7 @@ class PC_Admin_Pages {
 
 			// Categories
 			if ( ! empty( $config['has_category'] ) ) {
-				$cat_tax = PC_Config::get_category_taxonomy( $slug );
+				$cat_tax = DWCAT_Config::get_category_taxonomy( $slug );
 				add_submenu_page(
 					$menu_slug,
 					__( 'Categories', 'dw-catalog-wp' ),
@@ -89,7 +89,7 @@ class PC_Admin_Pages {
 
 			// Tags
 			if ( ! empty( $config['has_tag'] ) ) {
-				$tag_tax = PC_Config::get_tag_taxonomy( $slug );
+				$tag_tax = DWCAT_Config::get_tag_taxonomy( $slug );
 				add_submenu_page(
 					$menu_slug,
 					__( 'Tags', 'dw-catalog-wp' ),
@@ -105,7 +105,7 @@ class PC_Admin_Pages {
 	 * Disable Gutenberg for our post types (use Classic editor).
 	 */
 	public function disable_gutenberg( $use_block_editor, $post_type ) {
-		if ( PC_Config::is_our_post_type( $post_type ) ) {
+		if ( DWCAT_Config::is_our_post_type( $post_type ) ) {
 			return false;
 		}
 		return $use_block_editor;
@@ -132,15 +132,15 @@ class PC_Admin_Pages {
 		}
 
 		$pt_slug = $this->get_current_post_type_slug();
-		$pt_config = PC_Config::get_post_type( $pt_slug );
+		$pt_config = DWCAT_Config::get_post_type( $pt_slug );
 		if ( ! $pt_config ) {
 			echo '<div class="wrap"><p>' . esc_html__( 'Post type not found.', 'dw-catalog-wp' ) . '</p></div>';
 			return;
 		}
 
-		$fields = PC_Config::get_fields( $pt_slug );
-		$list_fields = PC_Config::get_list_fields( $pt_slug );
-		$title_field = PC_Config::get_title_field( $pt_slug );
+		$fields = DWCAT_Config::get_fields( $pt_slug );
+		$list_fields = DWCAT_Config::get_list_fields( $pt_slug );
+		$title_field = DWCAT_Config::get_title_field( $pt_slug );
 		$menu_slug = 'dw-catalog-' . $pt_slug;
 
 		// Handle bulk delete
@@ -270,7 +270,7 @@ class PC_Admin_Pages {
 									<?php if ( $pt_has_cat ) : ?>
 										<td>
 											<?php
-											$cat_tax = PC_Config::get_category_taxonomy( $pt_slug );
+											$cat_tax = DWCAT_Config::get_category_taxonomy( $pt_slug );
 											$terms = wp_get_post_terms( $post_id, $cat_tax );
 											$names = ! empty( $terms ) && ! is_wp_error( $terms ) ? implode( ', ', wp_list_pluck( $terms, 'name' ) ) : '';
 											echo $names ? esc_html( $names ) : '—';
@@ -283,7 +283,7 @@ class PC_Admin_Pages {
 											<?php
 											$val = get_post_meta( $post_id, $field['meta_key'], true );
 											if ( $field['type'] === 'select' && $val !== '' ) {
-												$opts = PC_Config::parse_select_options( $field['options'] );
+												$opts = DWCAT_Config::parse_select_options( $field['options'] );
 												$val = isset( $opts[ $val ] ) ? $opts[ $val ] : $val;
 											}
 											echo $val !== '' ? esc_html( $val ) : '—';
@@ -369,7 +369,7 @@ class PC_Admin_Pages {
 	public function enqueue_admin_scripts( $hook ) {
 		$page = isset( $_GET['page'] ) ? $_GET['page'] : '';
 		$pt_slug = $this->get_current_post_type_slug();
-		if ( empty( $pt_slug ) || ! PC_Config::is_our_post_type( $pt_slug ) ) {
+		if ( empty( $pt_slug ) || ! DWCAT_Config::is_our_post_type( $pt_slug ) ) {
 			return;
 		}
 		// Only on our list pages (page = dw-catalog-{slug})
@@ -377,10 +377,10 @@ class PC_Admin_Pages {
 			return;
 		}
 
-		$config = pc_get_plugin_config();
-		$css_path = pc_get_plugin_path() . 'assets/css/admin.css';
+		$config = dwcat_get_config();
+		$css_path = dwcat_get_path() . 'assets/css/admin.css';
 		if ( file_exists( $css_path ) ) {
-			wp_enqueue_style( 'pc-admin-style', PC_URL_Helper::get_css_url( 'admin.css' ), array(), $config['plugin_version'] );
+			wp_enqueue_style( 'dwcat-admin-style', DWCAT_URL_Helper::get_css_url( 'admin.css' ), array(), $config['plugin_version'] );
 		}
 	}
 }

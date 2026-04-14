@@ -14,12 +14,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * PC_GitHub_Updater Class
+ * DWCAT_GitHub_Updater Class
  * 
  * Handles plugin updates from GitHub repository.
  * Completely domain-independent.
  */
-class PC_GitHub_Updater {
+class DWCAT_GitHub_Updater {
 
 	/**
 	 * Plugin file path
@@ -139,7 +139,7 @@ class PC_GitHub_Updater {
 	 * @return object|WP_Error Release object or error
 	 */
 	private function get_latest_release() {
-		$cache_key = 'pc_github_latest_release_' . md5( $this->repo_owner . $this->repo_name );
+		$cache_key = 'dwcat_github_release_' . md5( $this->repo_owner . $this->repo_name );
 		$cached    = get_transient( $cache_key );
 
 		if ( false !== $cached ) {

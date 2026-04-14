@@ -11,7 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-class PC_Bulk_Import {
+class DWCAT_Bulk_Import {
 
 	public function __construct() {
 		add_action( 'admin_menu', array( $this, 'add_admin_menus' ) );
@@ -23,7 +23,7 @@ class PC_Bulk_Import {
 	 * Add Bulk Import submenu to each post type menu.
 	 */
 	public function add_admin_menus() {
-		$post_types = PC_Config::get_post_types();
+		$post_types = DWCAT_Config::get_post_types();
 		foreach ( $post_types as $slug => $config ) {
 			$parent = 'dw-catalog-' . $slug;
 			add_submenu_page(
@@ -41,10 +41,10 @@ class PC_Bulk_Import {
 		if ( strpos( $hook, '-import' ) === false ) {
 			return;
 		}
-		$config = pc_get_plugin_config();
-		$css_path = pc_get_plugin_path() . 'assets/css/admin.css';
+		$config = dwcat_get_config();
+		$css_path = dwcat_get_path() . 'assets/css/admin.css';
 		if ( file_exists( $css_path ) ) {
-			wp_enqueue_style( 'pc-admin-style', PC_URL_Helper::get_css_url( 'admin.css' ), array(), $config['plugin_version'] );
+			wp_enqueue_style( 'dwcat-admin-style', DWCAT_URL_Helper::get_css_url( 'admin.css' ), array(), $config['plugin_version'] );
 		}
 	}
 
@@ -69,13 +69,13 @@ class PC_Bulk_Import {
 		}
 
 		$pt_slug = $this->get_post_type_from_page();
-		$pt_config = PC_Config::get_post_type( $pt_slug );
+		$pt_config = DWCAT_Config::get_post_type( $pt_slug );
 		if ( ! $pt_config ) {
 			echo '<div class="wrap"><p>' . esc_html__( 'Post type not found.', 'dw-catalog-wp' ) . '</p></div>';
 			return;
 		}
 
-		$fields = PC_Config::get_fields( $pt_slug );
+		$fields = DWCAT_Config::get_fields( $pt_slug );
 
 		// Show results
 		if ( isset( $_GET['imported'] ) || isset( $_GET['failed'] ) || isset( $_GET['skipped'] ) ) {
@@ -107,7 +107,7 @@ class PC_Bulk_Import {
 			}
 		}
 
-		$title_field = PC_Config::get_title_field( $pt_slug );
+		$title_field = DWCAT_Config::get_title_field( $pt_slug );
 		$title_key = $title_field ? $title_field['meta_key'] : 'post_title';
 		?>
 		<div class="wrap">
@@ -211,7 +211,7 @@ class PC_Bulk_Import {
 		}
 
 		$pt_slug = sanitize_key( $_POST['post_type_slug'] );
-		$pt_config = PC_Config::get_post_type( $pt_slug );
+		$pt_config = DWCAT_Config::get_post_type( $pt_slug );
 		if ( ! $pt_config ) {
 			wp_die( __( 'Invalid post type.', 'dw-catalog-wp' ) );
 		}
@@ -255,7 +255,7 @@ class PC_Bulk_Import {
 		$headers = $this->normalize_headers( $headers_raw );
 
 		// Find title field
-		$title_field = PC_Config::get_title_field( $pt_slug );
+		$title_field = DWCAT_Config::get_title_field( $pt_slug );
 		$title_key = $title_field ? $title_field['meta_key'] : 'post_title';
 
 		if ( ! in_array( $title_key, $headers, true ) && ! in_array( 'post_title', $headers, true ) ) {
@@ -265,7 +265,7 @@ class PC_Bulk_Import {
 			) );
 		}
 
-		$fields = PC_Config::get_fields( $pt_slug );
+		$fields = DWCAT_Config::get_fields( $pt_slug );
 		$row_num = 1;
 
 		while ( ( $row = fgetcsv( $handle, 0, $delimiter ) ) !== false ) {
@@ -372,8 +372,8 @@ class PC_Bulk_Import {
 				$cat_slug_val = trim( $data['dw_pc_category_slug'] );
 			}
 			if ( $cat_name !== '' || $cat_slug_val !== '' ) {
-				$cat_tax = PC_Config::get_category_taxonomy( $pt_slug );
-				$term_id = pc_get_or_create_term( $cat_name, $cat_slug_val, $cat_tax );
+				$cat_tax = DWCAT_Config::get_category_taxonomy( $pt_slug );
+				$term_id = dwcat_get_or_create_term( $cat_name, $cat_slug_val, $cat_tax );
 				if ( $term_id ) {
 					wp_set_object_terms( $post_id, array( $term_id ), $cat_tax );
 				}

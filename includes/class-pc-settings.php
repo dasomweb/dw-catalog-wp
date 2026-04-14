@@ -3,7 +3,7 @@
  * Settings Page Class
  *
  * Admin UI for managing custom fields per post type.
- * Post types are defined in code (PC_Config); fields are managed via this UI.
+ * Post types are defined in code (DWCAT_Config); fields are managed via this UI.
  *
  * @package DW_Catalog_WP
  */
@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-class PC_Settings {
+class DWCAT_Settings {
 
 	public function __construct() {
 		add_action( 'admin_menu', array( $this, 'add_admin_menu' ), 5 );
@@ -57,10 +57,10 @@ class PC_Settings {
 		if ( ! in_array( $page, $our_pages, true ) ) {
 			return;
 		}
-		$config = pc_get_plugin_config();
-		$css_path = pc_get_plugin_path() . 'assets/css/admin.css';
+		$config = dwcat_get_config();
+		$css_path = dwcat_get_path() . 'assets/css/admin.css';
 		if ( file_exists( $css_path ) ) {
-			wp_enqueue_style( 'pc-admin-style', PC_URL_Helper::get_css_url( 'admin.css' ), array(), $config['plugin_version'] );
+			wp_enqueue_style( 'dwcat-admin-style', DWCAT_URL_Helper::get_css_url( 'admin.css' ), array(), $config['plugin_version'] );
 		}
 		wp_enqueue_script( 'jquery' );
 		wp_enqueue_script( 'jquery-ui-sortable' );
@@ -74,7 +74,7 @@ class PC_Settings {
 			wp_die( __( 'Unauthorized', 'dw-catalog-wp' ) );
 		}
 
-		$post_types = PC_Config::get_post_types();
+		$post_types = DWCAT_Config::get_post_types();
 		?>
 		<div class="wrap">
 			<h1><?php _e( 'DW Catalog — Custom Fields', 'dw-catalog-wp' ); ?></h1>
@@ -95,7 +95,7 @@ class PC_Settings {
 					</thead>
 					<tbody>
 						<?php foreach ( $post_types as $slug => $pt ) : ?>
-							<?php $fields = PC_Config::get_fields( $slug ); ?>
+							<?php $fields = DWCAT_Config::get_fields( $slug ); ?>
 							<tr>
 								<td>
 									<strong><?php echo esc_html( $pt['singular_name'] ); ?></strong>
@@ -126,13 +126,13 @@ class PC_Settings {
 		}
 
 		$pt_slug = isset( $_GET['post_type'] ) ? sanitize_key( $_GET['post_type'] ) : '';
-		$pt = PC_Config::get_post_type( $pt_slug );
+		$pt = DWCAT_Config::get_post_type( $pt_slug );
 		if ( ! $pt ) {
 			wp_die( __( 'Post type not found.', 'dw-catalog-wp' ) );
 		}
 
-		$fields = PC_Config::get_fields( $pt_slug );
-		$field_types = PC_Config::get_field_types();
+		$fields = DWCAT_Config::get_fields( $pt_slug );
+		$field_types = DWCAT_Config::get_field_types();
 		$saved = isset( $_GET['saved'] ) ? intval( $_GET['saved'] ) : 0;
 		?>
 		<div class="wrap">
@@ -274,7 +274,7 @@ class PC_Settings {
 		check_admin_referer( 'dw_catalog_save_fields', 'dw_catalog_fields_nonce' );
 
 		$pt_slug = sanitize_key( $_POST['post_type_slug'] );
-		if ( ! PC_Config::get_post_type( $pt_slug ) ) {
+		if ( ! DWCAT_Config::get_post_type( $pt_slug ) ) {
 			wp_die( __( 'Post type not found.', 'dw-catalog-wp' ) );
 		}
 
@@ -301,7 +301,7 @@ class PC_Settings {
 			);
 		}
 
-		PC_Config::save_fields( $pt_slug, $fields );
+		DWCAT_Config::save_fields( $pt_slug, $fields );
 
 		wp_safe_redirect( admin_url( 'admin.php?page=dw-catalog-manage-fields&post_type=' . $pt_slug . '&saved=1' ) );
 		exit;

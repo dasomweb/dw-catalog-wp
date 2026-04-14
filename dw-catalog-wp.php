@@ -2,12 +2,13 @@
 /**
  * Plugin Name: DW Catalog WP
  * Plugin URI: https://github.com/dasomweb/dw-catalog-wp
- * Description: Dynamic custom post type & custom field catalog plugin. Register multiple post types with custom fields per website.
- * Version: 1.0.1
+ * Description: Product catalog with dynamic custom fields per post type.
+ * Version: 1.0.2
  * Author: Dasom Web
  * Author URI: https://github.com/dasomweb
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
+ * Update URI: https://github.com/dasomweb/dw-catalog-wp
  * Text Domain: dw-catalog-wp
  * Domain Path: /languages
  * Requires at least: 5.0
@@ -21,12 +22,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Central Plugin Configuration
  */
-function pc_get_plugin_config() {
+function dwcat_get_config() {
 	return array(
 		'github_repo_owner'  => 'dasomweb',
 		'github_repo_name'   => 'dw-catalog-wp',
 		'plugin_slug'        => 'dw-catalog-wp',
-		'plugin_version'     => '1.0.1',
+		'plugin_version'     => '1.0.2',
 		'plugin_name'        => 'DW Catalog WP',
 		'plugin_text_domain' => 'dw-catalog-wp',
 		'github_branch'      => 'main',
@@ -35,28 +36,28 @@ function pc_get_plugin_config() {
 	);
 }
 
-function pc_get_plugin_url() {
+function dwcat_get_url() {
 	return plugin_dir_url( __FILE__ );
 }
 
-function pc_get_plugin_path() {
+function dwcat_get_path() {
 	return plugin_dir_path( __FILE__ );
 }
 
-function pc_get_plugin_file() {
+function dwcat_get_file() {
 	return __FILE__;
 }
 
 /**
  * Get or create a taxonomy term by name and/or slug.
- * Generic replacement for the old pc_get_or_create_product_category.
+ * Generic replacement for the old dwcat_get_or_create_product_category.
  *
  * @param string $name     Term display name.
  * @param string $slug     Term slug.
  * @param string $taxonomy Taxonomy name.
  * @return int Term ID, or 0 on failure.
  */
-function pc_get_or_create_term( $name = '', $slug = '', $taxonomy = '' ) {
+function dwcat_get_or_create_term( $name = '', $slug = '', $taxonomy = '' ) {
 	$name = trim( (string) $name );
 	$slug = trim( (string) $slug );
 	if ( ( $name === '' && $slug === '' ) || $taxonomy === '' ) {
@@ -92,29 +93,29 @@ function pc_get_or_create_term( $name = '', $slug = '', $taxonomy = '' ) {
 /**
  * Backward-compatible wrapper for the old function name.
  */
-function pc_get_or_create_product_category( $category_name = '', $category_slug = '' ) {
-	return pc_get_or_create_term( $category_name, $category_slug, 'product_category' );
+function dwcat_get_or_create_product_category( $category_name = '', $category_slug = '' ) {
+	return dwcat_get_or_create_term( $category_name, $category_slug, 'product_category' );
 }
 
 // Load includes
-require_once pc_get_plugin_path() . 'includes/class-pc-url-helper.php';
-require_once pc_get_plugin_path() . 'includes/class-pc-config.php';
-require_once pc_get_plugin_path() . 'includes/class-pc-github-updater.php';
-require_once pc_get_plugin_path() . 'includes/class-pc-settings.php';
-require_once pc_get_plugin_path() . 'includes/class-pc-post-type.php';
-require_once pc_get_plugin_path() . 'includes/class-pc-meta-box.php';
-require_once pc_get_plugin_path() . 'includes/class-pc-product-display.php';
-require_once pc_get_plugin_path() . 'includes/class-pc-admin-columns.php';
-require_once pc_get_plugin_path() . 'includes/class-pc-admin-pages.php';
-require_once pc_get_plugin_path() . 'includes/class-pc-field-reference.php';
-require_once pc_get_plugin_path() . 'includes/class-pc-bulk-import.php';
+require_once dwcat_get_path() . 'includes/class-pc-url-helper.php';
+require_once dwcat_get_path() . 'includes/class-pc-config.php';
+require_once dwcat_get_path() . 'includes/class-pc-github-updater.php';
+require_once dwcat_get_path() . 'includes/class-pc-settings.php';
+require_once dwcat_get_path() . 'includes/class-pc-post-type.php';
+require_once dwcat_get_path() . 'includes/class-pc-meta-box.php';
+require_once dwcat_get_path() . 'includes/class-pc-product-display.php';
+require_once dwcat_get_path() . 'includes/class-pc-admin-columns.php';
+require_once dwcat_get_path() . 'includes/class-pc-admin-pages.php';
+require_once dwcat_get_path() . 'includes/class-pc-field-reference.php';
+require_once dwcat_get_path() . 'includes/class-pc-bulk-import.php';
 
 // Initialize GitHub Updater
-add_action( 'plugins_loaded', 'pc_init_github_updater', 10 );
-function pc_init_github_updater() {
-	$config = pc_get_plugin_config();
-	new PC_GitHub_Updater(
-		pc_get_plugin_file(),
+add_action( 'plugins_loaded', 'dwcat_init_updater', 10 );
+function dwcat_init_updater() {
+	$config = dwcat_get_config();
+	new DWCAT_GitHub_Updater(
+		dwcat_get_file(),
 		$config['github_repo_owner'],
 		$config['github_repo_name'],
 		$config['plugin_slug'],
@@ -123,39 +124,50 @@ function pc_init_github_updater() {
 }
 
 // Initialize all components
-add_action( 'plugins_loaded', 'pc_init_components', 10 );
-function pc_init_components() {
-	new PC_Settings();
-	new PC_Post_Type();
-	new PC_Meta_Box();
-	new PC_Admin_Columns();
-	new PC_Admin_Pages();
-	new PC_Field_Reference();
-	new PC_Bulk_Import();
+add_action( 'plugins_loaded', 'dwcat_init', 10 );
+function dwcat_init() {
+	new DWCAT_Settings();
+	new DWCAT_Post_Type();
+	new DWCAT_Meta_Box();
+	new DWCAT_Admin_Columns();
+	new DWCAT_Admin_Pages();
+	new DWCAT_Field_Reference();
+	new DWCAT_Bulk_Import();
 
 	// PDF Export (requires composer autoload)
-	require_once pc_get_plugin_path() . 'includes/class-pc-pdf-export.php';
-	new PC_PDF_Export();
+	require_once dwcat_get_path() . 'includes/class-pc-pdf-export.php';
+	new DWCAT_PDF_Export();
 }
 
 // Activation hook
-register_activation_hook( __FILE__, 'pc_activate' );
-function pc_activate() {
-	$config = pc_get_plugin_config();
-	update_option( 'pc_plugin_version', $config['plugin_version'] );
-	update_option( 'pc_plugin_activated', time() );
+register_activation_hook( __FILE__, 'dwcat_activate' );
+function dwcat_activate() {
+	$config = dwcat_get_config();
+	update_option( 'dwcat_version', $config['plugin_version'] );
+	update_option( 'dwcat_activated', time() );
 
 	// Ensure default config is seeded
-	PC_Config::get_post_types();
+	DWCAT_Config::get_post_types();
 
 	// Register post types for rewrite flush
-	$pt = new PC_Post_Type();
+	$pt = new DWCAT_Post_Type();
 	$pt->register_all();
 	flush_rewrite_rules();
 }
 
 // Deactivation hook
-register_deactivation_hook( __FILE__, 'pc_deactivate' );
-function pc_deactivate() {
+register_deactivation_hook( __FILE__, 'dwcat_deactivate' );
+function dwcat_deactivate() {
+	// Unregister post types and taxonomies before flushing
+	$post_types = DWCAT_Config::get_post_types();
+	foreach ( $post_types as $slug => $config ) {
+		unregister_post_type( $slug );
+		if ( ! empty( $config['has_category'] ) ) {
+			unregister_taxonomy( DWCAT_Config::get_category_taxonomy( $slug ) );
+		}
+		if ( ! empty( $config['has_tag'] ) ) {
+			unregister_taxonomy( DWCAT_Config::get_tag_taxonomy( $slug ) );
+		}
+	}
 	flush_rewrite_rules();
 }

@@ -2,7 +2,7 @@
 /**
  * Meta Box Class
  *
- * Dynamically renders custom meta boxes based on PC_Config fields.
+ * Dynamically renders custom meta boxes based on DWCAT_Config fields.
  *
  * @package DW_Catalog_WP
  */
@@ -11,7 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-class PC_Meta_Box {
+class DWCAT_Meta_Box {
 
 	public function __construct() {
 		add_action( 'add_meta_boxes', array( $this, 'add_meta_boxes' ) );
@@ -23,9 +23,9 @@ class PC_Meta_Box {
 	 * Add meta boxes for all registered post types.
 	 */
 	public function add_meta_boxes() {
-		$post_types = PC_Config::get_post_types();
+		$post_types = DWCAT_Config::get_post_types();
 		foreach ( $post_types as $slug => $config ) {
-			$fields = PC_Config::get_fields( $slug );
+			$fields = DWCAT_Config::get_fields( $slug );
 			if ( empty( $fields ) ) {
 				continue;
 			}
@@ -46,7 +46,7 @@ class PC_Meta_Box {
 	 */
 	public function render_meta_box( $post, $metabox ) {
 		$pt_slug = $metabox['args']['post_type_slug'];
-		$fields = PC_Config::get_fields( $pt_slug );
+		$fields = DWCAT_Config::get_fields( $pt_slug );
 
 		wp_nonce_field( 'dw_catalog_save_meta_' . $pt_slug, 'dw_catalog_meta_nonce' );
 		?>
@@ -99,7 +99,7 @@ class PC_Meta_Box {
 						break;
 
 					case 'select':
-						$options = PC_Config::parse_select_options( $field['options'] );
+						$options = DWCAT_Config::parse_select_options( $field['options'] );
 						printf( '<select id="%s" name="%s">', esc_attr( $input_id ), esc_attr( $meta_key ) );
 						echo '<option value="">' . esc_html__( '— Select —', 'dw-catalog-wp' ) . '</option>';
 						foreach ( $options as $opt_val => $opt_label ) {
@@ -174,7 +174,7 @@ class PC_Meta_Box {
 	 */
 	public function save_meta( $post_id, $post ) {
 		$pt_slug = $post->post_type;
-		if ( ! PC_Config::is_our_post_type( $pt_slug ) ) {
+		if ( ! DWCAT_Config::is_our_post_type( $pt_slug ) ) {
 			return;
 		}
 
@@ -188,7 +188,7 @@ class PC_Meta_Box {
 			return;
 		}
 
-		$fields = PC_Config::get_fields( $pt_slug );
+		$fields = DWCAT_Config::get_fields( $pt_slug );
 		$title_value = '';
 
 		foreach ( $fields as $field ) {
@@ -229,13 +229,13 @@ class PC_Meta_Box {
 		}
 
 		// Handle category taxonomy fields (category_name / category_slug pattern)
-		$pt_config = PC_Config::get_post_type( $pt_slug );
+		$pt_config = DWCAT_Config::get_post_type( $pt_slug );
 		if ( ! empty( $pt_config['has_category'] ) ) {
-			$cat_taxonomy = PC_Config::get_category_taxonomy( $pt_slug );
+			$cat_taxonomy = DWCAT_Config::get_category_taxonomy( $pt_slug );
 			$cat_name = isset( $_POST['dw_catalog_category_name'] ) ? trim( sanitize_text_field( $_POST['dw_catalog_category_name'] ) ) : '';
 			$cat_slug = isset( $_POST['dw_catalog_category_slug'] ) ? trim( sanitize_text_field( $_POST['dw_catalog_category_slug'] ) ) : '';
 			if ( $cat_name !== '' || $cat_slug !== '' ) {
-				$term_id = pc_get_or_create_term( $cat_name, $cat_slug, $cat_taxonomy );
+				$term_id = dwcat_get_or_create_term( $cat_name, $cat_slug, $cat_taxonomy );
 				if ( $term_id ) {
 					wp_set_object_terms( $post_id, array( $term_id ), $cat_taxonomy );
 				}
@@ -251,18 +251,18 @@ class PC_Meta_Box {
 			return;
 		}
 		global $post_type;
-		if ( ! PC_Config::is_our_post_type( $post_type ) ) {
+		if ( ! DWCAT_Config::is_our_post_type( $post_type ) ) {
 			return;
 		}
 
-		$config = pc_get_plugin_config();
-		$css_path = pc_get_plugin_path() . 'assets/css/admin.css';
+		$config = dwcat_get_config();
+		$css_path = dwcat_get_path() . 'assets/css/admin.css';
 		if ( file_exists( $css_path ) ) {
-			wp_enqueue_style( 'pc-admin-style', PC_URL_Helper::get_css_url( 'admin.css' ), array(), $config['plugin_version'] );
+			wp_enqueue_style( 'dwcat-admin-style', DWCAT_URL_Helper::get_css_url( 'admin.css' ), array(), $config['plugin_version'] );
 		}
 
 		// Title field sync: if a title field is defined, sync it to post_title
-		$title_field = PC_Config::get_title_field( $post_type );
+		$title_field = DWCAT_Config::get_title_field( $post_type );
 		if ( $title_field ) {
 			wp_enqueue_script( 'jquery' );
 			$field_id = 'dw_field_' . sanitize_key( $title_field['meta_key'] );

@@ -2,7 +2,7 @@
 /**
  * Post Type Registration Class
  *
- * Dynamically registers custom post types and taxonomies based on PC_Config.
+ * Dynamically registers custom post types and taxonomies based on DWCAT_Config.
  *
  * @package DW_Catalog_WP
  */
@@ -11,7 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-class PC_Post_Type {
+class DWCAT_Post_Type {
 
 	public function __construct() {
 		add_action( 'init', array( $this, 'register_all' ) );
@@ -21,7 +21,7 @@ class PC_Post_Type {
 	 * Register all configured post types and their taxonomies.
 	 */
 	public function register_all() {
-		$post_types = PC_Config::get_post_types();
+		$post_types = DWCAT_Config::get_post_types();
 
 		foreach ( $post_types as $slug => $config ) {
 			$this->register_post_type( $slug, $config );
@@ -93,7 +93,7 @@ class PC_Post_Type {
 	 */
 	private function register_category_taxonomy( $slug, $config ) {
 		$singular = $config['singular_name'];
-		$tax_slug = PC_Config::get_category_taxonomy( $slug );
+		$tax_slug = DWCAT_Config::get_category_taxonomy( $slug );
 
 		$labels = array(
 			'name'              => sprintf( __( '%s Categories', 'dw-catalog-wp' ), $singular ),
@@ -125,7 +125,7 @@ class PC_Post_Type {
 	 */
 	private function register_tag_taxonomy( $slug, $config ) {
 		$singular = $config['singular_name'];
-		$tax_slug = PC_Config::get_tag_taxonomy( $slug );
+		$tax_slug = DWCAT_Config::get_tag_taxonomy( $slug );
 
 		$labels = array(
 			'name'                       => sprintf( __( '%s Tags', 'dw-catalog-wp' ), $singular ),

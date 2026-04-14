@@ -11,7 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-class PC_Admin_Columns {
+class DWCAT_Admin_Columns {
 
 	public function __construct() {
 		add_action( 'admin_init', array( $this, 'register_columns' ) );
@@ -21,7 +21,7 @@ class PC_Admin_Columns {
 	 * Register column hooks for all configured post types.
 	 */
 	public function register_columns() {
-		$post_types = PC_Config::get_post_types();
+		$post_types = DWCAT_Config::get_post_types();
 		foreach ( $post_types as $slug => $config ) {
 			add_filter( 'manage_' . $slug . '_posts_columns', array( $this, 'add_columns' ) );
 			add_action( 'manage_' . $slug . '_posts_custom_column', array( $this, 'render_column' ), 10, 2 );
@@ -38,14 +38,14 @@ class PC_Admin_Columns {
 			return $columns;
 		}
 		$pt_slug = $screen->post_type;
-		$fields = PC_Config::get_list_fields( $pt_slug );
+		$fields = DWCAT_Config::get_list_fields( $pt_slug );
 
 		$new_columns = array();
 		foreach ( $columns as $key => $value ) {
 			$new_columns[ $key ] = $value;
 			if ( 'title' === $key ) {
 				// Add category column if available
-				$pt_config = PC_Config::get_post_type( $pt_slug );
+				$pt_config = DWCAT_Config::get_post_type( $pt_slug );
 				if ( $pt_config && ! empty( $pt_config['has_category'] ) ) {
 					$new_columns['dw_cat_category'] = __( 'Category', 'dw-catalog-wp' );
 				}
@@ -70,9 +70,9 @@ class PC_Admin_Columns {
 
 		// Category column
 		if ( $column_name === 'dw_cat_category' ) {
-			$pt_config = PC_Config::get_post_type( $pt_slug );
+			$pt_config = DWCAT_Config::get_post_type( $pt_slug );
 			if ( $pt_config && ! empty( $pt_config['has_category'] ) ) {
-				$tax = PC_Config::get_category_taxonomy( $pt_slug );
+				$tax = DWCAT_Config::get_category_taxonomy( $pt_slug );
 				$terms = wp_get_post_terms( $post_id, $tax );
 				$names = ! empty( $terms ) && ! is_wp_error( $terms ) ? implode( ', ', wp_list_pluck( $terms, 'name' ) ) : '';
 				echo $names ? esc_html( $names ) : '—';
@@ -86,10 +86,10 @@ class PC_Admin_Columns {
 			$value = get_post_meta( $post_id, $meta_key, true );
 
 			// Check if this is a select field and resolve label
-			$fields = PC_Config::get_fields( $pt_slug );
+			$fields = DWCAT_Config::get_fields( $pt_slug );
 			foreach ( $fields as $field ) {
 				if ( $field['meta_key'] === $meta_key && $field['type'] === 'select' && $value !== '' ) {
-					$options = PC_Config::parse_select_options( $field['options'] );
+					$options = DWCAT_Config::parse_select_options( $field['options'] );
 					$value = isset( $options[ $value ] ) ? $options[ $value ] : $value;
 					break;
 				}
@@ -108,7 +108,7 @@ class PC_Admin_Columns {
 			return $columns;
 		}
 		$pt_slug = $screen->post_type;
-		$fields = PC_Config::get_list_fields( $pt_slug );
+		$fields = DWCAT_Config::get_list_fields( $pt_slug );
 		foreach ( $fields as $field ) {
 			if ( ! empty( $field['is_title_field'] ) ) {
 				continue;

@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-class PC_Config {
+class DWCAT_Config {
 
 	const OPTION_POST_TYPES = 'dw_catalog_post_types';
 	const OPTION_FIELDS_PREFIX = 'dw_catalog_fields_';

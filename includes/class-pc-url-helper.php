@@ -14,11 +14,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * PC_URL_Helper Class
+ * DWCAT_URL_Helper Class
  * 
  * Centralized URL generation using WordPress functions.
  */
-class PC_URL_Helper {
+class DWCAT_URL_Helper {
 
 	/**
 	 * Get plugin admin URL
@@ -38,7 +38,7 @@ class PC_URL_Helper {
 	 * @return string Settings URL
 	 */
 	public static function get_settings_url() {
-		$config = pc_get_plugin_config();
+		$config = dwcat_get_config();
 		return admin_url( 'admin.php?page=' . $config['plugin_slug'] );
 	}
 

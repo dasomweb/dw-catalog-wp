@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-class PC_Product_Display {
+class DWCAT_Product_Display {
 
 	/**
 	 * Get a meta value with default.
@@ -33,11 +33,11 @@ class PC_Product_Display {
 
 		// Try to find field definition to resolve select labels
 		$post = get_post( $post_id );
-		if ( $post && PC_Config::is_our_post_type( $post->post_type ) ) {
-			$fields = PC_Config::get_fields( $post->post_type );
+		if ( $post && DWCAT_Config::is_our_post_type( $post->post_type ) ) {
+			$fields = DWCAT_Config::get_fields( $post->post_type );
 			foreach ( $fields as $field ) {
 				if ( $field['meta_key'] === $meta_key && $field['type'] === 'select' ) {
-					$options = PC_Config::parse_select_options( $field['options'] );
+					$options = DWCAT_Config::parse_select_options( $field['options'] );
 					return isset( $options[ $value ] ) ? $options[ $value ] : $value;
 				}
 			}
@@ -88,26 +88,26 @@ class PC_Product_Display {
 	}
 
 	public static function display_product_name( $post_id ) {
-		PC_Meta_Box::display_product_meta( $post_id, 'dw_pc_product_name' );
+		DWCAT_Meta_Box::display_product_meta( $post_id, 'dw_pc_product_name' );
 	}
 
 	public static function display_brand( $post_id ) {
-		PC_Meta_Box::display_product_meta( $post_id, 'dw_pc_brand_raw' );
+		DWCAT_Meta_Box::display_product_meta( $post_id, 'dw_pc_brand_raw' );
 	}
 
 	public static function display_item_code( $post_id ) {
-		PC_Meta_Box::display_product_meta( $post_id, 'dw_pc_item_code' );
+		DWCAT_Meta_Box::display_product_meta( $post_id, 'dw_pc_item_code' );
 	}
 
 	public static function display_pack_size_raw( $post_id ) {
-		PC_Meta_Box::display_product_meta( $post_id, 'dw_pc_pack_size_raw' );
+		DWCAT_Meta_Box::display_product_meta( $post_id, 'dw_pc_pack_size_raw' );
 	}
 
 	public static function display_origin( $post_id ) {
-		PC_Meta_Box::display_product_meta( $post_id, 'dw_pc_origin_raw' );
+		DWCAT_Meta_Box::display_product_meta( $post_id, 'dw_pc_origin_raw' );
 	}
 
 	public static function display_internal_note( $post_id ) {
-		PC_Meta_Box::display_product_meta( $post_id, 'dw_pc_internal_note' );
+		DWCAT_Meta_Box::display_product_meta( $post_id, 'dw_pc_internal_note' );
 	}
 }

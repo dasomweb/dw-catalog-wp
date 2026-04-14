@@ -163,10 +163,10 @@ echo "\nChecking for central configuration...\n";
 $main_file = $plugin_dir . '/dw-catalog-wp.php';
 if ( file_exists( $main_file ) ) {
 	$content = file_get_contents( $main_file );
-	if ( strpos( $content, 'pc_get_plugin_config' ) !== false ) {
-		echo "  ✅ pc_get_plugin_config() - Found\n";
+	if ( strpos( $content, 'dwcat_get_config' ) !== false ) {
+		echo "  ✅ dwcat_get_config() - Found\n";
 	} else {
-		echo "  ❌ pc_get_plugin_config() - NOT FOUND\n";
+		echo "  ❌ dwcat_get_config() - NOT FOUND\n";
 	}
 } else {
 	echo "  ❌ Main plugin file not found\n";

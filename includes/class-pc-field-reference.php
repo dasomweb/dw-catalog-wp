@@ -11,7 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-class PC_Field_Reference {
+class DWCAT_Field_Reference {
 
 	public function __construct() {
 		add_action( 'admin_menu', array( $this, 'add_admin_menus' ) );
@@ -21,7 +21,7 @@ class PC_Field_Reference {
 	 * Add Field Reference submenu to each post type menu.
 	 */
 	public function add_admin_menus() {
-		$post_types = PC_Config::get_post_types();
+		$post_types = DWCAT_Config::get_post_types();
 		foreach ( $post_types as $slug => $config ) {
 			$parent = 'dw-catalog-' . $slug;
 			add_submenu_page(
@@ -49,13 +49,13 @@ class PC_Field_Reference {
 		}
 
 		$pt_slug = $this->get_post_type_from_page();
-		$pt_config = PC_Config::get_post_type( $pt_slug );
+		$pt_config = DWCAT_Config::get_post_type( $pt_slug );
 		if ( ! $pt_config ) {
 			echo '<div class="wrap"><p>' . esc_html__( 'Post type not found.', 'dw-catalog-wp' ) . '</p></div>';
 			return;
 		}
 
-		$fields = PC_Config::get_fields( $pt_slug );
+		$fields = DWCAT_Config::get_fields( $pt_slug );
 		?>
 		<div class="wrap">
 			<h1><?php printf( __( 'Field Reference — %s', 'dw-catalog-wp' ), esc_html( $pt_config['singular_name'] ) ); ?></h1>
@@ -90,7 +90,7 @@ class PC_Field_Reference {
 								<td>
 									<?php
 									if ( $field['type'] === 'select' && ! empty( $field['options'] ) ) {
-										$opts = PC_Config::parse_select_options( $field['options'] );
+										$opts = DWCAT_Config::parse_select_options( $field['options'] );
 										echo esc_html( implode( ', ', array_keys( $opts ) ) );
 									} else {
 										echo '—';
