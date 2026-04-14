@@ -51,5 +51,5 @@ wp-config.php
 *.zip
 /build/
 
-# Composer (PDF export); vendor is built at release time
+# Composer (PDF export). Vendor is included in release ZIP via CI; for local dev run: composer install
 /vendor/
