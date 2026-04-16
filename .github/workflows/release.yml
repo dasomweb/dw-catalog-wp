@@ -69,6 +69,7 @@ jobs:
             --exclude='build-installable-zip.ps1' \
             --exclude='composer.json' \
             --exclude='composer.lock' \
+            --exclude='tests' \
             --exclude='temp_plugin' \
             --exclude='*.zip' \
             ./ temp_plugin/${PLUGIN_NAME}/

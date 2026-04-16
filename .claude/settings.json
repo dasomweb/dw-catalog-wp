@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "mcp__dw-mcp__get_page"
+      "mcp__dw-mcp__get_page",
+      "Bash(cat)",
+      "Bash(bash /tmp/verify.sh)"
     ]
   }
 }

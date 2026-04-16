@@ -383,7 +383,7 @@ class DWCAT_Admin_Pages {
 	 * Enqueue admin scripts for the list pages.
 	 */
 	public function enqueue_admin_scripts( $hook ) {
-		$page = isset( $_GET['page'] ) ? $_GET['page'] : '';
+		$page = isset( $_GET['page'] ) ? sanitize_text_field( $_GET['page'] ) : '';
 		$pt_slug = $this->get_current_post_type_slug();
 		if ( empty( $pt_slug ) || ! DWCAT_Config::is_our_post_type( $pt_slug ) ) {
 			return;

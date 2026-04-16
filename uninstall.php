@@ -19,4 +19,10 @@ delete_option( 'dwcat_activated' );
 
 // Remove field options for all known post types
 global $wpdb;
-$wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE 'dw_catalog_fields_%'" );
+$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s", 'dw\_catalog\_fields\_%' ) );
+
+// Remove license options
+delete_option( 'dwcat_license_key' );
+delete_option( 'dwcat_license_status' );
+delete_option( 'dwcat_license_expires' );
+delete_transient( 'dwcat_license_verified' );

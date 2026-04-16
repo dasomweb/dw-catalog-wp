@@ -3,7 +3,7 @@
  * Plugin Name: DW Catalog WP
  * Plugin URI: https://github.com/dasomweb/dw-catalog-wp
  * Description: Product catalog with dynamic custom fields per post type.
- * Version: 1.0.4
+ * Version: 1.0.5
  * Author: Dasom Web
  * Author URI: https://github.com/dasomweb
  * License: GPL v2 or later
@@ -27,7 +27,7 @@ function dwcat_get_config() {
 		'github_repo_owner'  => 'dasomweb',
 		'github_repo_name'   => 'dw-catalog-wp',
 		'plugin_slug'        => 'dw-catalog-wp',
-		'plugin_version'     => '1.0.4',
+		'plugin_version'     => '1.0.5',
 		'plugin_name'        => 'DW Catalog WP',
 		'plugin_text_domain' => 'dw-catalog-wp',
 		'github_branch'      => 'main',
@@ -109,6 +109,7 @@ require_once dwcat_get_path() . 'includes/class-pc-admin-columns.php';
 require_once dwcat_get_path() . 'includes/class-pc-admin-pages.php';
 require_once dwcat_get_path() . 'includes/class-pc-field-reference.php';
 require_once dwcat_get_path() . 'includes/class-pc-bulk-import.php';
+require_once dwcat_get_path() . 'includes/class-dwcat-license.php';
 
 // Initialize GitHub Updater
 add_action( 'plugins_loaded', 'dwcat_init_updater', 10 );
@@ -133,6 +134,8 @@ function dwcat_init() {
 	new DWCAT_Admin_Pages();
 	new DWCAT_Field_Reference();
 	new DWCAT_Bulk_Import();
+
+	new DWCAT_License();
 
 	// PDF Export (requires composer autoload)
 	require_once dwcat_get_path() . 'includes/class-pc-pdf-export.php';

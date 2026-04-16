@@ -52,7 +52,7 @@ class DWCAT_Settings {
 	}
 
 	public function enqueue_scripts( $hook ) {
-		$page = isset( $_GET['page'] ) ? $_GET['page'] : '';
+		$page = isset( $_GET['page'] ) ? sanitize_text_field( $_GET['page'] ) : '';
 		$our_pages = array( 'dw-catalog-settings', 'dw-catalog-manage-fields' );
 		if ( ! in_array( $page, $our_pages, true ) ) {
 			return;
