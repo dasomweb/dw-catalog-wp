@@ -3,7 +3,7 @@
  * Plugin Name: DW Catalog WP
  * Plugin URI: https://github.com/dasomweb/dw-catalog-wp
  * Description: Product catalog with dynamic custom fields per post type.
- * Version: 1.0.5
+ * Version: 1.0.6
  * Author: Dasom Web
  * Author URI: https://github.com/dasomweb
  * License: GPL v2 or later
@@ -27,7 +27,7 @@ function dwcat_get_config() {
 		'github_repo_owner'  => 'dasomweb',
 		'github_repo_name'   => 'dw-catalog-wp',
 		'plugin_slug'        => 'dw-catalog-wp',
-		'plugin_version'     => '1.0.5',
+		'plugin_version'     => '1.0.6',
 		'plugin_name'        => 'DW Catalog WP',
 		'plugin_text_domain' => 'dw-catalog-wp',
 		'github_branch'      => 'main',
@@ -109,7 +109,7 @@ require_once dwcat_get_path() . 'includes/class-pc-admin-columns.php';
 require_once dwcat_get_path() . 'includes/class-pc-admin-pages.php';
 require_once dwcat_get_path() . 'includes/class-pc-field-reference.php';
 require_once dwcat_get_path() . 'includes/class-pc-bulk-import.php';
-require_once dwcat_get_path() . 'includes/class-dwcat-license.php';
+require_once dwcat_get_path() . 'includes/class-dw-license-manager.php';
 
 // Initialize GitHub Updater
 add_action( 'plugins_loaded', 'dwcat_init_updater', 10 );
@@ -135,7 +135,43 @@ function dwcat_init() {
 	new DWCAT_Field_Reference();
 	new DWCAT_Bulk_Import();
 
-	new DWCAT_License();
+	// License Manager SDK (DW Site Builder)
+	DW_License_Manager::init( array(
+		'product_slug'  => 'dw-catalog-wp',
+		'plugin_slug'   => 'dw-catalog-wp/dw-catalog-wp.php',
+		'plugin_name'   => 'DW Catalog WP',
+		'version'       => dwcat_get_config()['plugin_version'],
+		'api_url'       => 'https://api-production-a3f4.up.railway.app/api/v1',
+		'settings_page' => 'dw-catalog-license',
+	) );
+
+	// DW Admin SPA Integration (optional — works without DW Admin)
+	if ( function_exists( 'dw_admin' ) ) {
+		$spa_post_types = DWCAT_Config::get_post_types();
+		foreach ( $spa_post_types as $spa_slug => $spa_config ) {
+			$spa_columns = array();
+			$spa_fields  = DWCAT_Config::get_list_fields( $spa_slug );
+			foreach ( $spa_fields as $f ) {
+				if ( empty( $f['is_title_field'] ) ) {
+					$spa_columns[] = array( 'key' => $f['meta_key'], 'label' => $f['label'] );
+				}
+			}
+			array_unshift( $spa_columns, array( 'key' => 'title', 'label' => $spa_config['singular_name'] ) );
+
+			add_filter( 'dw_spa_modules', function ( $modules ) use ( $spa_slug, $spa_config, $spa_columns ) {
+				$modules[] = array(
+					'key'       => 'dwcat-' . $spa_slug,
+					'label'     => $spa_config['menu_name'],
+					'icon'      => 'grid',
+					'post_type' => $spa_slug,
+					'rest_base' => rest_url( 'wp/v2/' . $spa_slug ),
+					'columns'   => $spa_columns,
+					'roles'     => array(),
+				);
+				return $modules;
+			} );
+		}
+	}
 
 	// PDF Export (requires composer autoload)
 	require_once dwcat_get_path() . 'includes/class-pc-pdf-export.php';

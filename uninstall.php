@@ -21,8 +21,7 @@ delete_option( 'dwcat_activated' );
 global $wpdb;
 $wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s", 'dw\_catalog\_fields\_%' ) );
 
-// Remove license options
-delete_option( 'dwcat_license_key' );
-delete_option( 'dwcat_license_status' );
-delete_option( 'dwcat_license_expires' );
-delete_transient( 'dwcat_license_verified' );
+// Remove license options (DW License Manager SDK)
+delete_option( 'dw_license_dw_catalog_wp' );
+delete_transient( 'dw_license_check_dw-catalog-wp' );
+wp_clear_scheduled_hook( 'dw_verify_license_dw-catalog-wp' );

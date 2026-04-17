@@ -51,7 +51,7 @@ $required_files = array(
 	'includes/class-pc-product-display.php',
 	'includes/class-pc-url-helper.php',
 	'includes/class-pc-github-updater.php',
-	'includes/class-dwcat-license.php',
+	'includes/class-dw-license-manager.php',
 	'assets/css/admin.css',
 );
 
@@ -148,7 +148,7 @@ $expected_classes = array(
 	'DWCAT_Product_Display'  => 'class-pc-product-display.php',
 	'DWCAT_URL_Helper'       => 'class-pc-url-helper.php',
 	'DWCAT_GitHub_Updater'   => 'class-pc-github-updater.php',
-	'DWCAT_License'          => 'class-dwcat-license.php',
+	'DW_License_Manager'     => 'class-dw-license-manager.php',
 );
 
 foreach ( $expected_classes as $class_name => $file_name ) {
@@ -172,7 +172,7 @@ $handlers_with_nonces = array(
 	'class-pc-admin-pages.php' => 'dw_catalog_delete_',
 	'class-pc-bulk-import.php' => 'dw_catalog_import_nonce',
 	'class-pc-pdf-export.php'  => 'dw_catalog_pdf_nonce',
-	'class-dwcat-license.php'  => 'dwcat_license_nonce',
+	'class-dw-license-manager.php' => 'dw_license_nonce',
 );
 
 foreach ( $handlers_with_nonces as $file => $nonce_name ) {
@@ -241,20 +241,26 @@ foreach ( $files_with_get_page as $file ) {
 
 // ─── 10. License Integration ────────────────────────────────
 
-echo "--- 10. License Integration ---\n";
+echo "--- 10. License SDK (DW_License_Manager) ---\n";
 
-$license_file = file_get_contents( "$plugin_root/includes/class-dwcat-license.php" );
-assert_true( strpos( $license_file, '/activate' ) !== false, 'License: /activate endpoint used' );
-assert_true( strpos( $license_file, '/verify' ) !== false, 'License: /verify endpoint used' );
-assert_true( strpos( $license_file, '/deactivate' ) !== false, 'License: /deactivate endpoint used' );
-assert_true( strpos( $license_file, '/check-update' ) !== false, 'License: /check-update endpoint used' );
-assert_true( strpos( $license_file, 'wp_remote_post' ) !== false, 'License: uses wp_remote_post for API calls' );
-assert_true( strpos( $license_file, 'wp_json_encode' ) !== false, 'License: uses wp_json_encode for request body' );
-assert_true( strpos( $license_file, 'DWCAT_License' ) !== false, 'License: proper DWCAT_ prefix' );
+$license_file = file_get_contents( "$plugin_root/includes/class-dw-license-manager.php" );
+assert_true( strpos( $license_file, '/license/activate' ) !== false, 'License SDK: /license/activate endpoint' );
+assert_true( strpos( $license_file, '/license/verify' ) !== false, 'License SDK: /license/verify endpoint' );
+assert_true( strpos( $license_file, '/license/deactivate' ) !== false, 'License SDK: /license/deactivate endpoint' );
+assert_true( strpos( $license_file, '/releases/update-check' ) !== false, 'License SDK: /releases/update-check endpoint' );
+assert_true( strpos( $license_file, 'wp_remote_request' ) !== false, 'License SDK: uses wp_remote_request' );
+assert_true( strpos( $license_file, 'check_ajax_referer' ) !== false, 'License SDK: AJAX nonce verification' );
+assert_true( strpos( $license_file, 'pre_set_site_transient_update_plugins' ) !== false, 'License SDK: auto-update hook' );
+assert_true( strpos( $license_file, 'plugins_api' ) !== false, 'License SDK: plugin_info hook' );
+assert_true( strpos( $license_file, 'DW_License_Manager' ) !== false, 'License SDK: DW_License_Manager class' );
 
-// Main file loads license
-assert_true( strpos( $main_file, 'class-dwcat-license.php' ) !== false, 'Main file loads license class' );
-assert_true( strpos( $main_file, 'DWCAT_License' ) !== false, 'Main file initializes DWCAT_License' );
+// Main file loads and initializes SDK
+assert_true( strpos( $main_file, 'class-dw-license-manager.php' ) !== false, 'Main file loads license SDK' );
+assert_true( strpos( $main_file, 'DW_License_Manager::init' ) !== false, 'Main file calls DW_License_Manager::init()' );
+
+// SPA Integration
+assert_true( strpos( $main_file, 'dw_spa_modules' ) !== false, 'Main file registers dw_spa_modules filter' );
+assert_true( strpos( $main_file, 'function_exists' ) !== false, 'SPA integration checks function_exists (no hard dependency)' );
 
 // ─── 11. Deactivation Hook ─────────────────────────────────
 
