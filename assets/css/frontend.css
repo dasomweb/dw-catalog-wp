@@ -1,15 +1,19 @@
 /**
- * DW Catalog WP — Frontend Styles
+ * DW Catalog WP — Frontend Styles (CSS Variable-Driven)
  *
- * Shortcodes: [dw_catalog_grid], [dw_catalog_carousel], [dw_catalog_magazine]
+ * Admin settings (Shortcode Design) → injected as inline CSS vars on root elements.
+ * Fallbacks defined here.
  */
 
 /* ─── Shared Card ─────────────────────────────────────────── */
 
 .dwcat-card {
-	background: #fff;
-	border: 1px solid #e5e7eb;
-	border-radius: 8px;
+	background: var(--dwcat-card-bg, #fff);
+	border: var(--dwcat-card-border-width, 1px) solid var(--dwcat-card-border-color, #e5e7eb);
+	border-radius: var(--dwcat-card-radius, 8px);
+	padding: var(--dwcat-card-padding, 0);
+	box-shadow: var(--dwcat-card-shadow, 0 1px 3px rgba(0, 0, 0, 0.05));
+	font-family: var(--dwcat-font-family, inherit);
 	overflow: hidden;
 	transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
@@ -41,29 +45,30 @@
 	font-size: 32px;
 }
 .dwcat-card-title {
-	font-size: 16px;
-	font-weight: 600;
+	font-size: var(--dwcat-title-size, 16px) !important;
+	font-weight: var(--dwcat-title-weight, 600) !important;
+	color: var(--dwcat-title-color, #1f2937) !important;
 	margin: 12px 16px 8px;
 	line-height: 1.4;
-	color: #1f2937;
+	font-family: var(--dwcat-font-family, inherit);
 }
 .dwcat-card-fields {
 	list-style: none;
 	padding: 0 16px 16px;
 	margin: 0;
-	font-size: 13px;
-	color: #4b5563;
 }
 .dwcat-card-fields li {
 	padding: 2px 0;
 }
 .dwcat-field-label {
-	color: #9ca3af;
+	color: var(--dwcat-field-label-color, #9ca3af);
+	font-size: var(--dwcat-field-label-size, 12px);
 	font-weight: 500;
 	margin-right: 4px;
 }
 .dwcat-field-value {
-	color: #1f2937;
+	color: var(--dwcat-field-value-color, #1f2937);
+	font-size: var(--dwcat-field-value-size, 13px);
 }
 .dwcat-empty {
 	text-align: center;
@@ -76,7 +81,7 @@
 .dwcat-grid {
 	display: grid;
 	grid-template-columns: repeat(var(--dwcat-cols, 3), 1fr);
-	gap: 20px;
+	gap: var(--dwcat-grid-gap, 20px);
 	margin: 20px 0;
 }
 @media (max-width: 900px) {
@@ -103,10 +108,10 @@
 .dwcat-carousel-track {
 	display: flex;
 	transition: transform 0.4s ease;
-	gap: 20px;
+	gap: var(--dwcat-grid-gap, 20px);
 }
 .dwcat-carousel-slide {
-	flex: 0 0 calc((100% - (var(--dwcat-cols, 3) - 1) * 20px) / var(--dwcat-cols, 3));
+	flex: 0 0 calc((100% - (var(--dwcat-cols, 3) - 1) * var(--dwcat-grid-gap, 20px)) / var(--dwcat-cols, 3));
 	min-width: 0;
 }
 .dwcat-carousel-btn {
@@ -116,18 +121,18 @@
 	width: 40px;
 	height: 40px;
 	border-radius: 50%;
-	border: 1px solid #e5e7eb;
-	background: #fff;
+	border: 1px solid var(--dwcat-card-border-color, #e5e7eb);
+	background: var(--dwcat-carousel-btn-bg, #fff);
+	color: var(--dwcat-carousel-btn-color, #374151);
 	cursor: pointer;
 	font-size: 18px;
-	color: #374151;
 	z-index: 2;
 	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 	transition: background 0.2s, color 0.2s;
 }
 .dwcat-carousel-btn:hover {
-	background: #1f2937;
-	color: #fff;
+	background: var(--dwcat-carousel-btn-hover-bg, #1f2937);
+	color: var(--dwcat-carousel-btn-hover-color, #fff);
 }
 .dwcat-carousel-btn:disabled {
 	opacity: 0.4;
@@ -154,12 +159,13 @@
 	background-size: cover;
 	background-position: center;
 	background-repeat: no-repeat;
-	border-radius: 8px;
+	border-radius: var(--dwcat-card-radius, 8px);
 	overflow: hidden;
 	margin: 20px 0;
 	display: flex;
 	padding: 40px;
 	box-sizing: border-box;
+	font-family: var(--dwcat-font-family, inherit);
 }
 .dwcat-magazine-no-image {
 	position: absolute;
@@ -175,40 +181,53 @@
 	position: relative;
 	z-index: 2;
 	max-width: 400px;
-	padding: 24px 28px;
-	border-radius: 6px;
+	padding: var(--dwcat-mag-content-padding, 24px);
+	border-radius: var(--dwcat-mag-content-radius, 6px);
 }
 .dwcat-overlay-dark .dwcat-magazine-content {
-	background: rgba(0, 0, 0, 0.7);
-	color: #fff;
+	background: var(--dwcat-mag-overlay-bg, rgba(0, 0, 0, 0.7));
+	color: var(--dwcat-mag-title-color, #fff);
 }
 .dwcat-overlay-light .dwcat-magazine-content {
-	background: rgba(255, 255, 255, 0.9);
-	color: #1f2937;
+	background: var(--dwcat-mag-overlay-light-bg, rgba(255, 255, 255, 0.9));
+	color: var(--dwcat-mag-overlay-light-color, #1f2937);
 }
 .dwcat-overlay-none .dwcat-magazine-content {
 	background: transparent;
 }
 .dwcat-magazine-title {
-	font-size: 28px;
-	font-weight: 700;
+	font-size: var(--dwcat-mag-title-size, 28px) !important;
+	font-weight: var(--dwcat-mag-title-weight, 700) !important;
+	color: var(--dwcat-mag-title-color, #fff) !important;
 	margin: 0 0 16px;
 	line-height: 1.2;
+}
+.dwcat-overlay-light .dwcat-magazine-title {
+	color: var(--dwcat-mag-overlay-light-color, #1f2937) !important;
 }
 .dwcat-magazine-fields {
 	margin: 0;
 	padding: 0;
-	font-size: 14px;
 	line-height: 1.6;
 }
 .dwcat-magazine-fields dt {
+	font-size: var(--dwcat-mag-field-label-size, 14px);
+	color: var(--dwcat-mag-field-label-color, rgba(255, 255, 255, 0.7));
 	font-weight: 600;
-	opacity: 0.8;
 	margin-top: 8px;
+}
+.dwcat-overlay-light .dwcat-magazine-fields dt {
+	color: var(--dwcat-mag-overlay-light-color, #1f2937);
+	opacity: 0.7;
 }
 .dwcat-magazine-fields dt:first-child { margin-top: 0; }
 .dwcat-magazine-fields dd {
 	margin: 0 0 4px;
+	font-size: var(--dwcat-mag-field-value-size, 14px);
+	color: var(--dwcat-mag-field-value-color, #fff);
+}
+.dwcat-overlay-light .dwcat-magazine-fields dd {
+	color: var(--dwcat-mag-overlay-light-color, #1f2937);
 }
 
 /* Position variants */
@@ -226,8 +245,5 @@
 	.dwcat-magazine-content {
 		max-width: 100%;
 		padding: 16px 20px;
-	}
-	.dwcat-magazine-title {
-		font-size: 22px;
 	}
 }

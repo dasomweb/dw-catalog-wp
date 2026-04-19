@@ -16,6 +16,7 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 delete_option( 'dw_catalog_post_types' );
 delete_option( 'dwcat_version' );
 delete_option( 'dwcat_activated' );
+delete_option( 'dwcat_design_settings' );
 
 // Remove field options for all known post types
 global $wpdb;

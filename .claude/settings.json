@@ -3,7 +3,8 @@
     "allow": [
       "mcp__dw-mcp__get_page",
       "Bash(cat)",
-      "Bash(bash /tmp/verify.sh)"
+      "Bash(bash /tmp/verify.sh)",
+      "mcp__dw-mcp__get_code_index"
     ]
   }
 }

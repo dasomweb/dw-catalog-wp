@@ -53,6 +53,7 @@ $required_files = array(
 	'includes/class-pc-github-updater.php',
 	'includes/class-dw-license-manager.php',
 	'includes/class-dwcat-shortcodes.php',
+	'includes/class-dwcat-design-settings.php',
 	'assets/css/frontend.css',
 	'assets/js/carousel.js',
 	'assets/css/admin.css',
@@ -153,6 +154,7 @@ $expected_classes = array(
 	'DWCAT_GitHub_Updater'   => 'class-pc-github-updater.php',
 	'DW_License_Manager'     => 'class-dw-license-manager.php',
 	'DWCAT_Shortcodes'       => 'class-dwcat-shortcodes.php',
+	'DWCAT_Design_Settings'  => 'class-dwcat-design-settings.php',
 );
 
 foreach ( $expected_classes as $class_name => $file_name ) {
@@ -280,6 +282,28 @@ assert_true( strpos( $sc_file, 'wp_enqueue_script' ) !== false, 'Shortcodes enqu
 assert_true( strpos( $sc_file, 'esc_url' ) !== false, 'Shortcodes escape URLs' );
 assert_true( strpos( $sc_file, 'esc_html' ) !== false, 'Shortcodes escape HTML output' );
 assert_true( strpos( $main_file, 'new DWCAT_Shortcodes()' ) !== false, 'Main file initializes DWCAT_Shortcodes' );
+
+// Design Settings
+$design_file = file_get_contents( "$plugin_root/includes/class-dwcat-design-settings.php" );
+assert_true( strpos( $design_file, 'admin_post_dwcat_save_design' ) !== false, 'Design: save handler registered' );
+assert_true( strpos( $design_file, 'dwcat_save_design' ) !== false, 'Design: nonce action present' );
+assert_true( strpos( $design_file, 'get_css_vars' ) !== false, 'Design: get_css_vars() method' );
+assert_true( strpos( $design_file, 'get_inline_style' ) !== false, 'Design: get_inline_style() method' );
+assert_true( strpos( $design_file, 'wp-color-picker' ) !== false, 'Design: uses wp-color-picker' );
+
+// Shortcodes use design settings
+$sc2 = file_get_contents( "$plugin_root/includes/class-dwcat-shortcodes.php" );
+assert_true( strpos( $sc2, 'DWCAT_Design_Settings::get_inline_style' ) !== false, 'Shortcodes inject design CSS vars' );
+
+// CSS uses variables
+$css = file_get_contents( "$plugin_root/assets/css/frontend.css" );
+assert_true( strpos( $css, 'var(--dwcat-title-size' ) !== false, 'CSS uses --dwcat-title-size variable' );
+assert_true( strpos( $css, 'var(--dwcat-card-bg' ) !== false, 'CSS uses --dwcat-card-bg variable' );
+assert_true( strpos( $css, 'var(--dwcat-mag-title-size' ) !== false, 'CSS uses --dwcat-mag-title-size variable' );
+
+// uninstall cleans design option
+$uninstall2 = file_get_contents( "$plugin_root/uninstall.php" );
+assert_true( strpos( $uninstall2, 'dwcat_design_settings' ) !== false, 'uninstall.php removes design settings option' );
 
 echo "--- 11. Activation/Deactivation Hooks ---\n";
 

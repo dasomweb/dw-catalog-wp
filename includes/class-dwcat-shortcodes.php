@@ -139,9 +139,11 @@ class DWCAT_Shortcodes {
 			return '<p class="dwcat-empty">' . esc_html__( 'No items found.', 'dw-catalog-wp' ) . '</p>';
 		}
 
+		$design_css = DWCAT_Design_Settings::get_inline_style();
+
 		ob_start();
 		?>
-		<div class="dwcat-grid" style="--dwcat-cols: <?php echo (int) $columns; ?>;">
+		<div class="dwcat-grid" style="--dwcat-cols: <?php echo (int) $columns; ?>; <?php echo esc_attr( $design_css ); ?>">
 			<?php while ( $query->have_posts() ) : $query->the_post(); $post_id = get_the_ID(); ?>
 				<div class="dwcat-card">
 					<?php $this->render_card_content( $post_id, $fields, $show_link, $atts['image_size'] ); ?>
@@ -191,6 +193,7 @@ class DWCAT_Shortcodes {
 		}
 
 		$instance_id = 'dwcat-carousel-' . wp_unique_id();
+		$design_css = DWCAT_Design_Settings::get_inline_style();
 
 		ob_start();
 		?>
@@ -198,7 +201,7 @@ class DWCAT_Shortcodes {
 			 data-autoplay="<?php echo esc_attr( $autoplay ); ?>"
 			 data-interval="<?php echo esc_attr( $interval ); ?>"
 			 data-per-slide="<?php echo esc_attr( $per_slide ); ?>"
-			 style="--dwcat-cols: <?php echo (int) $per_slide; ?>;">
+			 style="--dwcat-cols: <?php echo (int) $per_slide; ?>; <?php echo esc_attr( $design_css ); ?>">
 			<button type="button" class="dwcat-carousel-btn dwcat-prev" aria-label="Previous">&#10094;</button>
 			<div class="dwcat-carousel-viewport">
 				<div class="dwcat-carousel-track">
@@ -312,10 +315,13 @@ class DWCAT_Shortcodes {
 			$image_url = get_the_post_thumbnail_url( $post_id, 'full' );
 		}
 
+		$design_css = DWCAT_Design_Settings::get_inline_style();
+		$bg = $image_url ? 'background-image: url(' . esc_url( $image_url ) . ');' : '';
+
 		ob_start();
 		?>
 		<div class="dwcat-magazine dwcat-pos-<?php echo esc_attr( $position ); ?> dwcat-overlay-<?php echo esc_attr( $overlay_class ); ?>"
-			 style="height: <?php echo (int) $height; ?>px; <?php echo $image_url ? 'background-image: url(' . esc_url( $image_url ) . ');' : ''; ?>">
+			 style="height: <?php echo (int) $height; ?>px; <?php echo esc_attr( $bg . $design_css ); ?>">
 			<?php if ( ! $image_url ) : ?>
 				<div class="dwcat-magazine-no-image">—</div>
 			<?php endif; ?>
