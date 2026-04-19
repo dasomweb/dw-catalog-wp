@@ -52,6 +52,9 @@ $required_files = array(
 	'includes/class-pc-url-helper.php',
 	'includes/class-pc-github-updater.php',
 	'includes/class-dw-license-manager.php',
+	'includes/class-dwcat-shortcodes.php',
+	'assets/css/frontend.css',
+	'assets/js/carousel.js',
 	'assets/css/admin.css',
 );
 
@@ -149,6 +152,7 @@ $expected_classes = array(
 	'DWCAT_URL_Helper'       => 'class-pc-url-helper.php',
 	'DWCAT_GitHub_Updater'   => 'class-pc-github-updater.php',
 	'DW_License_Manager'     => 'class-dw-license-manager.php',
+	'DWCAT_Shortcodes'       => 'class-dwcat-shortcodes.php',
 );
 
 foreach ( $expected_classes as $class_name => $file_name ) {
@@ -263,6 +267,19 @@ assert_true( strpos( $main_file, 'dw_spa_modules' ) !== false, 'Main file regist
 assert_true( strpos( $main_file, 'function_exists' ) !== false, 'SPA integration checks function_exists (no hard dependency)' );
 
 // ─── 11. Deactivation Hook ─────────────────────────────────
+
+echo "--- 10b. Frontend Shortcodes ---\n";
+
+$sc_file = file_get_contents( "$plugin_root/includes/class-dwcat-shortcodes.php" );
+assert_true( strpos( $sc_file, "add_shortcode( 'dw_catalog_grid'" ) !== false, 'Shortcode: dw_catalog_grid registered' );
+assert_true( strpos( $sc_file, "add_shortcode( 'dw_catalog_carousel'" ) !== false, 'Shortcode: dw_catalog_carousel registered' );
+assert_true( strpos( $sc_file, "add_shortcode( 'dw_catalog_magazine'" ) !== false, 'Shortcode: dw_catalog_magazine registered' );
+assert_true( strpos( $sc_file, 'shortcode_atts' ) !== false, 'Shortcodes use shortcode_atts() for defaults' );
+assert_true( strpos( $sc_file, 'wp_enqueue_style' ) !== false, 'Shortcodes enqueue frontend.css' );
+assert_true( strpos( $sc_file, 'wp_enqueue_script' ) !== false, 'Shortcodes enqueue carousel.js' );
+assert_true( strpos( $sc_file, 'esc_url' ) !== false, 'Shortcodes escape URLs' );
+assert_true( strpos( $sc_file, 'esc_html' ) !== false, 'Shortcodes escape HTML output' );
+assert_true( strpos( $main_file, 'new DWCAT_Shortcodes()' ) !== false, 'Main file initializes DWCAT_Shortcodes' );
 
 echo "--- 11. Activation/Deactivation Hooks ---\n";
 
