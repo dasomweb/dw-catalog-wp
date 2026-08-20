@@ -37,6 +37,13 @@ v2.0.0 부터 이 플러그인은 **DASOM-Forge 플랫폼에 의존**합니다.
 - [docs/MIGRATION-PLAN.md](docs/MIGRATION-PLAN.md) — 보호 경계 합의서 (§0)
 - [CHANGELOG.md](CHANGELOG.md) — anti-piracy 관련 변경 표기 포함
 
+### 이 repo 가 정본입니다
+
+`dasomweb/DW-Product-Catalog` 는 같은 조상에서 갈라진 **옛 갈래**이며 2026-08-20
+운영자 결정으로 동결되었습니다. 두 플러그인은 **같은 CPT `product` 를 등록**하므로
+한 사이트에서 동시에 활성화하지 마십시오. 자세한 경위와 근거는
+[MIGRATION-PLAN §0.1](docs/MIGRATION-PLAN.md) 참조.
+
 ---
 
 ## 📦 GitHub을 통한 배포 (GitHub Deployment)
