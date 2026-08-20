@@ -63,10 +63,35 @@ jobs:
           for f in build/*.js; do node --check "$f"; done
           bash -n .github/scripts/package-release.sh
 
-      - name: Composer lock must be present and clean
-        # 없으면 vendor 가 빌드마다 달라져 TAMPER_DETECTED 를 유발합니다 (§11.2.b).
+  composer-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          # 플러그인이 선언한 **최소** PHP 로 검증합니다. 최신 PHP 로만 확인하면
+          # php ^8.1 전용 패키지가 lock 에 섞여도 못 잡습니다 (실제로 발생한 사고).
+          php-version: '7.4'
+          coverage: none
+
+      - name: composer.lock 존재 · 동기화 · 취약점
+        # lock 이 없으면 vendor 가 빌드마다 달라져 TAMPER_DETECTED 를 유발합니다 (§11.2.b).
         run: |
           set -euo pipefail
           test -f composer.lock || { echo "::error::composer.lock missing (§11.2.b)"; exit 1; }
-          composer validate --no-check-publish
-          composer audit --no-dev
+
+          # composer.json 과 lock 이 어긋나 있지 않은지
+          composer validate --no-check-publish --check-lock
+
+          # vendor 설치 없이 lock 파일 자체를 감사
+          composer audit --locked --no-dev
+
+      - name: 선언한 최소 PHP 에서 실제로 설치되는지
+        # 이 스텝이 없었다면 php ^8.1 전용 패키지가 실린 채로 출하됐을 것입니다.
+        run: |
+          set -euo pipefail
+          composer install --no-dev --optimize-autoloader --no-interaction --no-progress
+          composer check-platform-reqs --no-dev

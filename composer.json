@@ -2,10 +2,15 @@
     "name": "dasomweb/dw-catalog-wp",
     "description": "Product catalog plugin PDF export dependency",
     "require": {
+        "php": ">=7.4",
         "dompdf/dompdf": "^3.1"
     },
     "config": {
         "optimize-autoloader": true,
-        "sort-packages": true
-    }
+        "sort-packages": true,
+        "platform": {
+            "php": "7.4.33"
+        }
+    },
+    "license": "GPL-2.0-or-later"
 }
