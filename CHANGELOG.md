@@ -70,6 +70,12 @@ DASOM-Forge 플랫폼 통합. **MAJOR** — 라이선스 흐름이 바뀝니다.
   (CVE-2023-50262 포함 10건). v1.2.1 릴리스 ZIP 에는 취약한 dompdf 2.x 가
   실려 있었습니다. `composer.lock` 을 커밋해 vendor 내용을 고정했습니다.
 - 릴리스 패키징이 `wp-config.php` · `Zone.Identifier` 혼입 시 빌드를 실패시킵니다.
+- **`composer.lock` 을 선언한 최소 PHP(7.4) 기준으로 고정** (`config.platform.php`).
+  PHP 8.3 에서 만든 lock 이 `thecodingmachine/safe v3.4.0` (php `^8.1`) 을 끌어와
+  `Requires PHP: 7.4` 와 모순됐고, 그대로 출하했다면 **PHP 7.4/8.0 호스트에서
+  fatal** 이 났을 것입니다. CI 가 잡았습니다 (MIGRATION-PLAN §12.1).
+  → safe v1.3.3 으로 내려가 전 패키지 7.4 호환. 매니페스트 668 → **537개**,
+    `/auth/token` 본문 82.7 → **66.5 KB**.
 
 ### Fixed
 

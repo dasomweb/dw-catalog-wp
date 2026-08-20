@@ -73,7 +73,7 @@
 
 **✅ 적용** (전면).
 
-매니페스트 포함 파일: **릴리스 ZIP `wp-plugin/` 하위 전체** (v2.0.0 기준 667개 — PHP·CSS·JS·`vendor/` 643개 포함).
+매니페스트 포함 파일: **릴리스 ZIP `wp-plugin/` 하위 전체** (v2.0.0-rc.1 실제 릴리스 기준 **537개** — PHP·CSS·JS·`vendor/` 포함).
 
 - `integrity.json` 은 **CI 가 스테이징된 실물 위에서** 생성합니다 (`build/generate-integrity.js --stage`).
   소스트리를 걷고 제외 패턴을 손으로 맞추면 ZIP 실물과 반드시 어긋나고, 그 즉시 `MANIFEST_INCOMPLETE` 입니다.
@@ -259,7 +259,7 @@ tag v2.0.0 push
 
 | # | 항목 | 상세 | 왜 에이전트가 못 정하는가 |
 |---|---|---|---|
-| 1 | **`/auth/token` 요청 본문 크기** | 실측 **82.6 KB** (667개 파일 해시). vendor 643개가 대부분. 서버 body-parser 한도가 이보다 작으면 매 요청 실패 | 서버 코드 미열람. API-CONTRACT 는 50KB 한도를 `/configs/sign` **payload** 에만 명시하고 `/auth/token` 전체 본문 한도는 규정하지 않음 |
+| 1 | **`/auth/token` 요청 본문 크기** | **게시된 v2.0.0-rc.1 실물 기준 66.5 KB** (537개 파일 해시). §12.1 lock 수정으로 82.7 → 66.5 KB 로 줄었으나 여전히 큼. 서버 body-parser 한도가 이보다 작으면 매 요청 실패 | 서버 코드 미열람. API-CONTRACT 는 50KB 한도를 `/configs/sign` **payload** 에만 명시하고 `/auth/token` 전체 본문 한도는 규정하지 않음 |
 | 2 | `dw-catalog-wp` Product 등록 여부 | `/admin/products` 에 slug 존재 확인 | 운영자 어드민 권한 필요 (FAQ Q13) |
 | 3 | 카나리 라이선스 발급 | §8 | 운영자 전용 |
 | 4 | `max_domains` (basic) | §6 | 운영자 결정 |
@@ -292,6 +292,40 @@ tag v2.0.0 push
 - 신규 전이 의존성: `masterminds/html5`, `sabberworm/php-css-parser`, `thecodingmachine/safe`
 
 **즉, v1.2.1 릴리스 ZIP 에는 취약한 dompdf 2.x 가 실려 있었습니다.** v2.0.0 에서 해소.
+
+### 12.1 lock 은 **선언한 최소 PHP** 기준으로 만들어야 합니다
+
+첫 CI 실행이 잡아낸 사고입니다. PHP 8.3 개발 머신에서 만든 `composer.lock` 이
+`thecodingmachine/safe v3.4.0` (php `^8.1` 요구) 을 끌어와, 플러그인 헤더의
+`Requires PHP: 7.4` 와 모순됐습니다. 그대로 출하했다면 **PHP 7.4/8.0 호스트에서
+플러그인이 fatal** 로 죽었을 것입니다 — 게이트나 라이선스와 무관하게.
+
+```json
+"config": { "platform": { "php": "7.4.33" } }
+```
+
+이 한 줄이 "빌드 머신의 PHP" 가 아니라 "우리가 지원한다고 선언한 PHP" 로
+의존성을 풀게 합니다. lock 재생성 후 `thecodingmachine/safe` 가 v1.3.3 으로
+내려가 전 패키지가 7.4 호환이 되었고, 부수적으로 매니페스트 파일이 668 → **537개**,
+`/auth/token` 요청 본문이 82.7 KB → **66.5 KB** 로 줄었습니다 (§11 #1 완화).
+
+> 로컬 빌드에서는 595개가 나왔는데 CI 는 537개였습니다. 원인은 로컬에서
+> `thecodingmachine/safe` 의 dist 다운로드가 504 로 실패해 **source(git clone) 설치**
+> 로 폴백했기 때문입니다 (tests·generator 등이 딸려 옴). **CI 산출물이 정본**이며,
+> 게시된 ZIP 을 실제로 풀어 SDK 해시 537 == 서버 해시 537 을 확인했습니다.
+
+**재발 방지** — `.github/workflows/test.yml` 의 `composer-integrity` 잡이
+**PHP 7.4 러너**에서 돕니다. 최신 PHP 로만 검증하면 이 부류를 영원히 못 잡습니다:
+
+| 검사 | 잡는 것 |
+|---|---|
+| `composer validate --check-lock` | composer.json ↔ lock 불일치 |
+| `composer audit --locked` | vendor 설치 없이 취약점 (이전엔 이 플래그가 없어 CI 가 죽었음) |
+| `composer check-platform-reqs` | 최소 PHP 에서 실제로 설치되는지 |
+
+> 교훈: **PHP 매트릭스 테스트만으로는 부족합니다.** 소스는 7.4 문법이어도
+> vendor 가 8.1 전용이면 통과해 버립니다 — 의존성 해석 자체를 최소 PHP 로 고정해야
+> 합니다.
 
 ---
 
