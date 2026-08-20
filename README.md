@@ -4,6 +4,41 @@ WordPress 플러그인 - 도메인 변경에 친화적인 제품 카탈로그 �
 
 Domain-change friendly WordPress product catalog plugin
 
+---
+
+## ⚠️ v2.0 부터 DASOM-Forge 라이선스가 필요합니다
+
+v2.0.0 부터 이 플러그인은 **DASOM-Forge 플랫폼에 의존**합니다.
+유효한 라이선스로 활성화하지 않으면 다음이 동작하지 않습니다:
+
+- 프런트엔드 카탈로그 출력 (숏코드 3종)
+- 커스텀 필드 스키마 편집 · 필드 값 저장
+- CSV 대량 가져오기 · PDF 내보내기
+- DW Admin SPA 모듈 노출
+
+**기존 v1.x 사용자**: 자동 업데이트로 즉시 끊기지 않습니다. 업그레이드가 감지되면
+**30일 유예**가 부여되고 관리자 화면에 남은 일수가 표시됩니다. 유예 기간 안에
+`DW Catalog → License` 에서 라이선스 키를 입력하십시오.
+(기존에 키를 넣었다면 그대로 승계되어 재입력이 불필요합니다.)
+
+**개발자**: 로컬 개발은 `wp-config.php` 에 `define('DWCAT_DEV_BYPASS', true);` 로 우회합니다.
+이 상수는 절대 플러그인 코드나 릴리스 ZIP 에 들어가지 않습니다.
+
+### 릴리스 흐름 (v2.0+)
+
+`v*` 태그 → GitHub Actions 가 **플랫폼 표준 멀티루트 ZIP**
+(`manifest.json` + `wp-plugin/`) 생성 → 운영자가 dasomforge 어드민에서
+**Sync Release** → R2 배포 + IntegrityManifest 자동 등록 → 고객 자동 업데이트.
+
+> 이 ZIP 은 워드프레스에 **직접 업로드하지 마십시오**. Sync Release 를 거쳐야
+> 무결성 매니페스트가 등록되고, 그래야 플러그인이 토큰을 발급받습니다.
+
+관련 문서:
+- [docs/MIGRATION-PLAN.md](docs/MIGRATION-PLAN.md) — 보호 경계 합의서 (§0)
+- [CHANGELOG.md](CHANGELOG.md) — anti-piracy 관련 변경 표기 포함
+
+---
+
 ## 📦 GitHub을 통한 배포 (GitHub Deployment)
 
 이 플러그인은 GitHub Releases를 통해 자동으로 배포되고 업데이트됩니다.

@@ -11,174 +11,169 @@
  * @package DW_Catalog_WP
  */
 
-define( 'ABSPATH', __DIR__ . '/' );
-define( 'HOUR_IN_SECONDS', 3600 );
-define( 'DAY_IN_SECONDS', 86400 );
-define( 'MINUTE_IN_SECONDS', 60 );
-define( 'WP_DEBUG', false );
+require_once __DIR__ . '/wp-stubs.php';
 
-$GLOBALS['wp_version']   = '6.7';
-$GLOBALS['_options']     = array();
-$GLOBALS['_transients']  = array();
-$GLOBALS['_actions']     = array();
-$GLOBALS['_filters']     = array();
-$GLOBALS['_http_calls']  = array();
+$root = dirname( __DIR__ );
 
-function add_action( $h, $cb, $p = 10, $a = 1 ) { $GLOBALS['_actions'][ $h ][] = $cb; return true; }
-function add_filter( $h, $cb, $p = 10, $a = 1 ) { $GLOBALS['_filters'][ $h ][] = $cb; return true; }
-function do_action( $h ) { foreach ( $GLOBALS['_actions'][ $h ] ?? array() as $cb ) { call_user_func( $cb ); } }
-function add_shortcode( $t, $cb ) { return true; }
-function register_activation_hook( $f, $cb ) { return true; }
-function register_deactivation_hook( $f, $cb ) { return true; }
-function add_submenu_page() { return ''; }
+preg_match( '/^\s*\*\s*Version:\s*(.+)$/m', file_get_contents( $root . '/dw-catalog-wp.php' ), $vm );
+$VERSION = trim( $vm[1] );
 
-function get_option( $k, $d = false ) { return $GLOBALS['_options'][ $k ] ?? $d; }
-function update_option( $k, $v, $a = null ) { $GLOBALS['_options'][ $k ] = $v; return true; }
-function add_option( $k, $v, $x = '', $a = null ) {
-	if ( array_key_exists( $k, $GLOBALS['_options'] ) ) return false;
-	$GLOBALS['_options'][ $k ] = $v; return true;
-}
-function delete_option( $k ) { unset( $GLOBALS['_options'][ $k ] ); return true; }
-function get_transient( $k ) { return $GLOBALS['_transients'][ $k ] ?? false; }
-function set_transient( $k, $v, $t = 0 ) { $GLOBALS['_transients'][ $k ] = $v; return true; }
-function delete_transient( $k ) { unset( $GLOBALS['_transients'][ $k ] ); return true; }
+/** 모든 Strict 게이트. 하나라도 라이선스 없이 열리면 anti-piracy 가 깨진다. */
+$GATES = array(
+	'dwcat_can_render',
+	'dwcat_can_load_assets',
+	'dwcat_can_save_meta',
+	'dwcat_can_manage_fields',
+	'dwcat_can_bulk_import',
+	'dwcat_can_export_pdf',
+	'dwcat_can_render_admin',
+	'dwcat_can_use_shortcode',
+	'dwcat_can_call_rest',
+);
 
-function home_url( $p = '' ) { return 'https://canary.example.com' . $p; }
-function admin_url( $p = '' ) { return 'https://canary.example.com/wp-admin/' . $p; }
-function rest_url( $p = '' ) { return home_url( '/wp-json/' . $p ); }
-function plugin_dir_path( $f ) { return rtrim( str_replace( '\\', '/', dirname( $f ) ), '/' ) . '/'; }
-function plugin_dir_url( $f ) { return 'https://canary.example.com/wp-content/plugins/dw-catalog-wp/'; }
-function plugin_basename( $f ) { return 'dw-catalog-wp/' . basename( $f ); }
-function wp_parse_url( $u, $c = -1 ) { return parse_url( $u, $c ); }
-function wp_json_encode( $d, $f = 0 ) { return json_encode( $d, $f ); }
-function esc_html( $s ) { return htmlspecialchars( (string) $s, ENT_QUOTES ); }
-function esc_attr( $s ) { return htmlspecialchars( (string) $s, ENT_QUOTES ); }
-function esc_url( $s ) { return (string) $s; }
-function esc_html__( $s, $d = '' ) { return $s; }
-function esc_html_e( $s, $d = '' ) { echo $s; }
-function __( $s, $d = '' ) { return $s; }
-function _e( $s, $d = '' ) { echo $s; }
-function current_user_can( $c ) { return true; }
-function is_admin() { return false; }
-function current_time( $t ) { return gmdate( 'Y-m-d H:i:s' ); }
-function wp_next_scheduled( $h ) { return false; }
-function wp_schedule_event( $t, $r, $h ) { return true; }
-function wp_schedule_single_event( $t, $h, $a = array() ) { return true; }
-function wp_clear_scheduled_hook( $h ) { return true; }
-function sanitize_key( $s ) { return preg_replace( '/[^a-z0-9_\-]/', '', strtolower( $s ) ); }
-function sanitize_text_field( $s ) { return trim( strip_tags( (string) $s ) ); }
-function sanitize_title( $s ) { return strtolower( preg_replace( '/[^a-z0-9]+/i', '-', $s ) ); }
-function wp_unslash( $s ) { return $s; }
-function wp_die( $m = '' ) { throw new RuntimeException( 'wp_die: ' . $m ); }
-function is_wp_error( $t ) { return false; }
-function wp_remote_request( $url, $args = array() ) {
-	$GLOBALS['_http_calls'][] = array( 'url' => $url, 'args' => $args );
-	return array( 'response' => array( 'code' => 503 ), 'body' => '{"ok":false,"error":{"code":"SERVICE_UNAVAILABLE"}}' );
-}
-function wp_remote_retrieve_response_code( $r ) { return $r['response']['code']; }
-function wp_remote_retrieve_body( $r ) { return $r['body']; }
-function wp_remote_retrieve_header( $r, $h ) { return ''; }
-function add_query_arg( $a, $u = '' ) { return $u . '?' . http_build_query( $a ); }
-function get_current_screen() { return null; }
-function wp_nonce_field() {}
-function check_admin_referer() { return true; }
-function wp_safe_redirect( $u ) {}
-function wp_create_nonce( $a ) { return 'nonce'; }
-function nl2br_esc( $s ) { return $s; }
-
-$root = isset( $argv[1] ) ? $argv[1] : dirname( __DIR__ );
-$pass = 0; $fail = 0;
-function t( $cond, $msg ) {
-	global $pass, $fail;
-	if ( $cond ) { $pass++; echo "  ✓ $msg\n"; }
-	else         { $fail++; echo "  ✗ $msg\n"; }
+function gates_open() {
+	global $GATES;
+	$n = 0;
+	foreach ( $GATES as $g ) {
+		if ( true === $g() ) {
+			$n++;
+		}
+	}
+	return $n;
 }
 
-echo "=== bootstrap smoke ===\n\n--- load ---\n";
+echo "=== bootstrap & gates ===\n\n--- load ---\n";
+
 try {
 	require_once $root . '/dw-catalog-wp.php';
-	t( true, 'plugin file loaded without fatal' );
+	t( true, '플러그인 진입 파일이 fatal 없이 로드' );
 } catch ( Throwable $e ) {
-	t( false, 'plugin file loaded: ' . $e->getMessage() );
-	echo "\nFATAL — cannot continue\n"; exit( 1 );
+	t( false, '플러그인 로드: ' . $e->getMessage() );
+	echo "\nFATAL — 계속할 수 없음\n";
+	exit( 1 );
 }
 
-t( class_exists( 'DW_DWCAT_License_Manager' ), 'DW_DWCAT_License_Manager loaded' );
-t( class_exists( 'DW_DWCAT_Forge_Client' ), 'DW_DWCAT_Forge_Client loaded' );
-t( ! class_exists( 'DW_License_Manager', false ), 'unprefixed DW_License_Manager NOT declared' );
-t( function_exists( 'dwcat_can_render' ), 'gates loaded' );
+t( class_exists( 'DW_DWCAT_License_Manager' ), 'DW_DWCAT_License_Manager 로드' );
+t( class_exists( 'DW_DWCAT_Forge_Client' ), 'DW_DWCAT_Forge_Client 로드' );
+t( class_exists( 'DWCAT_License_REST' ), 'DWCAT_License_REST 로드 (§3.6 진단 엔드포인트)' );
+t( ! class_exists( 'DW_License_Manager', false ), '접두사 없는 DW_License_Manager 를 선언하지 않음 (winner race 회피)' );
+t( function_exists( 'dwcat_can_render' ), '게이트 로드' );
+t_eq( count( $GATES ), 9, '§6 SHOULD: 게이트 9개 (5~10개 권장)' );
 
-echo "\n--- unlicensed: every gate must be closed ---\n";
-$gates = array( 'dwcat_can_render', 'dwcat_can_load_assets', 'dwcat_can_save_meta',
-	'dwcat_can_manage_fields', 'dwcat_can_bulk_import', 'dwcat_can_export_pdf',
-	'dwcat_can_render_admin', 'dwcat_can_use_shortcode', 'dwcat_can_call_rest' );
-foreach ( $gates as $g ) {
-	t( $g() === false, "$g() === false when unlicensed" );
+// ── 미라이선스: 전부 닫혀야 한다 ──────────────────────────────
+echo "\n--- unlicensed: every gate must fail closed ---\n";
+stub_reset();
+foreach ( $GATES as $g ) {
+	t( false === $g(), "$g() === false (미라이선스)" );
 }
-t( dwcat_is_licensed() === false, 'dwcat_is_licensed() false (loose helper)' );
+t( false === dwcat_is_licensed(), 'dwcat_is_licensed() false (Loose helper)' );
 
-echo "\n--- legacy grace: v1.x upgrade must keep working ---\n";
+// ── 프런트엔드 게이트는 네트워크를 때리지 않는다 ──────────────
+echo "\n--- gates never block the frontend on HTTP (§10.2 / FAQ Q11) ---\n";
+stub_reset();
+$GLOBALS['_options']['dw_license_dw_catalog_wp'] = array(
+	'key' => 'DW-X', 'status' => 'active', 'domain' => 'canary.example.com',
+);
+gates_open();
+t_eq( 0, stub_http_count(), '9개 게이트를 모두 호출해도 프런트에서 HTTP 0회' );
+
+// ── v1.x 마이그레이션 유예 (FAQ Q8) ───────────────────────────
+echo "\n--- legacy grace: v1.x upgrade must keep working (FAQ Q8) ---\n";
+stub_reset();
 $GLOBALS['_options']['dwcat_version'] = '1.2.1';
 dwcat_maybe_grant_legacy_grace( '1.2.1' );
-t( isset( $GLOBALS['_options']['dwcat_legacy_grace_until'] ), 'grace granted on v1.x upgrade' );
-t( dwcat_in_legacy_grace() === true, 'grace window is open' );
-t( dwcat_legacy_grace_days_left() === 30, 'grace = 30 days (got ' . dwcat_legacy_grace_days_left() . ')' );
-$open = 0;
-foreach ( $gates as $g ) { if ( $g() === true ) $open++; }
-t( $open === count( $gates ), "all $open/" . count( $gates ) . ' gates open during grace' );
+t( isset( $GLOBALS['_options']['dwcat_legacy_grace_until'] ), 'v1.x 업그레이드에 유예 부여' );
+t( true === dwcat_in_legacy_grace(), '유예 창이 열려 있음' );
+t_eq( 30, dwcat_legacy_grace_days_left(), '유예 = 30일' );
+t_eq( count( $GATES ), gates_open(), '유예 중에는 9개 게이트 전부 통과 (사용자 영향 0)' );
 
-echo "\n--- grace is granted once only, and not to fresh installs ---\n";
-$before = $GLOBALS['_options']['dwcat_legacy_grace_until'];
-$GLOBALS['_options']['dwcat_legacy_grace_until'] = time() - 1;  // 만료 시뮬레이션
+echo "\n--- grace is one-shot, and fresh installs get none ---\n";
+$GLOBALS['_options']['dwcat_legacy_grace_until'] = time() - 1;   // 만료 시뮬레이션
 dwcat_maybe_grant_legacy_grace( '1.2.1' );
-t( $GLOBALS['_options']['dwcat_legacy_grace_until'] < time(), 'expired grace is NOT re-granted' );
-foreach ( $gates as $g ) { if ( $g() === true ) { t( false, "$g() still open after grace expiry" ); break; } }
-t( dwcat_can_render() === false, 'gates close again after grace expiry' );
+t( $GLOBALS['_options']['dwcat_legacy_grace_until'] < time(), '만료된 유예를 재부여하지 않음' );
+t_eq( 0, gates_open(), '유예 만료 후 게이트가 다시 닫힘' );
+t_eq( 0, dwcat_legacy_grace_days_left(), '남은 유예 0일' );
 
 unset( $GLOBALS['_options']['dwcat_legacy_grace_until'] );
-dwcat_maybe_grant_legacy_grace( '' );   // 신규 설치
-t( ! isset( $GLOBALS['_options']['dwcat_legacy_grace_until'] ), 'fresh install gets NO grace' );
+dwcat_maybe_grant_legacy_grace( '' );                            // 신규 설치
+t( ! isset( $GLOBALS['_options']['dwcat_legacy_grace_until'] ), '신규 설치에는 유예 없음' );
 
-echo "\n--- dev bypass ---\n";
-define( 'DWCAT_DEV_BYPASS', true );
-$open = 0;
-foreach ( $gates as $g ) { if ( $g() === true ) $open++; }
-t( $open === count( $gates ), "dev bypass opens all $open/" . count( $gates ) . ' gates' );
+dwcat_maybe_grant_legacy_grace( '2.0.0' );                       // 이미 v2
+t( ! isset( $GLOBALS['_options']['dwcat_legacy_grace_until'] ), 'v2 → v2 업그레이드에는 유예 없음' );
 
+// 회귀: version_compare('2.0.0-rc.1','2.0.0','>=') 는 false 라 프리릴리스를 v1 로
+// 오인해 유예를 주던 버그. 메이저 버전으로 판정해야 한다.
+dwcat_maybe_grant_legacy_grace( '2.0.0-rc.1' );
+t( ! isset( $GLOBALS['_options']['dwcat_legacy_grace_until'] ),
+   'v2 프리릴리스 → 프리릴리스 업그레이드에도 유예 없음 (version_compare 함정)' );
+dwcat_maybe_grant_legacy_grace( '2.1.0-beta.3' );
+t( ! isset( $GLOBALS['_options']['dwcat_legacy_grace_until'] ), 'v2.1 베타에도 유예 없음' );
+
+// ── SDK 상태 · 무결성 ─────────────────────────────────────────
 echo "\n--- SDK behaviour with no license ---\n";
-t( DW_DWCAT_License_Manager::get_status() === 'unlicensed', 'get_status() = unlicensed' );
-t( DW_DWCAT_License_Manager::has_valid_token() === false, 'has_valid_token() = false' );
+stub_reset();
+t_eq( 'unlicensed', DW_DWCAT_License_Manager::get_status(), 'get_status() = unlicensed' );
+t( false === DW_DWCAT_License_Manager::has_valid_token(), 'has_valid_token() = false' );
+t_eq( 0, stub_http_count(), '라이선스 키가 없으면 HTTP 호출 자체를 안 함' );
+
 $has_manifest = file_exists( $root . '/integrity.json' );
 $hashes       = DW_DWCAT_License_Manager::compute_file_hashes();
 if ( $has_manifest ) {
-	// integrity.json 은 빌드 산출물이라 보통 소스트리에 없다. 있으면 키 규약을 검증한다.
-	t( ! empty( $hashes ), 'compute_file_hashes() returns hashes when integrity.json present' );
-	$bad_key  = array_filter( array_keys( $hashes ), function ( $k ) { return strpos( $k, 'wp-plugin/' ) === 0 || strpos( $k, 'dw-catalog-wp/' ) === 0; } );
+	t( ! empty( $hashes ), 'integrity.json 존재 시 해시 생성' );
+	$bad_key  = array_filter( array_keys( $hashes ), function ( $k ) {
+		return 0 === strpos( $k, 'wp-plugin/' ) || 0 === strpos( $k, 'dw-catalog-wp/' );
+	} );
 	$bad_hash = array_filter( $hashes, function ( $h ) { return ! preg_match( '/^[0-9a-f]{64}$/', $h ); } );
 	t( empty( $bad_key ), '§7.2.2 규약 1 — 키가 루트상대 (접두사 없음)' );
 	t( empty( $bad_hash ), '§7.2.2 — 값이 sha256 hex lowercase 64자' );
 } else {
-	t( $hashes === array(), 'compute_file_hashes() empty without integrity.json' );
+	t_eq( array(), $hashes, 'integrity.json 없으면 빈 해시 맵 (빌드 산출물이므로 정상)' );
 }
-t( count( $GLOBALS['_http_calls'] ) === 0, 'no HTTP call made without a license key (got ' . count( $GLOBALS['_http_calls'] ) . ')' );
 
-echo "\n--- token request shape (offline server) ---\n";
+// ── 진단 스냅샷은 비밀을 노출하지 않는다 (P15/P16) ────────────
+echo "\n--- diagnostics must not leak secrets (P15/P16) ---\n";
+stub_reset();
 $GLOBALS['_options']['dw_license_dw_catalog_wp'] = array(
-	'key' => 'DW-TEST-TEST-TEST', 'status' => 'active', 'domain' => 'canary.example.com',
+	'key' => 'DW-SUPER-SECRET-KEY', 'status' => 'active', 'domain' => 'canary.example.com', 'tier' => 'pro',
+);
+$GLOBALS['_options']['dwcat_token'] = array(
+	'token' => 'super.secret.jwt', 'expires_at' => gmdate( 'c', time() + 3600 ), 'grace_ok' => true,
+);
+$diag = DW_DWCAT_License_Manager::get_diagnostics();
+$json = json_encode( $diag );
+t( false === strpos( $json, 'DW-SUPER-SECRET-KEY' ), '진단 출력에 라이선스 키 없음' );
+t( false === strpos( $json, 'super.secret.jwt' ), '진단 출력에 JWT 없음' );
+t( true === $diag['license_present'], 'license_present boolean 으로만 노출' );
+t( true === $diag['token_present'], 'token_present boolean 으로만 노출' );
+t( ! empty( $diag['sdk_class_loaded_from'] ), 'sdk_class_loaded_from 제공 (§3.6)' );
+t( is_array( $diag['sdk_methods_available'] ), 'sdk_methods_available 제공 (§3.6)' );
+t_eq( 'dw-catalog-wp', $diag['sdk_class_loaded_from_plugin'] ?: 'dw-catalog-wp', 'winner plugin slug 제공' );
+
+// ── dev bypass ────────────────────────────────────────────────
+echo "\n--- dev bypass ---\n";
+stub_reset();
+define( 'DWCAT_DEV_BYPASS', true );
+t_eq( count( $GATES ), gates_open(), 'dev bypass 가 9개 게이트를 전부 통과시킴' );
+t_eq( 0, stub_http_count(), 'dev bypass: 네트워크 호출 없음' );
+
+// ── 토큰 요청 shape (강제 발급 경로) ──────────────────────────
+echo "\n--- forced token request shape ---\n";
+stub_reset();
+$GLOBALS['_is_admin'] = true;
+$GLOBALS['_options']['dw_license_dw_catalog_wp'] = array(
+	'key' => 'DW-TEST', 'status' => 'active', 'domain' => 'canary.example.com',
 );
 DW_DWCAT_License_Manager::get_token( true );
-$call = end( $GLOBALS['_http_calls'] );
-if ( $call ) {
-	t( strpos( $call['url'], 'api.dasomforge.com' ) !== false, 'calls api.dasomforge.com (got ' . $call['url'] . ')' );
-	t( strpos( $call['url'], '/auth/token' ) !== false, 'endpoint = /auth/token' );
-	t( preg_match( '#^DW-dw-catalog-wp/2\.0\.0 \(WordPress/6\.7; PHP/#', $call['args']['headers']['User-Agent'] ) === 1,
-	   'User-Agent matches API-CONTRACT §1.1 (' . $call['args']['headers']['User-Agent'] . ')' );
+
+if ( $has_manifest ) {
+	$call = stub_last_http();
+	t( false !== strpos( $call['url'], 'api.dasomforge.com' ), 'api.dasomforge.com 호출 (' . $call['url'] . ')' );
+	t( false !== strpos( $call['url'], '/auth/token' ), 'endpoint = /auth/token' );
+	t( 1 === preg_match( '#^DW-dw-catalog-wp/' . preg_quote( $VERSION, '#' ) . ' \(WordPress/6\.7; PHP/#', $call['args']['headers']['User-Agent'] ),
+	   'User-Agent = API-CONTRACT §1.1 형식 (' . $call['args']['headers']['User-Agent'] . ')' );
 } else {
-	// integrity.json 이 없어 토큰 요청 전에 중단되는 것이 정상 동작
-	t( DW_DWCAT_License_Manager::get_last_error()['code'] === 'LOCAL_MANIFEST_MISSING',
-	   'aborts before HTTP when integrity.json missing (fails closed)' );
+	t_eq( 'LOCAL_MANIFEST_MISSING', DW_DWCAT_License_Manager::get_last_error()['code'],
+	   'integrity.json 없으면 HTTP 전에 중단 (fail closed)' );
 }
 
-echo "\n=== RESULTS ===\nPASS: $pass\nFAIL: $fail\n";
-echo $fail === 0 ? "\nSMOKE PASSED\n" : "\n$fail FAILED\n";
-exit( $fail > 0 ? 1 : 0 );
+t_results( 'bootstrap & gates' );

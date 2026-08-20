@@ -84,6 +84,13 @@ jobs:
             exit 1
           fi
 
+      - name: Run test suites (§9 — 깨진 빌드를 출하하지 않는다)
+        run: |
+          set -euo pipefail
+          php tests/test-plugin-integrity.php
+          php tests/test-bootstrap.php
+          php tests/test-license-manager.php
+
       - name: Install Composer dependencies (PDF export)
         run: |
           set -euo pipefail

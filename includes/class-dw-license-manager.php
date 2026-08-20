@@ -29,8 +29,24 @@ class DW_DWCAT_License_Manager {
 	/** 토큰 만료 이 초 이내면 선제 갱신 (API-CONTRACT §4.1 next_check_after=3300 대응). */
 	const REFRESH_WINDOW = 300;
 
-	/** 서버 도달 실패 시 만료된 캐시 토큰을 계속 쓰는 한계 (API-CONTRACT §9.5). */
+	/** 서버 도달 실패(네트워크 장애) 시 만료된 캐시 토큰을 계속 쓰는 한계. */
 	const OFFLINE_GRACE = 86400;
+
+	/**
+	 * 라이선스 *만료* 후 유예 — 네트워크 장애와 구분해서 훨씬 길게 잡습니다.
+	 *
+	 * 결제가 며칠 늦은 정상 고객을 24시간 만에 끊으면 안 됩니다
+	 * (PLUGIN-DEV-GUIDE §10.2 "라이선스 만료 즉시 차단 ❌",
+	 *  PLUGIN-ERROR-CODES §1 LICENSE_EXPIRED "30일 grace 권장", KICKOFF FAQ Q9).
+	 *
+	 * ⚠ 문서 간 불일치: API-CONTRACT §9.5 는 90일로 적혀 있고
+	 *   ERROR-CODES·FAQ Q9 는 30일입니다. 보수적으로 30일을 채택했습니다
+	 *   (MIGRATION-PLAN §11 에 운영자 확인 항목으로 등록).
+	 */
+	const EXPIRY_GRACE = 2592000;
+
+	/** 이 시간 이상 토큰 재발급이 연속 실패하면 어드민에 안내 (FAQ Q11 #2). */
+	const OFFLINE_NOTICE_AFTER = 86400;
 
 	/** 연속 실패 시 재호출 억제 (PLUGIN-DEV-GUIDE §10.2 무한 재시도 금지). */
 	const FAILURE_BACKOFF = 600;
@@ -57,6 +73,8 @@ class DW_DWCAT_License_Manager {
 	private $opt_token;
 	private $opt_tamper;
 	private $opt_error;
+	private $opt_platform;   // INTEGRITY_MANIFEST_NOT_FOUND · VERSION_REVOKED 등
+	private $opt_offline;    // 연속 실패 시작 시각
 
 	// ─────────────────────────────────────────────────────────────
 	// 등록
@@ -89,10 +107,12 @@ class DW_DWCAT_License_Manager {
 		$this->settings_page    = isset( $config['settings_page'] ) ? $config['settings_page'] : $this->product_slug . '-license';
 		$this->public_key_paths = isset( $config['public_keys'] ) ? (array) $config['public_keys'] : array();
 
-		$this->opt_license = 'dw_license_' . str_replace( '-', '_', $this->product_slug );
-		$this->opt_token   = $this->cache_prefix . 'token';
-		$this->opt_tamper  = $this->cache_prefix . 'tamper_notice';
-		$this->opt_error   = $this->cache_prefix . 'last_sdk_error';
+		$this->opt_license  = 'dw_license_' . str_replace( '-', '_', $this->product_slug );
+		$this->opt_token    = $this->cache_prefix . 'token';
+		$this->opt_tamper   = $this->cache_prefix . 'tamper_notice';
+		$this->opt_error    = $this->cache_prefix . 'last_sdk_error';
+		$this->opt_platform = $this->cache_prefix . 'platform_notice';
+		$this->opt_offline  = $this->cache_prefix . 'offline_since';
 
 		$this->client = new DW_DWCAT_Forge_Client(
 			$this->product_slug,
@@ -109,6 +129,10 @@ class DW_DWCAT_License_Manager {
 		add_action( 'admin_menu', array( $this, 'add_menu_page' ), 20 );
 		add_action( 'admin_post_' . $this->cache_prefix . 'license_action', array( $this, 'handle_admin_post' ) );
 		add_action( 'admin_notices', array( $this, 'render_admin_notices' ) );
+
+		// FAQ Q10 — 멀티사이트는 네트워크 어드민에서 한 번만 입력하면 전 사이트 적용.
+		add_action( 'network_admin_menu', array( $this, 'add_network_menu_page' ), 20 );
+		add_action( 'network_admin_notices', array( $this, 'render_admin_notices' ) );
 
 		// PLUGIN-DEV-GUIDE §11.1.b — 라이선스 화면 진입만으로 토큰이 갱신되어야 한다.
 		add_action( 'current_screen', array( $this, 'maybe_lazy_refresh' ) );
@@ -253,8 +277,40 @@ class DW_DWCAT_License_Manager {
 	// 라이선스 상태 저장소 (option 이 권위 — transient 아님)
 	// ─────────────────────────────────────────────────────────────
 
+	// ── 멀티사이트 (KICKOFF FAQ Q10) ────────────────────────────
+	//
+	//  라이선스 키/상태 : **네트워크 단위** — 메인 어드민에서 한 번 입력하면 전 사이트 적용
+	//  토큰 캐시        : **사이트 단위** — 서브사이트마다 도메인이 달라 토큰도 달라야 함
+	//                     (각 도메인이 License.max_domains 한 슬롯을 차지)
+
+	private function is_network() {
+		return function_exists( 'is_multisite' ) && is_multisite();
+	}
+
+	/** 네트워크 범위 옵션 읽기 (단일 사이트면 일반 옵션). */
+	private function net_get( $key, $default = false ) {
+		if ( $this->is_network() && function_exists( 'get_network_option' ) ) {
+			return get_network_option( null, $key, $default );
+		}
+		return get_option( $key, $default );
+	}
+
+	private function net_set( $key, $value ) {
+		if ( $this->is_network() && function_exists( 'update_network_option' ) ) {
+			return update_network_option( null, $key, $value );
+		}
+		return update_option( $key, $value, false );
+	}
+
+	private function net_delete( $key ) {
+		if ( $this->is_network() && function_exists( 'delete_network_option' ) ) {
+			return delete_network_option( null, $key );
+		}
+		return delete_option( $key );
+	}
+
 	private function license_data() {
-		$d = get_option( $this->opt_license, array() );
+		$d = $this->net_get( $this->opt_license, array() );
 		if ( ! is_array( $d ) ) {
 			$d = array();
 		}
@@ -273,7 +329,7 @@ class DW_DWCAT_License_Manager {
 	}
 
 	private function save_license_data( array $data ) {
-		update_option( $this->opt_license, $data, false );
+		$this->net_set( $this->opt_license, $data );
 	}
 
 	private function token_cache() {
@@ -355,9 +411,11 @@ class DW_DWCAT_License_Manager {
 			) );
 		}
 
-		delete_option( $this->opt_license );
+		$this->net_delete( $this->opt_license );
 		delete_option( $this->opt_token );
 		delete_option( $this->opt_tamper );
+		delete_option( $this->opt_platform );
+		delete_option( $this->opt_offline );
 		delete_transient( $this->opt_token . '_backoff' );
 
 		return array( 'success' => true, 'message' => __( '라이선스를 비활성화했습니다.', 'dw-catalog-wp' ) );
@@ -403,6 +461,38 @@ class DW_DWCAT_License_Manager {
 	// /auth/token  (envelope)
 	// ─────────────────────────────────────────────────────────────
 
+	/**
+	 * 프런트엔드 페이지뷰에서 **동기 HTTP 를 절대 하지 않기 위한** 판정.
+	 *
+	 * 게이트(dwcat_can_render 등)는 매 페이지뷰마다 불립니다. 여기서 토큰을
+	 * 동기 발급하면 —
+	 *   · 방문자가 최대 20초(타임아웃) 를 기다림
+	 *   · dasomforge 가 느려지면 사이트 전체가 느려짐 (FAQ Q11 "페이지 렌더가 깨지면 절대 안 됨")
+	 *   · §10.2 "매 페이지뷰마다 토큰 갱신 ❌" 위반
+	 *
+	 * 따라서 프런트에서는 **캐시/grace 토큰만** 쓰고, 갱신은 cron 으로 미룹니다.
+	 */
+	private function should_defer_network() {
+		if ( defined( 'WP_CLI' ) && WP_CLI ) {
+			return false;
+		}
+		if ( function_exists( 'wp_doing_cron' ) && wp_doing_cron() ) {
+			return false;
+		}
+		if ( function_exists( 'wp_doing_ajax' ) && wp_doing_ajax() ) {
+			return false;
+		}
+		return ! is_admin();
+	}
+
+	/** 다음 페이지뷰가 아니라 백그라운드에서 토큰을 받아 오도록 예약. */
+	private function schedule_refresh( $delay = 5 ) {
+		$hook = $this->cache_prefix . 'refresh_token';
+		if ( ! wp_next_scheduled( $hook ) ) {
+			wp_schedule_single_event( time() + $delay, $hook );
+		}
+	}
+
 	private function resolve_token( $force = false ) {
 		$cache = $this->token_cache();
 		$now   = time();
@@ -414,15 +504,19 @@ class DW_DWCAT_License_Manager {
 			}
 			if ( $exp > $now ) {
 				// 아직 유효 — 백그라운드 갱신 예약 후 캐시 반환 (페이지뷰 블로킹 방지).
-				if ( ! wp_next_scheduled( $this->cache_prefix . 'refresh_token' ) ) {
-					wp_schedule_single_event( $now + 5, $this->cache_prefix . 'refresh_token' );
-				}
+				$this->schedule_refresh();
 				return $cache['token'];
 			}
 		}
 
 		// 연속 실패 백오프 중이면 grace 토큰만 시도 (§10.2 무한 재시도 금지).
 		if ( ! $force && get_transient( $this->opt_token . '_backoff' ) ) {
+			return $this->grace_token( $cache );
+		}
+
+		// ★ 프런트엔드에서는 동기 발급을 하지 않는다. 갱신은 cron 에 위임.
+		if ( ! $force && $this->should_defer_network() ) {
+			$this->schedule_refresh();
 			return $this->grace_token( $cache );
 		}
 
@@ -434,13 +528,41 @@ class DW_DWCAT_License_Manager {
 		return $this->grace_token( $cache );
 	}
 
-	/** 서버 도달 실패 시에만 유효 — 만료 후 24h 까지 캐시 토큰 사용 (API-CONTRACT §9.5). */
+	/**
+	 * 만료된 캐시 토큰을 계속 쓸지 판정. 유예 창은 **사유별로 다릅니다**:
+	 *
+	 *   invalidated  → 유예 없음 (환불·치팅 등 운영자가 끊은 것 — API-CONTRACT §9.5)
+	 *   expired      → 30일  (결제 지연 정상 고객 보호 — ERROR-CODES §1 / FAQ Q9)
+	 *   그 외(장애)   → 24시간 (FAQ Q11)
+	 */
 	private function grace_token( array $cache ) {
 		if ( empty( $cache['token'] ) || empty( $cache['grace_ok'] ) ) {
 			return null;
 		}
-		$exp = (int) strtotime( isset( $cache['expires_at'] ) ? $cache['expires_at'] : '' );
-		return ( $exp + self::OFFLINE_GRACE > time() ) ? $cache['token'] : null;
+
+		$status = $this->license_data();
+		$status = isset( $status['status'] ) ? $status['status'] : '';
+
+		if ( 'invalidated' === $status || 'tamper_detected' === $status ) {
+			return null;
+		}
+
+		$window = ( 'expired' === $status ) ? self::EXPIRY_GRACE : self::OFFLINE_GRACE;
+		$exp    = (int) strtotime( isset( $cache['expires_at'] ) ? $cache['expires_at'] : '' );
+
+		return ( $exp + $window > time() ) ? $cache['token'] : null;
+	}
+
+	/** 유예가 며칠 남았는지 (어드민 안내용). 유예 대상이 아니면 0. */
+	public function grace_days_left() {
+		$cache = $this->token_cache();
+		if ( empty( $cache['token'] ) ) {
+			return 0;
+		}
+		$d      = $this->license_data();
+		$window = ( 'expired' === $d['status'] ) ? self::EXPIRY_GRACE : self::OFFLINE_GRACE;
+		$left   = (int) strtotime( isset( $cache['expires_at'] ) ? $cache['expires_at'] : '' ) + $window - time();
+		return $left > 0 ? (int) ceil( $left / DAY_IN_SECONDS ) : 0;
 	}
 
 	private function request_new_token( $is_retry = false ) {
@@ -478,6 +600,15 @@ class DW_DWCAT_License_Manager {
 			delete_transient( $this->opt_token . '_backoff' );
 			delete_option( $this->opt_tamper );
 			delete_option( $this->opt_error );
+			delete_option( $this->opt_platform );
+			delete_option( $this->opt_offline );   // 연속 실패 추적 리셋
+
+			// 이전에 expired/invalid 로 떨어졌더라도 토큰이 나왔으면 정상 복귀.
+			$d = $this->license_data();
+			if ( in_array( $d['status'], array( 'expired', 'invalid', 'tamper_detected' ), true ) ) {
+				$d['status'] = 'active';
+				$this->save_license_data( $d );
+			}
 
 			return $r['data']['token'];
 		}
@@ -500,6 +631,11 @@ class DW_DWCAT_License_Manager {
 
 	private function handle_token_error( $code, array $error ) {
 		$this->log_error( 'auth/token', $code, isset( $error['message'] ) ? $error['message'] : '' );
+
+		// 연속 실패 시작 시각 기록 → 24h 넘으면 "서비스 연결 끊김" 안내 (FAQ Q11 #2).
+		if ( ! get_option( $this->opt_offline ) ) {
+			update_option( $this->opt_offline, time(), false );
+		}
 
 		switch ( $code ) {
 			case 'TAMPER_DETECTED':
@@ -527,6 +663,22 @@ class DW_DWCAT_License_Manager {
 				$this->mark_license_state( 'invalidated' );
 				// 무효화는 grace 대상이 아니다 — 캐시 토큰 즉시 폐기 (API-CONTRACT §9.5).
 				delete_option( $this->opt_token );
+				break;
+
+			case 'INTEGRITY_MANIFEST_NOT_FOUND':
+			case 'VERSION_REVOKED':
+			case 'DOMAIN_NOT_AUTHORIZED':
+			case 'DOMAIN_LIMIT_REACHED':
+			case 'LICENSE_NOT_FOUND':
+				// 플러그인이 자동으로 고칠 수 없는 것들 — 운영자/사용자 조치가 필요합니다.
+				// 자동 재시도는 무의미하므로 길게 물러나고 어드민에 그대로 노출합니다
+				// (ERROR-CODES §3 "플러그인 측에서 자동화 ❌").
+				update_option( $this->opt_platform, array(
+					'at'      => time(),
+					'code'    => $code,
+					'details' => isset( $error['details'] ) ? (array) $error['details'] : array(),
+				), false );
+				set_transient( $this->opt_token . '_backoff', 1, HOUR_IN_SECONDS );
 				break;
 
 			case 'RATE_LIMITED':
@@ -782,6 +934,64 @@ class DW_DWCAT_License_Manager {
 		return is_array( $e ) ? $e : array();
 	}
 
+	/**
+	 * 운영자 진단용 스냅샷 (PLUGIN-DEV-GUIDE §3.6 SHOULD #2).
+	 *
+	 * ⚠ 라이선스 키·토큰·raw tier 는 **절대 포함하지 않습니다**
+	 *   (modalpopup P15/P16 — 진단 패널이 attack surface 가 된 사례).
+	 */
+	public static function get_diagnostics( $slug = null ) {
+		$i = self::get( $slug );
+		if ( ! $i ) {
+			return array( 'sdk_registered' => false );
+		}
+
+		$methods = array();
+		foreach ( array(
+			'has_valid_token', 'verify_token_signature', 'get_token_claims',
+			'get_status', 'compute_file_hashes', 'sign_config', 'get_runtime_manifest',
+		) as $m ) {
+			$methods[ $m ] = is_callable( array( __CLASS__, $m ) );
+		}
+
+		$loaded_from = '';
+		$winner      = '';
+		if ( class_exists( __CLASS__ ) ) {
+			$ref         = new ReflectionClass( __CLASS__ );
+			$loaded_from = (string) $ref->getFileName();
+			if ( preg_match( '#/plugins/([^/]+)/#', str_replace( '\\', '/', $loaded_from ), $m2 ) ) {
+				$winner = $m2[1];
+			}
+		}
+
+		$cache    = $i->token_cache();
+		$license  = $i->license_data();
+		$platform = get_option( $i->opt_platform, array() );
+
+		return array(
+			'sdk_registered'               => true,
+			'sdk_class'                    => __CLASS__,
+			'sdk_strategy'                 => 'prefix',
+			'sdk_class_loaded_from'        => $loaded_from,
+			'sdk_class_loaded_from_plugin' => $winner,
+			'sdk_methods_available'        => $methods,
+			'last_sdk_error'               => get_option( $i->opt_error, null ),
+			'product_slug'                 => $i->product_slug,
+			'plugin_version'               => $i->plugin_version,
+			'manifest_version'             => $i->manifest_version(),
+			'version_matches_manifest'     => $i->manifest_version() === $i->plugin_version,
+			'domain'                       => $i->current_domain(),
+			'is_multisite'                 => $i->is_network(),
+			'status'                       => $i->resolve_status(),
+			'license_present'              => ! empty( $license['key'] ),   // 키 자체는 노출 ❌
+			'token_present'                => ! empty( $cache['token'] ),   // 토큰 자체는 노출 ❌
+			'token_expires_at'             => isset( $cache['expires_at'] ) ? $cache['expires_at'] : null,
+			'grace_days_left'              => $i->grace_days_left(),
+			'platform_notice'              => ! empty( $platform ) ? $platform : null,
+			'offline_since'                => get_option( $i->opt_offline, null ),
+		);
+	}
+
 	public static function get_tamper_notice( $slug = null ) {
 		$i = self::get( $slug );
 		if ( ! $i ) {
@@ -916,6 +1126,22 @@ class DW_DWCAT_License_Manager {
 	// 관리자 화면
 	// ─────────────────────────────────────────────────────────────
 
+	/** 멀티사이트 네트워크 어드민 전용 라이선스 화면 (FAQ Q10). */
+	public function add_network_menu_page() {
+		if ( ! $this->is_network() ) {
+			return;
+		}
+		add_menu_page(
+			$this->plugin_name . ' License',
+			__( 'DW Catalog', 'dw-catalog-wp' ),
+			'manage_network_options',
+			$this->settings_page,
+			array( $this, 'render_settings_page' ),
+			'dashicons-grid-view',
+			80
+		);
+	}
+
 	public function add_menu_page() {
 		add_submenu_page(
 			'dw-catalog-settings',
@@ -936,16 +1162,24 @@ class DW_DWCAT_License_Manager {
 		if ( ! $screen || false === strpos( (string) $screen->id, $this->settings_page ) ) {
 			return;
 		}
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'manage_options' ) && ! current_user_can( 'manage_network_options' ) ) {
 			return;
 		}
 		// 만료 5분 이내면 resolve_token 이 알아서 재발급한다.
+		// is_admin() 이므로 should_defer_network() 가 false → 동기 발급 허용 (§11.1.b).
 		$this->resolve_token( false );
 	}
 
 	/** §11.1.c — 명시적 "라이선스 상태 새로고침" 액션. */
+	/** 라이선스를 바꿀 수 있는 권한 — 멀티사이트면 네트워크 관리자만. */
+	private function can_manage_license() {
+		return $this->is_network()
+			? current_user_can( 'manage_network_options' )
+			: current_user_can( 'manage_options' );
+	}
+
 	public function handle_admin_post() {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! $this->can_manage_license() ) {
 			wp_die( esc_html__( '권한이 없습니다.', 'dw-catalog-wp' ) );
 		}
 		check_admin_referer( $this->cache_prefix . 'license_action' );
@@ -962,6 +1196,8 @@ class DW_DWCAT_License_Manager {
 			$notice = 'deactivated';
 		} elseif ( 'refresh' === $op ) {
 			delete_option( $this->opt_token );
+			delete_option( $this->opt_platform );
+			delete_option( $this->opt_offline );
 			delete_transient( $this->opt_token . '_backoff' );
 			delete_transient( $this->cache_prefix . 'update_info' );
 			delete_transient( $this->cache_prefix . 'runtime_manifest' );
@@ -1121,14 +1357,34 @@ class DW_DWCAT_License_Manager {
 		<?php
 	}
 
+	private function license_page_url() {
+		return $this->is_network()
+			? network_admin_url( 'admin.php?page=' . $this->settings_page )
+			: admin_url( 'admin.php?page=' . $this->settings_page );
+	}
+
+	private function notice( $level, $message, $link_label = '' ) {
+		printf(
+			'<div class="notice notice-%s"><p><strong>%s:</strong> %s%s</p></div>',
+			esc_attr( $level ),
+			esc_html( $this->plugin_name ),
+			esc_html( $message ),
+			$link_label
+				? sprintf( ' <a href="%s">%s</a>', esc_url( $this->license_page_url() ), esc_html( $link_label ) )
+				: ''
+		);
+	}
+
+	/**
+	 * 어드민 알림. 우선순위 = 심각도 순이며, 가장 심각한 것 하나만 띄웁니다
+	 * (노티스 폭탄을 만들면 사용자가 전부 무시하게 됩니다).
+	 */
 	public function render_admin_notices() {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'manage_options' ) && ! current_user_can( 'manage_network_options' ) ) {
 			return;
 		}
 
-		$license_url = admin_url( 'admin.php?page=' . $this->settings_page );
-
-		// PLUGIN-DEV-GUIDE §11.2.c — mismatched_files 를 그대로 노출. swallow 금지.
+		// ① 변조 감지 — §11.2.c: mismatched_files 를 그대로 노출. swallow 금지.
 		$tamper = get_option( $this->opt_tamper, array() );
 		if ( ! empty( $tamper ) && ( ! empty( $tamper['files'] ) || ! empty( $tamper['missing'] ) ) ) {
 			echo '<div class="notice notice-error"><p><strong>';
@@ -1148,21 +1404,88 @@ class DW_DWCAT_License_Manager {
 		// 토큰 발급이 한 번 실패했다고 "비활성"으로 보이면 안 된다.
 		$d = $this->license_data();
 
+		// ② 라이선스 무효화 — 유예 없음.
 		if ( 'invalidated' === $d['status'] ) {
+			$this->notice(
+				'error',
+				__( '라이선스가 무효화되었습니다. 고객지원에 문의해주세요.', 'dw-catalog-wp' ),
+				__( '라이선스 설정', 'dw-catalog-wp' )
+			);
+			return;
+		}
+
+		// ③ 플랫폼 측 조치가 필요한 코드 — 사용자가 재시도해도 안 풀립니다.
+		//    ERROR-CODES §3: "플러그인 측에서 자동화 ❌ → 운영자 연락"
+		$platform = get_option( $this->opt_platform, array() );
+		if ( ! empty( $platform['code'] ) ) {
+			$code = $platform['code'];
+			$hint = array(
+				'INTEGRITY_MANIFEST_NOT_FOUND' => __( '이 버전이 플랫폼에 등록되지 않았습니다. 공급자에게 문의하거나 최신 버전으로 업데이트해주세요.', 'dw-catalog-wp' ),
+				'VERSION_REVOKED'              => __( '이 버전은 보안 사유로 지원 중단되었습니다. 즉시 업데이트해주세요.', 'dw-catalog-wp' ),
+				'DOMAIN_NOT_AUTHORIZED'        => __( '이 도메인이 라이선스에 등록되지 않았습니다. 라이선스를 다시 활성화해주세요.', 'dw-catalog-wp' ),
+				'DOMAIN_LIMIT_REACHED'         => __( '라이선스의 도메인 한도를 초과했습니다. 사용하지 않는 도메인을 해제하거나 상위 플랜이 필요합니다.', 'dw-catalog-wp' ),
+				'LICENSE_NOT_FOUND'            => __( '라이선스 키를 찾을 수 없습니다. 키를 다시 확인해주세요.', 'dw-catalog-wp' ),
+			);
 			printf(
-				'<div class="notice notice-error"><p><strong>%s:</strong> %s <a href="%s">%s</a></p></div>',
+				'<div class="notice notice-error"><p><strong>%s:</strong> %s <code>%s</code> <a href="%s">%s</a></p></div>',
 				esc_html( $this->plugin_name ),
-				esc_html__( '라이선스가 무효화되었습니다.', 'dw-catalog-wp' ),
-				esc_url( $license_url ),
+				esc_html( isset( $hint[ $code ] ) ? $hint[ $code ] : $this->translate_error( $code ) ),
+				esc_html( $code ),
+				esc_url( $this->license_page_url() ),
 				esc_html__( '라이선스 설정', 'dw-catalog-wp' )
 			);
-		} elseif ( 'expired' === $d['status'] ) {
+			return;
+		}
+
+		// ④ 라이선스 만료 — 30일 유예 중. 남은 일수를 정확히 알려 줍니다.
+		if ( 'expired' === $d['status'] ) {
+			$days = $this->grace_days_left();
+			$this->notice(
+				$days <= 7 ? 'error' : 'warning',
+				$days > 0
+					? sprintf(
+						/* translators: %d: days remaining */
+						__( '라이선스가 만료되었습니다. %d일 후 카탈로그 출력이 중단됩니다.', 'dw-catalog-wp' ),
+						$days
+					)
+					: __( '라이선스가 만료되어 카탈로그 출력이 중단되었습니다.', 'dw-catalog-wp' ),
+				__( '라이선스 갱신', 'dw-catalog-wp' )
+			);
+			return;
+		}
+
+		// ⑤ 서비스 연결 끊김 — FAQ Q11 #2: 24시간 이상 토큰 재발급 실패 시 안내.
+		//    그 전에는 조용히 캐시 토큰으로 버팁니다 (사용자에게 에러를 보이지 않음).
+		$offline_since = (int) get_option( $this->opt_offline, 0 );
+		if ( $offline_since > 0 && ( time() - $offline_since ) > self::OFFLINE_NOTICE_AFTER && ! empty( $d['key'] ) ) {
+			$hours = (int) floor( ( time() - $offline_since ) / HOUR_IN_SECONDS );
+			$this->notice(
+				'warning',
+				sprintf(
+					/* translators: %d: hours since last successful contact */
+					__( '라이선스 서버 연결이 %d시간째 끊겨 있습니다. 유예가 끝나면 카탈로그 출력이 중단됩니다.', 'dw-catalog-wp' ),
+					$hours
+				),
+				__( '상태 확인', 'dw-catalog-wp' )
+			);
+			return;
+		}
+
+		// ⑥ §3.6 SHOULD #1 — silent fail 가시화.
+		//    Prefix 전략이라 클래스 충돌은 없지만, 자기 fork 가 낡아 메서드가
+		//    빠진 채로 배포되면 게이트가 조용히 전부 false 로 떨어집니다.
+		$missing = array();
+		foreach ( array( 'has_valid_token', 'verify_token_signature', 'get_token_claims', 'get_status' ) as $m ) {
+			if ( ! is_callable( array( __CLASS__, $m ) ) ) {
+				$missing[] = $m;
+			}
+		}
+		if ( $missing ) {
 			printf(
-				'<div class="notice notice-warning"><p><strong>%s:</strong> %s <a href="%s">%s</a></p></div>',
+				'<div class="notice notice-error"><p><strong>%s:</strong> %s <code>%s</code></p></div>',
 				esc_html( $this->plugin_name ),
-				esc_html__( '라이선스가 만료되었습니다. 유예 기간이 끝나면 카탈로그 출력이 중단됩니다.', 'dw-catalog-wp' ),
-				esc_url( $license_url ),
-				esc_html__( '라이선스 설정', 'dw-catalog-wp' )
+				esc_html__( 'SDK 가 손상되었습니다 (필수 메서드 누락). 정상 버전으로 재설치해주세요.', 'dw-catalog-wp' ),
+				esc_html( implode( ', ', $missing ) )
 			);
 		}
 	}

@@ -3,7 +3,7 @@
  * Plugin Name: DW Catalog WP
  * Plugin URI: https://github.com/dasomweb/dw-catalog-wp
  * Description: Product catalog with dynamic custom fields per post type.
- * Version: 2.0.0
+ * Version: 2.0.0-rc.1
  * Author: Dasom Web
  * Author URI: https://github.com/dasomweb
  * License: GPL v2 or later
@@ -27,7 +27,7 @@ function dwcat_get_config() {
 		'github_repo_owner'  => 'dasomweb',
 		'github_repo_name'   => 'dw-catalog-wp',
 		'plugin_slug'        => 'dw-catalog-wp',
-		'plugin_version'     => '2.0.0',
+		'plugin_version'     => '2.0.0-rc.1',
 		'plugin_name'        => 'DW Catalog WP',
 		'plugin_text_domain' => 'dw-catalog-wp',
 		'github_branch'      => 'main',
@@ -106,6 +106,7 @@ require_once dwcat_get_path() . 'includes/class-pc-github-updater.php';
 require_once dwcat_get_path() . 'includes/class-dw-forge-client.php';
 require_once dwcat_get_path() . 'includes/class-dw-license-manager.php';
 require_once dwcat_get_path() . 'includes/license/gates.php';
+require_once dwcat_get_path() . 'includes/class-dwcat-license-rest.php';
 
 require_once dwcat_get_path() . 'includes/class-pc-settings.php';
 require_once dwcat_get_path() . 'includes/class-pc-post-type.php';
@@ -132,7 +133,7 @@ DW_DWCAT_License_Manager::init( array(
 	'plugin_file'     => __FILE__,
 	'plugin_basename' => plugin_basename( __FILE__ ),
 	'plugin_name'     => 'DW Catalog WP',
-	'plugin_version'  => '2.0.0',
+	'plugin_version'  => '2.0.0-rc.1',
 	'settings_page'   => 'dw-catalog-license',
 	'public_keys'     => array(
 		dwcat_get_path() . 'includes/keys/dasomforge.pub',
@@ -141,29 +142,21 @@ DW_DWCAT_License_Manager::init( array(
 ) );
 
 /**
- * GitHub Updater — dasomforge 업데이트 경로와 **상호 배타**.
+ * GitHub Updater — v2.0 부터 **비활성화**합니다.
  *
- * 두 업데이터가 동시에 pre_set_site_transient_update_plugins 에 붙으면
- * 서로의 응답을 덮어써 업데이트가 오락가락합니다. PLUGIN-DEV-GUIDE §7.4 는
- * 고객이 dasomforge 가 발급한 R2 signed URL 로만 받도록 규정하므로,
- * 라이선스가 등록된 사이트에서는 GitHub 직접 다운로드 경로를 끕니다.
+ * PLUGIN-DEV-GUIDE §7.4: "고객은 dasomforge 가 발급한 R2 signed URL 로만 다운로드
+ * (GitHub 직접 다운로드 ❌)". dasomforge 가 유일한 배포 채널입니다.
+ *
+ * 기술적으로도 반드시 꺼야 합니다 — v2.0 부터 GitHub Release 자산은
+ * **플랫폼 표준 멀티루트 ZIP** (`manifest.json` + `wp-plugin/`) 이라
+ * 워드프레스가 직접 설치할 수 없습니다 (§7.2.1: 제출 ZIP ≠ 고객 설치 ZIP).
+ * 그걸 WP 업그레이더에 물리면 "플러그인 헤더를 찾을 수 없음" 으로 실패합니다.
+ *
+ * 클래스 자체는 남겨 둡니다 — 삭제하면 무결성 매니페스트 파일 목록이 흔들리고,
+ * 롤백 시나리오에서 필요할 수 있습니다.
+ *
+ * @see DWCAT_GitHub_Updater — 인스턴스화하지 않음 (의도적)
  */
-add_action( 'plugins_loaded', 'dwcat_init_updater', 10 );
-function dwcat_init_updater() {
-	$license = get_option( 'dw_license_dw_catalog_wp', array() );
-	if ( is_array( $license ) && ! empty( $license['key'] ) ) {
-		return; // dasomforge 가 업데이트를 담당
-	}
-
-	$config = dwcat_get_config();
-	new DWCAT_GitHub_Updater(
-		dwcat_get_file(),
-		$config['github_repo_owner'],
-		$config['github_repo_name'],
-		$config['plugin_slug'],
-		$config['plugin_version']
-	);
-}
 
 // Initialize all components
 add_action( 'plugins_loaded', 'dwcat_init', 10 );
@@ -177,6 +170,7 @@ function dwcat_init() {
 	new DWCAT_Bulk_Import();
 	new DWCAT_Design_Settings();
 	new DWCAT_Shortcodes();
+	new DWCAT_License_REST();   // §3.6 SHOULD #2 진단 엔드포인트
 
 	// DW Admin SPA Integration (optional — works without DW Admin)
 	// 게이트 9: 라이선스가 없으면 SPA 모듈을 노출하지 않습니다.

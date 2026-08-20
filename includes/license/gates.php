@@ -73,8 +73,12 @@ function dwcat_maybe_grant_legacy_grace( $old_version ) {
 	if ( '' === (string) $old_version ) {
 		return; // 신규 설치 — 유예 없음
 	}
-	if ( version_compare( (string) $old_version, '2.0.0', '>=' ) ) {
-		return; // 이미 v2 계열
+	// ⚠ version_compare('2.0.0-rc.1', '2.0.0', '>=') 는 **false** 입니다
+	//   (프리릴리스가 릴리스보다 작음). 그대로 쓰면 rc.1 → rc.2 업그레이드 때
+	//   이미 v2 인 사이트에 레거시 유예가 잘못 부여됩니다.
+	//   유예는 "v1 에서 올라온 설치" 에만 줘야 하므로 메이저 버전으로 판정합니다.
+	if ( (int) strtok( (string) $old_version, '.' ) >= 2 ) {
+		return; // 이미 v2 계열 (프리릴리스 포함)
 	}
 	if ( false !== get_option( DWCAT_OPT_LEGACY_TILL, false ) ) {
 		return; // 이미 1회 부여됨 (연장 금지)
@@ -253,13 +257,32 @@ function dwcat_can_use_shortcode() {
 		return false;
 	}
 
+	return dwcat_manifest_version_matches();
+}
+
+/**
+ * integrity.json 의 version 이 플러그인 버전과 맞는지.
+ *
+ * 숏코드마다 파일을 다시 읽으면 페이지당 디스크 I/O 가 늘어나므로
+ * 요청 단위로 1회만 읽습니다 (정적 캐시 — 요청이 끝나면 사라짐).
+ */
+function dwcat_manifest_version_matches() {
+	static $matches = null;
+	if ( null !== $matches ) {
+		return $matches;
+	}
+
 	$manifest = dwcat_get_path() . 'integrity.json';
 	if ( ! is_readable( $manifest ) ) {
-		return false;
+		$matches = false;
+		return $matches;
 	}
-	$m      = json_decode( (string) file_get_contents( $manifest ), true );
-	$config = dwcat_get_config();
-	return is_array( $m ) && isset( $m['version'] ) && $m['version'] === $config['plugin_version'];
+
+	$m       = json_decode( (string) file_get_contents( $manifest ), true );
+	$config  = dwcat_get_config();
+	$matches = is_array( $m ) && isset( $m['version'] ) && $m['version'] === $config['plugin_version'];
+
+	return $matches;
 }
 
 /**

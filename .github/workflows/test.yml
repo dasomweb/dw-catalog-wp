@@ -1,0 +1,72 @@
+name: Tests
+
+# PLUGIN-DEV-GUIDE §9 테스트 의무.
+# 세 스위트 모두 의존성 0 (PHPUnit 불필요) 이라 매 push 마다 수초 안에 돕니다.
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  php-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # 릴리스 체크리스트 §6.3 — PHP 7.4~8.3 전 구간 지원
+        php: [ '7.4', '8.0', '8.1', '8.2', '8.3' ]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: openssl, mbstring, dom
+          coverage: none
+
+      - name: Lint every PHP file
+        run: |
+          set -euo pipefail
+          fail=0
+          while IFS= read -r f; do
+            php -l "$f" > /dev/null || { echo "::error file=$f::PHP syntax error"; fail=1; }
+          done < <(find . -name '*.php' -not -path './vendor/*' -not -path './release/*')
+          [ "$fail" -eq 0 ]
+
+      - name: Static integrity tests
+        run: php tests/test-plugin-integrity.php
+
+      - name: Bootstrap & license gate tests
+        run: php tests/test-bootstrap.php
+
+      - name: SDK behaviour tests
+        run: php tests/test-license-manager.php
+
+  build-scripts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Syntax-check build scripts
+        run: |
+          set -euo pipefail
+          for f in build/*.js; do node --check "$f"; done
+          bash -n .github/scripts/package-release.sh
+
+      - name: Composer lock must be present and clean
+        # 없으면 vendor 가 빌드마다 달라져 TAMPER_DETECTED 를 유발합니다 (§11.2.b).
+        run: |
+          set -euo pipefail
+          test -f composer.lock || { echo "::error::composer.lock missing (§11.2.b)"; exit 1; }
+          composer validate --no-check-publish
+          composer audit --no-dev

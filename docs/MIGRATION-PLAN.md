@@ -139,6 +139,22 @@
 **v1 옵션 키 보존**: 라이선스 상태는 v1 과 동일한 `dw_license_dw_catalog_wp` 에 저장합니다 —
 기존 활성화 사용자는 키 재입력 없이 승계됩니다.
 
+### 7.1 유예(grace) 창 세 가지 — 사유별로 다릅니다
+
+KICKOFF FAQ Q9·Q18 이 요구하는 "서로 다른 grace" 를 구분해 구현했습니다.
+전부 24시간으로 뭉뚱그리면 결제가 이틀 늦은 정상 고객이 끊깁니다.
+
+| 사유 | 창 | 상수 | 근거 |
+|---|---|---|---|
+| **네트워크 장애** (서버 미도달·5xx) | 24시간 | `OFFLINE_GRACE` | FAQ Q11 |
+| **라이선스 만료** (`LICENSE_EXPIRED`) | **30일** | `EXPIRY_GRACE` | ERROR-CODES §1 "30일 grace 권장" · FAQ Q9 |
+| **라이선스 무효화** (`LICENSE_INVALIDATED`) | **없음** — 캐시 토큰 즉시 폐기 | — | API-CONTRACT §9.5 |
+| **v1.x 마이그레이션** | 30일 (1회) | `DWCAT_LEGACY_GRACE_DAYS` | FAQ Q8 |
+
+만료 유예 중에는 남은 일수를 어드민 notice 로 표시하고, 7일 이하면 `notice-error` 로
+격상합니다. 24시간 이상 토큰 재발급이 연속 실패하면 "서버 연결 끊김" 을 별도 안내합니다
+(FAQ Q11 #2) — 그 전에는 사용자에게 에러를 보이지 않고 조용히 캐시로 버팁니다.
+
 ---
 
 ## 8. 카나리 라이선스
@@ -169,6 +185,50 @@
 
 → 정본과 내부 구현이 다를 수 있습니다. 정본을 입수하면 diff 후 rebase 하십시오.
    공개 API 시그니처는 SDK-README 표와 1:1 로 맞춰 두었습니다.
+
+---
+
+## 9.1 멀티사이트 (FAQ Q10)
+
+| 데이터 | 범위 | 이유 |
+|---|---|---|
+| 라이선스 키·상태 | **네트워크** (`get_network_option`) | 메인 어드민에서 한 번 입력 → 전 사이트 적용 |
+| 토큰 캐시 | **사이트별** | 서브사이트마다 도메인이 달라 토큰의 `domain` 클레임도 달라야 함 |
+| tamper·오류·유예 노티스 | 사이트별 | 사이트마다 상태가 다를 수 있음 |
+
+- 네트워크 어드민에 별도 라이선스 메뉴를 등록하고, 권한은 `manage_network_options` 로 검사합니다.
+- 각 서브사이트 도메인이 `License.max_domains` 슬롯을 하나씩 차지합니다 →
+  **서브사이트 수에 맞는 `max_domains` 가 필요합니다** (§11 운영자 확인 #4 와 연결).
+- `uninstall.php` 가 멀티사이트에서 네트워크 옵션도 정리합니다.
+
+## 9.2 진단 엔드포인트 (§3.6 SHOULD #2)
+
+```
+GET /wp-json/dw-catalog-wp/v1/license/status
+```
+
+권한: `manage_options` 또는 `manage_network_options` (Application Password 로도 접근 가능).
+`permission_callback` 에 `__return_true` 를 쓰지 않습니다.
+
+표준 필드(`sdk_class_loaded_from` · `sdk_class_loaded_from_plugin` ·
+`sdk_methods_available` · `last_sdk_error`) 에 더해 게이트 스냅샷·매니페스트 정합·
+유예 잔여일을 반환합니다.
+
+**노출 금지 (modalpopup P15/P16 교훈)** — 진단 패널이 attack surface 가 된 실사례가 있어
+다음은 절대 싣지 않습니다: 라이선스 키 · JWT · raw tier slug.
+존재 여부는 `license_present` / `token_present` boolean 으로만 노출하며,
+`tests/test-bootstrap.php` 가 이 불변식을 실행으로 검증합니다.
+
+## 9.3 프런트엔드 성능·가용성 규칙
+
+게이트는 매 페이지뷰마다 호출되므로 **프런트엔드에서는 동기 HTTP 를 절대 하지 않습니다**:
+
+- 캐시/grace 토큰만 사용하고, 갱신이 필요하면 `wp_schedule_single_event` 로 cron 에 위임
+- 동기 발급이 허용되는 컨텍스트: wp-admin · cron · WP-CLI · AJAX
+- 근거: §10.2 "매 페이지뷰마다 토큰 갱신 ❌", FAQ Q11 "어떤 경우에도 페이지 렌더가
+  깨지면 절대 안 됨"
+
+이게 없으면 dasomforge 가 느려질 때 고객 사이트 전체가 20초(타임아웃) 씩 느려집니다.
 
 ---
 
@@ -205,6 +265,8 @@ tag v2.0.0 push
 | 4 | `max_domains` (basic) | §6 | 운영자 결정 |
 | 5 | v1.x 활성 라이선스 수 | §7 유예 정책 검증용 | 운영자 데이터 |
 | 6 | 정본 SDK v2.1.0 diff | §9 | 정본 파일 미입수 |
+| 7 | **`LICENSE_EXPIRED` 유예가 30일인가 90일인가** | API-CONTRACT §9.5 는 **90일**, ERROR-CODES §1 과 FAQ Q9 는 **30일** 로 서로 다릅니다. 보수적으로 **30일** 을 구현했습니다 (`EXPIRY_GRACE`) | binding spec 과 하위 문서가 충돌 — 어느 쪽이 정본인지 운영자 판정 필요. 90일이 맞다면 상수 한 줄만 바꾸면 됩니다 |
+| 8 | 멀티사이트 `max_domains` | 서브사이트마다 도메인 슬롯을 하나씩 씁니다 (§9.1). 카나리가 멀티사이트면 서브사이트 수 이상이 필요 | 운영자 발급 정책 |
 
 **#1 이 가장 급합니다.** 한도에 걸리면 선택지:
 - (a) 운영자가 `/auth/token` body limit 상향 — 가장 저렴
@@ -237,10 +299,26 @@ tag v2.0.0 push
 
 | Sprint | 범위 | 상태 |
 |---|---|---|
-| MP1 | SDK 교체 + 게이트 분산 + 무결성 + ZIP 구조 | ✅ 본 변경 |
+| MP1 | SDK 교체 + 게이트 분산 + 무결성 + ZIP 구조 | ✅ 완료 |
+| MP1.5 | 에러 경로 전면화 · 멀티사이트 · 진단 엔드포인트 · 테스트 스위트 3종 | ✅ 완료 |
 | MP2 | 카나리 검증 (활성화 → 토큰 → 게이트 개방 → tamper 감지) | 대기 — 운영자 §11 |
 | MP3 | v2.0.0 stable 출시 + 7일 모니터링 | 대기 |
 | MP4 | (선택) 런타임 JS + config 서명 — §4.1 재검토 | 미정 |
+
+### 테스트 커버리지 (§9.1 대비)
+
+| 요구 | 파일 | 상태 |
+|---|---|---|
+| 토큰 발급/캐시 · 401 1회 재시도 · grace · 서명 검증 | `tests/test-license-manager.php` | ✅ 68 assertions |
+| 모든 게이트 · dev bypass · 토큰 없을 때 false | `tests/test-bootstrap.php` | ✅ 41 assertions |
+| 구조·보안 패턴·패키징 계약 정적 검사 | `tests/test-plugin-integrity.php` | ✅ 219 assertions |
+| anti-piracy 회귀 (§9.3) | `test-license-manager.php` §16 | ✅ option 위조 · 토큰 위조 · 매니페스트 삭제 |
+| 설정 서명 (§9.1 test-config-signing) | — | N/A — §4.2 미적용 |
+| 런타임 로더 (§9.1 test-runtime-loader) | — | N/A — §4.1 미적용 |
+| dasomforge staging E2E | — | ⏳ 카나리 라이선스 필요 (§11) |
+
+CI: `.github/workflows/test.yml` 이 PHP 7.4~8.3 다섯 버전에서 전부 실행하며,
+릴리스 워크플로도 패키징 **전에** 같은 스위트를 게이트로 돌립니다.
 
 ---
 

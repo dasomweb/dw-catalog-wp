@@ -55,6 +55,7 @@ $required_files = array(
 	'includes/class-dw-forge-client.php',
 	'includes/license/gates.php',
 	'includes/keys/dasomforge.pub',
+	'includes/class-dwcat-license-rest.php',
 	'includes/class-dwcat-shortcodes.php',
 	'includes/class-dwcat-design-settings.php',
 	'assets/css/frontend.css',
@@ -67,6 +68,12 @@ $required_files = array(
 	'build/generate-release-manifest.js',
 	'build/verify-package.js',
 	'.github/scripts/package-release.sh',
+	// 테스트 · 문서 (PLUGIN-DEV-GUIDE §9.1 / §7.6)
+	'tests/wp-stubs.php',
+	'tests/test-bootstrap.php',
+	'tests/test-license-manager.php',
+	'CHANGELOG.md',
+	'docs/MIGRATION-PLAN.md',
 );
 
 foreach ( $required_files as $file ) {
@@ -80,7 +87,7 @@ echo "--- 2. Plugin Header ---\n";
 $main_file = file_get_contents( "$plugin_root/dw-catalog-wp.php" );
 
 assert_true( preg_match( '/Plugin Name:\s*DW Catalog WP/', $main_file ), 'Plugin Name header present' );
-assert_true( preg_match( '/Version:\s*[\d.]+/', $main_file ), 'Version header present' );
+assert_true( preg_match( '/Version:\s*[\d.]+(-[0-9A-Za-z.\-]+)?/', $main_file ), 'Version header present' );
 assert_true( preg_match( '/Text Domain:\s*dw-catalog-wp/', $main_file ), 'Text Domain header present' );
 assert_true( preg_match( '/Update URI:/', $main_file ), 'Update URI header present (WP guideline)' );
 assert_true( preg_match( '/License:/', $main_file ), 'License header present' );
@@ -98,8 +105,8 @@ if ( $desc_match ) {
 
 echo "--- 3. Version Consistency ---\n";
 
-preg_match( '/\*\s*Version:\s*([\d.]+)/', $main_file, $header_ver );
-preg_match( "/'plugin_version'\s*=>\s*'([\d.]+)'/", $main_file, $config_ver );
+preg_match( '/\*\s*Version:\s*([\d.]+(?:-[0-9A-Za-z.\-]+)?)/', $main_file, $header_ver );
+preg_match( "/'plugin_version'\s*=>\s*'([\d.]+(?:-[0-9A-Za-z.\-]+)?)'/", $main_file, $config_ver );
 
 assert_true( ! empty( $header_ver[1] ), 'Version found in header' );
 assert_true( ! empty( $config_ver[1] ), 'Version found in config function' );
@@ -167,6 +174,7 @@ $expected_classes = array(
 	'DWCAT_GitHub_Updater'   => 'class-pc-github-updater.php',
 	'DW_DWCAT_License_Manager' => 'class-dw-license-manager.php',
 	'DW_DWCAT_Forge_Client'    => 'class-dw-forge-client.php',
+	'DWCAT_License_REST'       => 'class-dwcat-license-rest.php',
 	'DWCAT_Shortcodes'       => 'class-dwcat-shortcodes.php',
 	'DWCAT_Design_Settings'  => 'class-dwcat-design-settings.php',
 );
@@ -407,6 +415,50 @@ assert_true( strpos( $ga, 'binary' ) !== false, 'S11.2.b: 바이너리 명시' )
 $gi = file_get_contents( "$plugin_root/.gitignore" );
 assert_true( strpos( $gi, '/integrity.json' ) !== false, 'integrity.json 은 gitignore (stale 매니페스트 방지)' );
 assert_false( file_exists( "$plugin_root/integrity.json" ), 'integrity.json 이 소스트리에 커밋되어 있지 않다' );
+
+// ─── 10d. 에러 코드 · 유예 · 멀티사이트 · 진단 (§9.5 / FAQ Q10·Q11 / §3.6) ───
+
+echo "--- 10d. Error handling, grace, multisite, diagnostics ---
+";
+
+// §9.5 — 운영자 조치가 필요한 코드를 어드민에 노출하는가
+foreach ( array( 'VERSION_REVOKED', 'DOMAIN_NOT_AUTHORIZED', 'DOMAIN_LIMIT_REACHED' ) as $ec ) {
+	assert_true( strpos( $license_file, $ec ) !== false, "S9.5: $ec 처리" );
+}
+assert_true( strpos( $license_file, 'platform_notice' ) !== false, 'S9.5: 플랫폼 조치 필요 코드를 어드민에 노출' );
+
+// §10.2 / FAQ Q11 — 프런트엔드에서 동기 HTTP 금지
+assert_true( strpos( $license_file, 'should_defer_network' ) !== false, 'S10.2: 프런트엔드 동기 HTTP 차단 로직' );
+assert_true( strpos( $license_file, 'schedule_refresh' ) !== false, 'S10.2: 갱신을 cron 으로 위임' );
+
+// ERROR-CODES §1 / FAQ Q9 — 만료 유예를 네트워크 장애와 분리
+assert_true( strpos( $license_file, 'EXPIRY_GRACE' ) !== false, 'FAQ Q9: 라이선스 만료 유예 상수' );
+assert_true( strpos( $license_file, 'OFFLINE_GRACE' ) !== false, 'FAQ Q11: 네트워크 장애 유예 상수' );
+assert_true( strpos( $license_file, 'OFFLINE_NOTICE_AFTER' ) !== false, 'FAQ Q11 #2: 24h 연속 실패 안내' );
+
+// FAQ Q10 — 멀티사이트
+assert_true( strpos( $license_file, 'is_multisite' ) !== false, 'FAQ Q10: 멀티사이트 감지' );
+assert_true( strpos( $license_file, 'get_network_option' ) !== false, 'FAQ Q10: 네트워크 옵션에 라이선스 저장' );
+assert_true( strpos( $license_file, 'network_admin_menu' ) !== false, 'FAQ Q10: 네트워크 어드민 메뉴' );
+assert_true( strpos( $license_file, 'manage_network_options' ) !== false, 'FAQ Q10: 네트워크 권한 검사' );
+
+// §3.6 SHOULD #2 — introspection endpoint
+$rest_file = file_get_contents( "$plugin_root/includes/class-dwcat-license-rest.php" );
+assert_true( strpos( $rest_file, 'license/status' ) !== false, 'S3.6: /license/status 라우트' );
+assert_true( strpos( $rest_file, 'sdk_class_loaded_from' ) !== false || strpos( $license_file, 'sdk_class_loaded_from' ) !== false,
+	'S3.6: sdk_class_loaded_from 필드' );
+assert_true( strpos( $license_file, 'sdk_methods_available' ) !== false, 'S3.6: sdk_methods_available 필드' );
+// 주석에 '__return_true 금지' 라고 적어 둔 것까지 잡히면 안 되므로
+// **실제 콜백 지정 구문**만 검사한다.
+assert_false(
+	preg_match( "/'permission_callback'\s*=>\s*'?__return_true/", $rest_file ),
+	'REST permission_callback 에 __return_true 미사용'
+);
+assert_true( strpos( $rest_file, 'current_user_can' ) !== false, 'REST 권한 검사 존재' );
+
+// P15/P16 — 진단이 비밀을 노출하지 않는지 (정적 확인; 동작 확인은 test-bootstrap.php)
+assert_true( strpos( $license_file, 'license_present' ) !== false, 'P15: 라이선스 키 대신 boolean 노출' );
+assert_true( strpos( $license_file, 'token_present' ) !== false, 'P15: 토큰 대신 boolean 노출' );
 
 // 공개키 위생
 $pub = file_get_contents( "$plugin_root/includes/keys/dasomforge.pub" );
