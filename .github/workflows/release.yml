@@ -1,22 +1,36 @@
 name: Create Release
 
+# dasomforge 플랫폼 표준 릴리스 (PLUGIN-DEV-GUIDE §7.2 / §7.5 / §8.3)
+#
+# 출력 ZIP 구조 — v3 라우팅 트리거 두 조건을 반드시 만족해야 함:
+#   {slug}-{version}.zip
+#   ├── manifest.json      ← ZIP **최상위** (폴더 안에 넣으면 legacy fallback)
+#   ├── README.md
+#   └── wp-plugin/         ← 이 디렉터리가 있어야 v3
+#       ├── dw-catalog-wp.php
+#       ├── integrity.json
+#       └── ...
+#
+# 둘 중 하나라도 빠지면 SyncRelease 가 legacy 모드로 떨어져
+# IntegrityManifest 가 만들어지지 않고, 플러그인의 /auth/token 이
+# INTEGRITY_MANIFEST_NOT_FOUND 로 영구 거절됩니다 (TROUBLESHOOTING §1.7).
+
 on:
   push:
     tags:
-      - 'v*'   # Triggers on version tags like v1.0.0, v1.2.3
+      - 'v*'
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version for release (e.g. 1.5.0). Use when tag push did not run - tag must exist.'
+        description: 'Version for release (e.g. 2.0.0). Tag must already exist.'
         required: true
-        default: '1.5.0'
 
 jobs:
   create-release:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Checkout code
@@ -25,124 +39,124 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/v{0}', github.event.inputs.version) || github.ref }}
 
-      - name: Extract version from tag
-        id: tag_version
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '7.4'
+
+      - name: Resolve version and deterministic epoch
+        id: meta
         run: |
+          set -euo pipefail
           if [ -n "${{ github.event.inputs.version }}" ]; then
             VERSION="${{ github.event.inputs.version }}"
           else
-            VERSION=${GITHUB_REF#refs/tags/v}
+            VERSION="${GITHUB_REF#refs/tags/v}"
           fi
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Version: $VERSION"
+
+          # §11.2.b 결정론 — 모든 타임스탬프를 커밋 시각으로 고정.
+          # 이게 없으면 같은 소스로 빌드해도 ZIP SHA256 이 매번 달라집니다.
+          EPOCH="$(git log -1 --format=%ct)"
+
+          echo "version=$VERSION"        >> "$GITHUB_OUTPUT"
+          echo "epoch=$EPOCH"            >> "$GITHUB_OUTPUT"
+          echo "zip=dw-catalog-wp-${VERSION}.zip" >> "$GITHUB_OUTPUT"
+          echo "Version: $VERSION / SOURCE_DATE_EPOCH: $EPOCH"
+
+      - name: Verify version consistency
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.meta.outputs.version }}"
+
+          HEADER="$(grep -oP '^\s*\*\s*Version:\s*\K.+' dw-catalog-wp.php | tr -d '[:space:]')"
+          CONFIG="$(grep -oP "'plugin_version'\s*=>\s*'\K[^']+" dw-catalog-wp.php | head -1)"
+
+          echo "tag=$VERSION header=$HEADER config=$CONFIG"
+
+          # /auth/token 의 version 필드는 플러그인 헤더에서 옵니다.
+          # 태그와 어긋나면 등록된 매니페스트를 못 찾아 INTEGRITY_MANIFEST_NOT_FOUND.
+          if [ "$HEADER" != "$VERSION" ] || [ "$CONFIG" != "$VERSION" ]; then
+            echo "::error::Version mismatch — tag=$VERSION header=$HEADER config=$CONFIG"
+            exit 1
+          fi
 
       - name: Install Composer dependencies (PDF export)
         run: |
-          if [ -f composer.json ]; then
-            composer install --no-dev --optimize-autoloader
+          set -euo pipefail
+          if [ ! -f composer.lock ]; then
+            echo "::error::composer.lock is missing. Vendor contents would be non-deterministic across builds (§11.2.b). Commit composer.lock."
+            exit 1
           fi
+          composer install --no-dev --optimize-autoloader --no-interaction --no-progress
 
-      - name: Create plugin zip file
-        id: create_zip
-        run: |
-          # 배포용 ZIP 파일명 = 반드시 버전 포함 (예: dw-catalog-wp-1.5.7.zip)
-          # ZIP 내용 = 루트 폴더 하나 "dw-catalog-wp/" → 설치 경로 항상 wp-content/plugins/dw-catalog-wp/
-          PLUGIN_NAME="dw-catalog-wp"
-          ZIP_NAME="${PLUGIN_NAME}-${VERSION}.zip"
-          
-          mkdir -p temp_plugin/${PLUGIN_NAME}
-          rsync -av --exclude='.git*' \
-            --exclude='.github' \
-            --exclude='.claude' \
-            --exclude='*.DS_Store' \
-            --exclude='*.log' \
-            --exclude='node_modules' \
-            --exclude='.gitignore' \
-            --exclude='README.md' \
-            --exclude='DEPLOYMENT-GUIDE.md' \
-            --exclude='DOMAIN-CHANGE-GUIDE.md' \
-            --exclude='IMPLEMENTATION-SUMMARY.md' \
-            --exclude='GITHUB-DEPLOYMENT-SUMMARY.md' \
-            --exclude='GITHUB-UPDATE-GUIDE.md' \
-            --exclude='verify-domain-agnostic.php' \
-            --exclude='create-release.sh' \
-            --exclude='build-installable-zip.ps1' \
-            --exclude='composer.json' \
-            --exclude='composer.lock' \
-            --exclude='tests' \
-            --exclude='docs' \
-            --exclude='temp_plugin' \
-            --exclude='*.zip' \
-            ./ temp_plugin/${PLUGIN_NAME}/
-          
-          # Generate README.txt (WordPress plugin standard)
-          cat > "temp_plugin/${PLUGIN_NAME}/README.txt" <<READMEEOF
-          === DW Catalog WP ===
-          Contributors: dasomweb
-          Tags: catalog, custom fields, custom post type
-          Requires at least: 5.0
-          Tested up to: 6.7
-          Requires PHP: 7.4
-          Stable tag: ${VERSION}
-          License: GPLv2 or later
-          License URI: https://www.gnu.org/licenses/gpl-2.0.html
-
-          Product catalog with dynamic custom fields per post type.
-
-          == Description ==
-
-          DW Catalog WP lets you manage product catalogs with dynamic custom fields.
-          Each post type gets its own admin menu, list page, bulk import, PDF export, and field reference.
-
-          == Installation ==
-
-          1. Upload the plugin zip via Plugins > Add New > Upload Plugin.
-          2. Activate the plugin.
-          3. Visit Settings > Permalinks to flush rewrite rules.
-
-          == Changelog ==
-
-          = ${VERSION} =
-          * See GitHub Releases for details.
-          READMEEOF
-          # Trim leading whitespace from heredoc
-          sed -i 's/^          //' "temp_plugin/${PLUGIN_NAME}/README.txt"
-
-          cd temp_plugin
-          zip -r "../$ZIP_NAME" "${PLUGIN_NAME}"
-          cd ..
-          rm -rf temp_plugin
-          
-          echo "zip_file=$ZIP_NAME" >> $GITHUB_OUTPUT
-          echo "Created: $ZIP_NAME (install dir: wp-content/plugins/$PLUGIN_NAME/)"
+      - name: Build release package
         env:
-          VERSION: ${{ steps.tag_version.outputs.version }}
+          VERSION: ${{ steps.meta.outputs.version }}
+          SOURCE_DATE_EPOCH: ${{ steps.meta.outputs.epoch }}
+          ZIP_NAME: ${{ steps.meta.outputs.zip }}
+        run: bash .github/scripts/package-release.sh "$ZIP_NAME"
+
+      - name: Verify deterministic build (§11.2.b / §11.3.4)
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+          SOURCE_DATE_EPOCH: ${{ steps.meta.outputs.epoch }}
+        run: |
+          set -euo pipefail
+          FIRST="$(sha256sum "${{ steps.meta.outputs.zip }}" | cut -d' ' -f1)"
+          bash .github/scripts/package-release.sh "recheck.zip"
+          SECOND="$(sha256sum recheck.zip | cut -d' ' -f1)"
+
+          echo "build #1: $FIRST"
+          echo "build #2: $SECOND"
+
+          if [ "$FIRST" != "$SECOND" ]; then
+            echo "::error::Non-deterministic build — same source produced different ZIPs. Investigate timestamps, Zone.Identifier, or random keys."
+            unzip -l "${{ steps.meta.outputs.zip }}" > /tmp/a.txt
+            unzip -l recheck.zip > /tmp/b.txt
+            diff /tmp/a.txt /tmp/b.txt || true
+            exit 1
+          fi
+          rm -f recheck.zip
+
+      - name: Verify package contract (§7.2.2 / §7.3)
+        # 서버가 SyncRelease 에서 하는 판정을 빌드 시점에 재현합니다.
+        # 여기서 잡지 못하면 릴리스 후 MANIFEST_INCOMPLETE / TAMPER_DETECTED 로
+        # 나타나고, 재릴리스 + 재SyncRelease 사이클이 필요해집니다.
+        run: node build/verify-package.js "${{ steps.meta.outputs.zip }}"
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.tag_version.outputs.version }}
-          files: ${{ steps.create_zip.outputs.zip_file }}
-          name: Release v${{ steps.tag_version.outputs.version }}
+          tag_name: v${{ steps.meta.outputs.version }}
+          files: ${{ steps.meta.outputs.zip }}
+          name: Release v${{ steps.meta.outputs.version }}
           body: |
-            ## DW Catalog WP v${{ steps.tag_version.outputs.version }}
-            
-            ### 설치 방법 (Installation)
-            
-            1. **dw-catalog-wp-${{ steps.tag_version.outputs.version }}.zip** 다운로드
-            2. WordPress 관리자 > 플러그인 > 새로 추가 > 플러그인 업로드
-            3. ZIP 업로드 후 설치·활성화  
-            → 설치 경로는 항상 `wp-content/plugins/dw-catalog-wp/` (ZIP 안에 폴더명이 고정되어 있음)
-            
-            ### 업데이트 (Update)
-            
-            새 버전 ZIP을 업로드하면 기존 `dw-catalog-wp` 폴더가 덮어써져 업데이트됩니다.
-            
-            ### 변경사항 (Changelog)
-            
-            자세한 변경사항은 [GitHub Releases](https://github.com/${{ github.repository }}/releases)를 확인하세요.
+            ## DW Catalog WP v${{ steps.meta.outputs.version }}
+
+            ### 배포 방법 (운영자)
+
+            이 ZIP 은 dasomforge 플랫폼 표준 구조입니다 — **직접 워드프레스에 업로드하지 마십시오.**
+
+            1. dasomforge 슈퍼어드민 → `/admin/products` → `dw-catalog-wp`
+            2. **Sync Release** 클릭 → `wp-plugin/` 이 `dw-catalog-wp/` 단일 루트로
+               정규화되어 R2 에 올라가고 IntegrityManifest 가 자동 등록됩니다
+            3. SyncRelease 응답 박스에 `🔐 IntegrityManifest 등록` 과
+               `📦 wp-plugin/: N개 파일` 두 줄이 모두 보이는지 확인
+               (안 보이면 legacy fallback — TROUBLESHOOTING §1.7)
+
+            ### 고객 설치
+
+            라이선스가 활성화된 사이트는 워드프레스 자동 업데이트로 수신합니다.
+            설치 경로는 항상 `wp-content/plugins/dw-catalog-wp/`.
+
+            ### anti-piracy 관련 변경
+
+            릴리스 노트는 [CHANGELOG](https://github.com/${{ github.repository }}/releases) 참조.
           draft: false
-          prerelease: false
+          prerelease: ${{ contains(steps.meta.outputs.version, '-') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-

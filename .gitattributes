@@ -1,0 +1,23 @@
+# 빌드 결정론 — PLUGIN-DEV-GUIDE §11.2.b
+# 같은 소스 → 같은 ZIP SHA256. 라인엔딩이 흔들리면 file_hashes 가 흔들리고
+# 신선한 설치에서도 TAMPER_DETECTED 가 납니다 (CASE-STUDIES §4).
+
+* text=auto eol=lf
+
+# 바이너리 — 절대 라인엔딩 변환 대상이 아님
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.webp binary
+*.ico  binary
+*.zip  binary
+*.woff binary
+*.woff2 binary
+*.ttf  binary
+*.otf  binary
+*.eot  binary
+*.pdf  binary
+
+# 공개키 PEM — 텍스트지만 LF 로 고정 (해시 안정성)
+*.pub text eol=lf

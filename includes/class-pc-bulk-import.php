@@ -206,6 +206,10 @@ class DWCAT_Bulk_Import {
 		if ( ! current_user_can( 'edit_posts' ) ) {
 			wp_die( __( 'Unauthorized', 'dw-catalog-wp' ) );
 		}
+		// 게이트 5 — 대량 가져오기는 라이선스 기능입니다.
+		if ( ! dwcat_can_bulk_import() ) {
+			wp_die( esc_html__( 'DW Catalog WP: 라이선스가 활성화되지 않아 가져오기를 실행할 수 없습니다.', 'dw-catalog-wp' ) );
+		}
 		if ( ! isset( $_FILES['import_file'] ) || $_FILES['import_file']['error'] !== UPLOAD_ERR_OK ) {
 			wp_die( __( 'File upload failed.', 'dw-catalog-wp' ) );
 		}

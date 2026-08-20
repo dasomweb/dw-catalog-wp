@@ -147,6 +147,19 @@ class DWCAT_Admin_Pages {
 			wp_die( __( 'Unauthorized', 'dw-catalog-wp' ) );
 		}
 
+		// 게이트 7 — 라이선스가 없으면 카탈로그 관리 화면을 렌더하지 않고
+		// 라이선스 설정으로 안내합니다.
+		if ( ! dwcat_can_render_admin() ) {
+			printf(
+				'<div class="wrap"><h1>%s</h1><div class="notice notice-error"><p>%s <a href="%s">%s</a></p></div></div>',
+				esc_html__( 'DW Catalog', 'dw-catalog-wp' ),
+				esc_html__( '라이선스가 활성화되지 않아 카탈로그를 표시할 수 없습니다.', 'dw-catalog-wp' ),
+				esc_url( admin_url( 'admin.php?page=dw-catalog-license' ) ),
+				esc_html__( '라이선스 설정으로 이동', 'dw-catalog-wp' )
+			);
+			return;
+		}
+
 		$pt_slug = $this->get_current_post_type_slug();
 		$pt_config = DWCAT_Config::get_post_type( $pt_slug );
 		if ( ! $pt_config ) {

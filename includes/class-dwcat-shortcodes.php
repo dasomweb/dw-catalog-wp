@@ -111,6 +111,11 @@ class DWCAT_Shortcodes {
 	 * [dw_catalog_grid]
 	 */
 	public function shortcode_grid( $atts ) {
+		// 게이트 1 + 8 — 라이선스 없이는 프런트에 카탈로그를 렌더하지 않습니다.
+		if ( ! dwcat_can_render() || ! dwcat_can_use_shortcode() ) {
+			return dwcat_gate_placeholder();
+		}
+
 		$atts = shortcode_atts( array(
 			'post_type'   => 'product',
 			'columns'     => 3,
@@ -128,7 +133,9 @@ class DWCAT_Shortcodes {
 			return '<p>' . esc_html__( 'Invalid post type.', 'dw-catalog-wp' ) . '</p>';
 		}
 
-		wp_enqueue_style( 'dwcat-frontend' );
+		if ( dwcat_can_load_assets() ) {
+			wp_enqueue_style( 'dwcat-frontend' );
+		}
 
 		$query = $this->query_items( $atts );
 		$fields = $this->resolve_display_fields( $atts['post_type'], $atts['show_fields'] );
@@ -159,6 +166,11 @@ class DWCAT_Shortcodes {
 	 * [dw_catalog_carousel]
 	 */
 	public function shortcode_carousel( $atts ) {
+		// 게이트 1 + 8 — 라이선스 없이는 프런트에 카탈로그를 렌더하지 않습니다.
+		if ( ! dwcat_can_render() || ! dwcat_can_use_shortcode() ) {
+			return dwcat_gate_placeholder();
+		}
+
 		$atts = shortcode_atts( array(
 			'post_type'   => 'product',
 			'per_slide'   => 3,
@@ -178,8 +190,12 @@ class DWCAT_Shortcodes {
 			return '<p>' . esc_html__( 'Invalid post type.', 'dw-catalog-wp' ) . '</p>';
 		}
 
-		wp_enqueue_style( 'dwcat-frontend' );
-		wp_enqueue_script( 'dwcat-carousel' );
+		if ( dwcat_can_load_assets() ) {
+			wp_enqueue_style( 'dwcat-frontend' );
+		}
+		if ( dwcat_can_load_assets() ) {
+			wp_enqueue_script( 'dwcat-carousel' );
+		}
 
 		$query = $this->query_items( $atts );
 		$fields = $this->resolve_display_fields( $atts['post_type'], $atts['show_fields'] );
@@ -270,6 +286,11 @@ class DWCAT_Shortcodes {
 	 * Magazine-style detail view with overlay.
 	 */
 	public function shortcode_magazine( $atts ) {
+		// 게이트 1 + 8 — 라이선스 없이는 프런트에 카탈로그를 렌더하지 않습니다.
+		if ( ! dwcat_can_render() || ! dwcat_can_use_shortcode() ) {
+			return dwcat_gate_placeholder();
+		}
+
 		$atts = shortcode_atts( array(
 			'post_id'     => 0,
 			'position'    => 'bottom-right', // top-left, top-right, bottom-left, bottom-right, middle, center
@@ -292,7 +313,9 @@ class DWCAT_Shortcodes {
 			return '<p class="dwcat-empty">' . esc_html__( 'Invalid post.', 'dw-catalog-wp' ) . '</p>';
 		}
 
-		wp_enqueue_style( 'dwcat-frontend' );
+		if ( dwcat_can_load_assets() ) {
+			wp_enqueue_style( 'dwcat-frontend' );
+		}
 
 		$fields = $this->resolve_display_fields( $post->post_type, $atts['show_fields'] );
 		$show_title = in_array( strtolower( $atts['show_title'] ), array( 'yes', '1', 'true' ), true );

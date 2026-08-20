@@ -2,9 +2,10 @@
     "name": "dasomweb/dw-catalog-wp",
     "description": "Product catalog plugin PDF export dependency",
     "require": {
-        "dompdf/dompdf": "^2.0"
+        "dompdf/dompdf": "^3.1"
     },
     "config": {
-        "optimize-autoloader": true
+        "optimize-autoloader": true,
+        "sort-packages": true
     }
 }

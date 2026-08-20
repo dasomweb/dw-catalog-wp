@@ -49,7 +49,16 @@ wp-config.php
 
 # Plugin build artifacts
 *.zip
-/build/
 
 # Composer (PDF export). Vendor is included in release ZIP via CI; for local dev run: composer install
 /vendor/
+
+# 빌드 산출물 — CI 가 릴리스 시점에 생성 (커밋 금지)
+# integrity.json 을 커밋하면 소스와 어긋난 stale 매니페스트가 ZIP 에 섞여
+# 신선한 설치에서 TAMPER_DETECTED 를 유발합니다 (PLUGIN-DEV-GUIDE §7.2.2).
+/integrity.json
+/release/
+/temp_plugin/
+
+# Windows 다운로드 스트림 — ZIP 에 섞이면 무결성 검증이 깨집니다 (CASE-STUDIES §4)
+*:Zone.Identifier

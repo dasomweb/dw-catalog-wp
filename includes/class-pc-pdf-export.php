@@ -149,6 +149,10 @@ class DWCAT_PDF_Export {
 		if ( ! current_user_can( 'edit_posts' ) ) {
 			wp_die( __( 'Unauthorized', 'dw-catalog-wp' ) );
 		}
+		// 게이트 6 — PDF 내보내기는 라이선스 기능입니다.
+		if ( ! dwcat_can_export_pdf() ) {
+			wp_die( esc_html__( 'DW Catalog WP: 라이선스가 활성화되지 않아 PDF 를 내보낼 수 없습니다.', 'dw-catalog-wp' ) );
+		}
 
 		$autoload = dwcat_get_path() . 'vendor/autoload.php';
 		if ( ! file_exists( $autoload ) ) {

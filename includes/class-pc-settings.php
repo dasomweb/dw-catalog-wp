@@ -273,6 +273,12 @@ class DWCAT_Settings {
 		}
 		check_admin_referer( 'dw_catalog_save_fields', 'dw_catalog_fields_nonce' );
 
+		// 게이트 4 — 동적 필드 스키마는 이 플러그인의 핵심 가치 로직입니다
+		// (MIGRATION-PLAN §2). 라이선스 없이 편집을 허용하지 않습니다.
+		if ( ! dwcat_can_manage_fields() ) {
+			wp_die( esc_html__( 'DW Catalog WP: 라이선스가 활성화되지 않아 필드 설정을 저장할 수 없습니다.', 'dw-catalog-wp' ) );
+		}
+
 		$pt_slug = sanitize_key( $_POST['post_type_slug'] );
 		if ( ! DWCAT_Config::get_post_type( $pt_slug ) ) {
 			wp_die( __( 'Post type not found.', 'dw-catalog-wp' ) );

@@ -188,6 +188,11 @@ class DWCAT_Meta_Box {
 			return;
 		}
 
+		// 게이트 3 — 라이선스 없이는 카탈로그 필드 값을 저장하지 않습니다.
+		if ( ! dwcat_can_save_meta() ) {
+			return;
+		}
+
 		$fields = DWCAT_Config::get_fields( $pt_slug );
 		$title_value = '';
 
