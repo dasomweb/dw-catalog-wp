@@ -17,14 +17,14 @@ class DWCAT_Design_Settings {
 	const OPTION_KEY = 'dwcat_design_settings';
 
 	public function __construct() {
-		add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
+		add_action( 'admin_menu', array( $this, 'add_admin_menu' ), 15 ); // after post type menus
 		add_action( 'admin_post_dwcat_save_design', array( $this, 'handle_save' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_scripts' ) );
 	}
 
 	public function add_admin_menu() {
 		add_submenu_page(
-			'dw-catalog-settings',
+			DWCAT_Config::get_primary_menu_slug(),
 			__( 'Shortcode Design', 'dw-catalog-wp' ),
 			__( 'Shortcode Design', 'dw-catalog-wp' ),
 			'manage_options',

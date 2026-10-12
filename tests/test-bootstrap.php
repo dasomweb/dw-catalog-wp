@@ -87,6 +87,19 @@ t( true === dwcat_in_legacy_grace(), '유예 창이 열려 있음' );
 t_eq( 30, dwcat_legacy_grace_days_left(), '유예 = 30일' );
 t_eq( count( $GATES ), gates_open(), '유예 중에는 9개 게이트 전부 통과 (사용자 영향 0)' );
 
+ob_start();
+dwcat_legacy_grace_notice();
+t( false !== strpos( ob_get_clean(), '라이선스 인증이 필요합니다' ), '미활성 유예 중에는 안내 표시' );
+
+// 회귀: 유예 중에 활성화를 마쳤는데도 "인증이 필요합니다" 가 계속 뜨던 버그.
+$GLOBALS['_options']['dw_license_dw_catalog_wp'] = array(
+	'key' => 'DW-X', 'status' => 'active', 'domain' => 'canary.example.com',
+);
+ob_start();
+dwcat_legacy_grace_notice();
+t_eq( '', ob_get_clean(), '활성화 후에는 유예 안내를 숨김' );
+unset( $GLOBALS['_options']['dw_license_dw_catalog_wp'] );
+
 echo "\n--- grace is one-shot, and fresh installs get none ---\n";
 $GLOBALS['_options']['dwcat_legacy_grace_until'] = time() - 1;   // 만료 시뮬레이션
 dwcat_maybe_grant_legacy_grace( '1.2.1' );

@@ -346,6 +346,10 @@ function dwcat_legacy_grace_notice() {
 	if ( ! current_user_can( 'manage_options' ) ) {
 		return;
 	}
+	// 유예 기간 중에 활성화를 마친 사이트 — 더 안내할 것이 없다.
+	if ( dwcat_is_licensed() ) {
+		return;
+	}
 	$days = dwcat_legacy_grace_days_left();
 	if ( $days <= 0 ) {
 		return;

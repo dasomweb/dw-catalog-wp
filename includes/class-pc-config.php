@@ -16,6 +16,7 @@ class DWCAT_Config {
 
 	const OPTION_POST_TYPES = 'dw_catalog_post_types';
 	const OPTION_FIELDS_PREFIX = 'dw_catalog_fields_';
+	const OPTION_VARIATION_COLS_PREFIX = 'dw_catalog_variation_cols_';
 
 	/**
 	 * Get all registered post type configurations.
@@ -50,6 +51,18 @@ class DWCAT_Config {
 	public static function get_post_type( $slug ) {
 		$types = self::get_post_types();
 		return isset( $types[ $slug ] ) ? $types[ $slug ] : null;
+	}
+
+	/**
+	 * Admin menu slug of the first post type. Plugin-wide pages
+	 * (Shortcode Design, License) hang under this menu.
+	 *
+	 * @return string
+	 */
+	public static function get_primary_menu_slug() {
+		$types = self::get_post_types();
+		reset( $types );
+		return 'dw-catalog-' . key( $types );
 	}
 
 	/**
@@ -96,6 +109,33 @@ class DWCAT_Config {
 	 */
 	public static function save_fields( $slug, $fields ) {
 		update_option( self::OPTION_FIELDS_PREFIX . $slug, $fields, true );
+	}
+
+	/**
+	 * Variation columns for a post type (industry-specific, edited on the Manage Fields page).
+	 *
+	 * @param string $slug Post type slug.
+	 * @return array[] Each: key, label, type (text|number|select), options.
+	 */
+	public static function get_variation_columns( $slug ) {
+		$cols = get_option( self::OPTION_VARIATION_COLS_PREFIX . $slug, null );
+		return is_array( $cols ) ? $cols : DWCAT_Variations::get_default_columns();
+	}
+
+	public static function save_variation_columns( $slug, $columns ) {
+		update_option( self::OPTION_VARIATION_COLS_PREFIX . $slug, array_values( $columns ), true );
+	}
+
+	/**
+	 * Whether a field is shown on the item detail view.
+	 * Fields saved before the "Detail" checkbox existed: everything except the title field
+	 * and internal-note fields.
+	 */
+	public static function shows_in_detail( $field ) {
+		if ( isset( $field['show_in_detail'] ) ) {
+			return ! empty( $field['show_in_detail'] );
+		}
+		return empty( $field['is_title_field'] ) && false === strpos( $field['meta_key'], 'internal' );
 	}
 
 	/**
@@ -199,7 +239,7 @@ class DWCAT_Config {
 				'slug'          => 'product',
 				'singular_name' => 'Product',
 				'plural_name'   => 'Products',
-				'menu_name'     => 'Catalog WP',
+				'menu_name'     => 'DW Catalog',
 				'menu_icon'     => 'dashicons-products',
 				'has_archive'   => true,
 				'public'        => true,
@@ -295,6 +335,7 @@ class DWCAT_Config {
 					'description'    => 'Internal notes',
 					'show_in_list'   => false,
 					'show_in_export' => true,
+					'show_in_detail' => false,
 					'is_title_field' => false,
 				),
 			);

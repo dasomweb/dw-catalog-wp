@@ -99,20 +99,13 @@ class DWCAT_Admin_Pages {
 				);
 			}
 
-			// Custom Fields — redirect to manage-fields page for this post type
+			// Custom Fields — links straight to the manage-fields page for this post type
 			add_submenu_page(
 				$menu_slug,
 				__( 'Custom Fields', 'dw-catalog-wp' ),
 				__( 'Custom Fields', 'dw-catalog-wp' ),
 				'manage_options',
-				$menu_slug . '-custom-fields',
-				function () use ( $slug ) {
-					if ( ! current_user_can( 'manage_options' ) ) {
-						wp_die( __( 'Unauthorized', 'dw-catalog-wp' ) );
-					}
-					wp_safe_redirect( admin_url( 'admin.php?page=dw-catalog-manage-fields&post_type=' . $slug ) );
-					exit;
-				}
+				DWCAT_Settings::manage_fields_slug( $slug )
 			);
 		}
 	}
@@ -181,48 +174,71 @@ class DWCAT_Admin_Pages {
 			echo '<div class="notice notice-success"><p>' . esc_html__( 'Items deleted successfully.', 'dw-catalog-wp' ) . '</p></div>';
 		}
 
-		// Search
+		// Search / filter / sort — shared with the frontend grid (DWCAT_Catalog_Query)
 		$search_query = isset( $_REQUEST['dw_search'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['dw_search'] ) ) : '';
-		$paged = isset( $_GET['paged'] ) ? intval( $_GET['paged'] ) : 1;
+		$cat_filter   = isset( $_GET['dw_cat'] ) ? absint( $_GET['dw_cat'] ) : 0;
+		$meta_filter  = array();
+		if ( isset( $_GET['dw_f'] ) && is_array( $_GET['dw_f'] ) ) {
+			foreach ( wp_unslash( $_GET['dw_f'] ) as $f_key => $f_val ) {
+				if ( '' !== (string) $f_val ) {
+					$meta_filter[ sanitize_key( $f_key ) ] = array( sanitize_text_field( $f_val ) );
+				}
+			}
+		}
+		$orderby = isset( $_GET['orderby'] ) ? sanitize_key( wp_unslash( $_GET['orderby'] ) ) : '';
+		$order   = isset( $_GET['order'] ) && 'asc' === strtolower( $_GET['order'] ) ? 'asc' : 'desc';
+		if ( in_array( $orderby, array( 'title', 'date', 'modified' ), true ) ) {
+			$sort = $orderby . '_' . $order;
+		} elseif ( '' !== $orderby ) {
+			$sort = 'meta:' . $orderby . ':' . $order;
+		} else {
+			$sort = 'date_desc';
+		}
+		$paged = isset( $_GET['paged'] ) ? max( 1, intval( $_GET['paged'] ) ) : 1;
 
-		$args = array(
-			'post_type'      => $pt_slug,
-			'posts_per_page' => 20,
-			'paged'          => $paged,
-			'post_status'    => 'any',
+		// Current state as URL params — reused by sort links and pagination
+		$state_args = array( 'page' => $menu_slug );
+		if ( '' !== $search_query ) {
+			$state_args['dw_search'] = $search_query;
+		}
+		if ( $cat_filter ) {
+			$state_args['dw_cat'] = $cat_filter;
+		}
+		if ( $meta_filter ) {
+			$state_args['dw_f'] = array_map( 'reset', $meta_filter );
+		}
+		if ( $orderby ) {
+			$state_args['orderby'] = $orderby;
+			$state_args['order']   = $order;
+		}
+		$base_url    = admin_url( 'admin.php?' . http_build_query( $state_args ) );
+		$is_filtered = '' !== $search_query || $cat_filter || $meta_filter;
+
+		$args  = DWCAT_Catalog_Query::build_args(
+			$pt_slug,
+			array(
+				'search' => $search_query,
+				'cats'   => $cat_filter ? array( $cat_filter ) : array(),
+				'meta'   => $meta_filter,
+				'sort'   => $sort,
+			),
+			array(
+				'posts_per_page' => 20,
+				'paged'          => $paged,
+				'post_status'    => 'any',
+			)
 		);
+		$query      = new WP_Query( $args );
+		$pt_has_cat = ! empty( $pt_config['has_category'] );
 
-		if ( $search_query !== '' ) {
-			// Search in post title and title meta field
-			$title_meta_key = $title_field ? $title_field['meta_key'] : '';
-			$filter_cb = function ( $where, $query ) use ( $search_query, $pt_slug, $title_meta_key ) {
-				if ( $query->get( 'post_type' ) !== $pt_slug ) {
-					return $where;
-				}
-				global $wpdb;
-				$like = '%' . $wpdb->esc_like( $search_query ) . '%';
-				$meta_clause = '';
-				if ( $title_meta_key ) {
-					$meta_clause = $wpdb->prepare(
-						" OR {$wpdb->posts}.ID IN ( SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value LIKE %s )",
-						$title_meta_key,
-						$like
-					);
-				}
-				$where .= $wpdb->prepare(
-					" AND ( {$wpdb->posts}.post_title LIKE %s{$meta_clause} )",
-					$like
-				);
-				return $where;
-			};
-			add_filter( 'posts_where', $filter_cb, 10, 2 );
-		}
-
-		$query = new WP_Query( $args );
-
-		if ( isset( $filter_cb ) ) {
-			remove_filter( 'posts_where', $filter_cb, 10 );
-		}
+		// Sortable column header: link toggles direction, arrow shows current state
+		$sort_link = function ( $label, $key ) use ( $base_url, $orderby, $order ) {
+			$is_current = ( $orderby === $key );
+			$next       = ( $is_current && 'asc' === $order ) ? 'desc' : 'asc';
+			$url        = add_query_arg( array( 'orderby' => $key, 'order' => $next, 'paged' => false ), $base_url );
+			$arrow      = $is_current ? ( 'asc' === $order ? ' &#9650;' : ' &#9660;' ) : '';
+			return '<a href="' . esc_url( $url ) . '">' . esc_html( $label ) . $arrow . '</a>';
+		};
 		?>
 		<div class="wrap">
 			<h1 class="wp-heading-inline"><?php echo esc_html( $pt_config['menu_name'] ); ?></h1>
@@ -231,13 +247,46 @@ class DWCAT_Admin_Pages {
 			</a>
 			<hr class="wp-header-end">
 
-			<form method="get" action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>" style="margin-bottom: 12px;">
+			<form method="get" action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>" class="dwcat-admin-filters" style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 12px 0;">
 				<input type="hidden" name="page" value="<?php echo esc_attr( $menu_slug ); ?>">
-				<label for="dw_search"><?php _e( 'Search', 'dw-catalog-wp' ); ?></label>
-				<input type="search" id="dw_search" name="dw_search" value="<?php echo esc_attr( $search_query ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'Search...', 'dw-catalog-wp' ); ?>" style="width: 250px; margin-right: 8px;">
-				<input type="submit" class="button" value="<?php esc_attr_e( 'Search', 'dw-catalog-wp' ); ?>">
-				<?php if ( $search_query !== '' ) : ?>
-					<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . $menu_slug ) ); ?>" class="button"><?php esc_html_e( 'Clear', 'dw-catalog-wp' ); ?></a>
+				<?php if ( $orderby ) : ?>
+					<input type="hidden" name="orderby" value="<?php echo esc_attr( $orderby ); ?>">
+					<input type="hidden" name="order" value="<?php echo esc_attr( $order ); ?>">
+				<?php endif; ?>
+				<input type="search" id="dw_search" name="dw_search" value="<?php echo esc_attr( $search_query ); ?>" placeholder="<?php esc_attr_e( 'Search name, item code, brand...', 'dw-catalog-wp' ); ?>" style="width: 260px;">
+				<?php
+				if ( $pt_has_cat ) {
+					wp_dropdown_categories( array(
+						'taxonomy'        => DWCAT_Config::get_category_taxonomy( $pt_slug ),
+						'name'            => 'dw_cat',
+						'selected'        => $cat_filter,
+						'show_option_all' => __( 'All Categories', 'dw-catalog-wp' ),
+						'hierarchical'    => true,
+						'hide_empty'      => false,
+						'show_count'      => true,
+					) );
+				}
+				foreach ( $list_fields as $field ) {
+					if ( 'select' !== $field['type'] ) {
+						continue;
+					}
+					$choices = DWCAT_Config::parse_select_options( $field['options'] );
+					$current = isset( $meta_filter[ $field['meta_key'] ] ) ? $meta_filter[ $field['meta_key'] ][0] : '';
+					echo '<select name="' . esc_attr( 'dw_f[' . $field['meta_key'] . ']' ) . '">';
+					/* translators: %s: field label */
+					echo '<option value="">' . esc_html( sprintf( __( 'All %s', 'dw-catalog-wp' ), $field['label'] ) ) . '</option>';
+					foreach ( $choices as $c_val => $c_label ) {
+						echo '<option value="' . esc_attr( $c_val ) . '"' . selected( $current, (string) $c_val, false ) . '>' . esc_html( $c_label ) . '</option>';
+					}
+					echo '</select>';
+				}
+				?>
+				<input type="submit" class="button" value="<?php esc_attr_e( 'Filter', 'dw-catalog-wp' ); ?>">
+				<?php if ( $is_filtered ) : ?>
+					<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . $menu_slug ) ); ?>" style="margin-left: 4px;"><?php esc_html_e( 'Clear filters', 'dw-catalog-wp' ); ?></a>
+					<span class="description" style="margin-left: 8px;">
+						<?php /* translators: %d: number of results */ printf( esc_html__( '%d results', 'dw-catalog-wp' ), (int) $query->found_posts ); ?>
+					</span>
 				<?php endif; ?>
 			</form>
 
@@ -258,16 +307,13 @@ class DWCAT_Admin_Pages {
 						<thead>
 							<tr>
 								<td class="manage-column column-cb check-column"><input type="checkbox" id="cb-select-all"></td>
-								<th class="manage-column"><?php echo esc_html( $pt_config['singular_name'] ); ?></th>
-								<?php
-								$pt_has_cat = ! empty( $pt_config['has_category'] );
-								if ( $pt_has_cat ) :
-								?>
+								<th class="manage-column"><?php echo $sort_link( $pt_config['singular_name'], 'title' ); // phpcs:ignore ?></th>
+								<?php if ( $pt_has_cat ) : ?>
 									<th class="manage-column"><?php _e( 'Category', 'dw-catalog-wp' ); ?></th>
 								<?php endif; ?>
 								<?php foreach ( $list_fields as $field ) : ?>
 									<?php if ( ! empty( $field['is_title_field'] ) ) continue; ?>
-									<th class="manage-column"><?php echo esc_html( $field['label'] ); ?></th>
+									<th class="manage-column"><?php echo $sort_link( $field['label'], $field['meta_key'] ); // phpcs:ignore ?></th>
 								<?php endforeach; ?>
 								<th class="manage-column"><?php _e( 'Actions', 'dw-catalog-wp' ); ?></th>
 								<th class="manage-column column-thumb"><?php _e( 'Image', 'dw-catalog-wp' ); ?></th>
@@ -342,11 +388,7 @@ class DWCAT_Admin_Pages {
 					</table>
 
 					<?php
-					$pagination_base = add_query_arg( array( 'page' => $menu_slug ), admin_url( 'admin.php' ) );
-					if ( $search_query !== '' ) {
-						$pagination_base = add_query_arg( 'dw_search', $search_query, $pagination_base );
-					}
-					$pagination_base = add_query_arg( 'paged', '%#%', $pagination_base );
+					$pagination_base = add_query_arg( 'paged', '%#%', $base_url );
 					$pagination = paginate_links( array(
 						'base'    => $pagination_base,
 						'format'  => '',
@@ -358,6 +400,8 @@ class DWCAT_Admin_Pages {
 					}
 					?>
 				</form>
+			<?php elseif ( $is_filtered ) : ?>
+				<p><?php esc_html_e( 'No items match these filters.', 'dw-catalog-wp' ); ?></p>
 			<?php else : ?>
 				<p><?php printf( __( 'No %s found.', 'dw-catalog-wp' ), strtolower( esc_html( $pt_config['plural_name'] ) ) ); ?></p>
 				<a href="<?php echo esc_url( admin_url( 'post-new.php?post_type=' . $pt_slug ) ); ?>" class="button button-primary">

@@ -7,6 +7,62 @@ DW Catalog WP 의 변경 이력. [SemVer](https://semver.org/lang/ko/) 를 따�
 
 ---
 
+## [2.0.0-rc.2] — 2026-10-12
+
+> **RC 인 이유**: rc.1 과 같습니다 — 카나리 검증(MP2) 전이므로 **prerelease** 로 게시되어
+> 기존 v1.2.1 사이트의 자동 업데이트에 잡히지 않습니다. 이 버전은 **Sync Release 로
+> 매니페스트를 등록해야** 토큰이 발급됩니다 (rc.1 매니페스트로는 TAMPER_DETECTED).
+
+### Added
+
+- **`[dw_catalog]` 카탈로그 페이지 숏코드** — 페이지에 숏코드 하나로 목록과 상세를 모두 표시합니다.
+  왼쪽 사이드바(검색 · 하위 카테고리 체크박스 · 필드 필터 · Reset), 정렬, 페이지네이션,
+  같은 페이지 안의 상세 보기(`?dw_item=`)와 "목록으로" 상태 유지. 필터 변경은 새로고침 없이
+  반영되고 URL 이 갱신됩니다(JS 없이도 동작). 상품 고유 주소도 같은 상세 화면을 씁니다.
+  사용법은 [docs/SHORTCODES.md](docs/SHORTCODES.md) §0.
+- **Variations** — 상품마다 옵션 행을 편집 화면에서 추가합니다. **컬럼은 업종별로 설정**합니다
+  (Custom Fields 화면 하단 "Variation Columns" — Text · Number · Select). 기본값은
+  Option · Item Code · Pack Size · Price · Stock, 프리셋을 누르면 업종에 맞는 컬럼 세트가 들어옵니다
+  (기본 세트 그대로면 교체, 손댄 세트면 없는 컬럼만 추가). 컬럼을 모두 지우면 Variations 가 꺼집니다.
+  상세 화면에 표로 표시되고, Variation 값으로도 검색됩니다.
+- **필드별 "Detail" 체크박스** — 상세페이지에 표시할 필드를 고릅니다. 기존 필드는 제목 필드와
+  internal 필드(내부 메모)만 꺼진 상태로 시작합니다.
+- **관리자 목록 검색 · 필터 · 정렬** — 카테고리 · Select 필드 드롭다운 필터, 컬럼 헤더 클릭 정렬,
+  검색 범위를 제품명에서 모든 텍스트 필드(Item Code · Brand 등)로 확장. 프런트와 같은
+  쿼리 로직(`DWCAT_Catalog_Query`)을 씁니다.
+- **커스텀 필드 프리셋** — 필드 관리 화면에 업종별 버튼. Wholesaler: Seafood Market · Jewelry ·
+  Beauty Supply · Plants / Retailer: Cafe · Restaurant · Bakery · General Goods · Apparel · Jewelry ·
+  Cosmetics. 이미 있는 meta key 는 건너뛰고, "Save Fields" 전까지 저장되지 않습니다.
+
+### Changed
+
+- **관리자 메뉴를 "DW Catalog" 하나로 통합**했습니다. 설정용 "DW Catalog" 와
+  콘텐츠용 "Catalog WP" 두 최상위 메뉴가 있었는데, v1.0.1 에서 포스트 타입이
+  `product` 하나로 고정된 뒤로는 나눌 이유가 없었습니다. Shortcode Design · License 는
+  상품 메뉴 아래로 옮겼고, 포스트 타입 목록뿐이던 설정 첫 화면은 제거했습니다.
+  - 기존 설치의 메뉴 이름(`Catalog WP`)은 1회 마이그레이션으로 바뀝니다
+    (`dwcat_menu_merged`). 버전 변경 없이 돕니다.
+  - 옛 주소 `admin.php?page=dw-catalog-settings` 는 필드 관리 화면으로 리다이렉트합니다.
+  - 라이선스 화면 slug(`dw-catalog-license`)는 그대로입니다.
+- Custom Fields 서브메뉴가 화면 출력 뒤 리다이렉트하던 방식에서 직접 링크로 바뀌었습니다
+  (출력 버퍼링이 없는 호스트에서 "headers already sent" 로 실패하던 경로).
+
+### Fixed
+
+- 블록 테마에서 카드 필드 줄 간격이 크게 벌어지던 문제 (테마 기본 글자 크기가 줄 높이를 결정).
+
+- 유예 기간 중에 라이선스를 활성화해도 "라이선스 인증이 필요합니다" 안내가
+  유예가 끝날 때까지 계속 표시되던 버그.
+
+### anti-piracy 관련 변경 (§7.6 의무 표기)
+
+| 항목 | 내용 |
+|---|---|
+| 해시 변경 사유 | 관리자 메뉴 파일 · `gates.php` · SDK(`class-dw-license-manager.php`) 수정, 신규 파일 4개(`class-dwcat-catalog*.php` · `class-dwcat-variations.php` · `class-dwcat-field-presets.php` · `assets/js/catalog.js`) — 다음 릴리스에서 매니페스트 재등록 필요 |
+| 새 게이트 | 없음 — `[dw_catalog]` 와 상품 상세는 기존 게이트 1·2·8, Variations 저장은 게이트 3 을 그대로 씁니다 |
+
+---
+
 ## [2.0.0-rc.1] — 2026-08-19
 
 DASOM-Forge 플랫폼 통합. **MAJOR** — 라이선스 흐름이 바뀝니다.

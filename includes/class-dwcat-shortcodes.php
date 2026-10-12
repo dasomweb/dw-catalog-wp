@@ -95,7 +95,7 @@ class DWCAT_Shortcodes {
 	/**
 	 * Render a single field value (resolves select labels).
 	 */
-	private function get_field_value( $post_id, $field ) {
+	public function get_field_value( $post_id, $field ) {
 		$value = get_post_meta( $post_id, $field['meta_key'], true );
 		if ( $value === '' || $value === false ) {
 			return '';
@@ -238,10 +238,13 @@ class DWCAT_Shortcodes {
 	}
 
 	/**
-	 * Shared card rendering (used by grid + carousel).
+	 * Shared card rendering (used by grid, carousel and [dw_catalog]).
+	 *
+	 * @param string|null $link_url      Overrides the permalink (in-page detail view).
+	 * @param bool        $show_category Show the category name above the title.
 	 */
-	private function render_card_content( $post_id, $fields, $show_link, $image_size ) {
-		$permalink = get_permalink( $post_id );
+	public function render_card_content( $post_id, $fields, $show_link, $image_size, $link_url = null, $show_category = false ) {
+		$permalink = $link_url ? $link_url : get_permalink( $post_id );
 		$wrap_open  = $show_link ? '<a href="' . esc_url( $permalink ) . '" class="dwcat-card-link">' : '<div class="dwcat-card-link">';
 		$wrap_close = $show_link ? '</a>' : '</div>';
 
@@ -263,6 +266,12 @@ class DWCAT_Shortcodes {
 			$meta_title = get_post_meta( $post_id, $title_field['meta_key'], true );
 			if ( ! empty( $meta_title ) ) {
 				$display_title = $meta_title;
+			}
+		}
+		if ( $show_category ) {
+			$terms = get_the_terms( $post_id, DWCAT_Config::get_category_taxonomy( get_post_type( $post_id ) ) );
+			if ( $terms && ! is_wp_error( $terms ) ) {
+				echo '<div class="dwcat-card-category">' . esc_html( $terms[0]->name ) . '</div>';
 			}
 		}
 		echo '<h3 class="dwcat-card-title">' . esc_html( $display_title ) . '</h3>';

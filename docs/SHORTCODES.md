@@ -4,6 +4,51 @@ DW Catalog WP 프론트엔드 숏코드 사용법.
 
 ---
 
+## 0. `[dw_catalog]` — 카탈로그 페이지 (권장)
+
+페이지에 숏코드 하나만 넣으면 **목록 + 검색/필터/정렬 + 상세페이지**가 모두 그 페이지 안에서 동작합니다.
+
+```
+[dw_catalog category="refrigerated" filter_fields="dw_pc_brand_raw"]
+```
+
+- **목록**: 왼쪽 사이드바(검색 · 카테고리 체크박스 · 필드 필터 · Reset) + 정렬 + 카드 그리드 + 페이지네이션
+- **상세**: 카드를 누르면 같은 페이지에서 `?dw_item={slug}` 로 상세 표시 (이미지 갤러리 · 필드 · Variations 표 · 설명 · 관련 상품). "Back to list" 는 필터 상태를 유지합니다.
+- 필터 변경은 페이지 새로고침 없이 반영되고 URL 도 함께 바뀝니다 (공유·뒤로가기 가능). JS 가 꺼져 있어도 일반 링크/폼으로 동작합니다.
+- 검색 대상: 제품명 + 텍스트형 커스텀 필드 전부(Item Code · Brand 등) + Variation 의 Item Code/옵션명
+- 상품 고유 주소(`/product/{slug}/`)도 같은 상세 화면으로 표시됩니다.
+
+### 옵션
+| 속성 | 기본값 | 설명 |
+|------|--------|------|
+| `category` | (없음) | 이 페이지에 고정할 카테고리 슬러그/ID. 사이드바에는 그 하위 카테고리가 표시됩니다 |
+| `filter_fields` | (없음) | 사이드바 필터로 쓸 필드 meta_key (쉼표 구분). Select 필드는 옵션, 텍스트 필드는 실제 저장된 값이 체크박스가 됩니다 |
+| `columns` | `4` | 최대 컬럼 수 (화면이 좁으면 자동으로 줄어듭니다) |
+| `per_page` | `20` | 페이지당 상품 수 |
+| `show_fields` | (없음) | 카드에 표시할 필드. 비우면 "List" 체크된 필드 |
+| `detail_fields` | (없음) | 상세에 표시할 필드. 비우면 Custom Fields 화면에서 "Detail" 체크한 필드 |
+| `search` | `yes` | 검색창 표시 |
+| `sort` | `yes` | 정렬 메뉴 표시 (최신순 · 오래된순 · 이름순 · Number 필드의 낮은/높은 순) |
+| `default_sort` | `date_desc` | 기본 정렬 (`date_desc`, `date_asc`, `title_asc`, `title_desc`, `meta:{meta_key}:asc|desc`) |
+| `show_category` | `yes` | 카드 상단 카테고리명 |
+| `related` | `4` | 상세 하단 관련 상품 수 (`0` = 끔) |
+| `inquiry_url` | (없음) | 상세에 문의 버튼 표시. 상품명이 `?item=` 으로 전달됩니다 |
+| `inquiry_label` | `Inquire about this item` | 문의 버튼 문구 |
+| `image_size` | `medium` | 카드 이미지 크기 |
+
+### 예제
+```
+<!-- 카테고리별 페이지 (Fresh / Refrigerated / Frozen ...) -->
+[dw_catalog category="refrigerated" filter_fields="dw_pc_brand_raw"]
+
+<!-- 전체 카탈로그, 이름순, 문의 버튼 -->
+[dw_catalog default_sort="title_asc" inquiry_url="/wholesale-inquiry/"]
+```
+
+> 한 페이지에 `[dw_catalog]` 는 하나만 넣으십시오 (URL 파라미터를 공유합니다).
+
+---
+
 ## 1. `[dw_catalog_grid]` — 카탈로그 그리드
 
 ### 기본 사용

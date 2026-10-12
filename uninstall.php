@@ -17,10 +17,15 @@ delete_option( 'dw_catalog_post_types' );
 delete_option( 'dwcat_version' );
 delete_option( 'dwcat_activated' );
 delete_option( 'dwcat_design_settings' );
+delete_option( 'dwcat_menu_merged' );
 
 // Remove field options for all known post types
 global $wpdb;
 $wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s", 'dw\_catalog\_fields\_%' ) );
+$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s", 'dw\_catalog\_variation\_cols\_%' ) );
+
+// Item data stored by the plugin (variation rows)
+$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->postmeta} WHERE meta_key = %s", '_dwcat_variations' ) );
 
 // ── DASOM-Forge License SDK (DW_DWCAT_License_Manager) ──────────────
 // 옵션 키는 SDK 의 cache_prefix('dwcat_') + product_slug 규약을 따릅니다.

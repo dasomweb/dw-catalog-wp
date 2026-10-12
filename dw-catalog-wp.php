@@ -3,7 +3,7 @@
  * Plugin Name: DW Catalog WP
  * Plugin URI: https://github.com/dasomweb/dw-catalog-wp
  * Description: Product catalog with dynamic custom fields per post type.
- * Version: 2.0.0-rc.1
+ * Version: 2.0.0-rc.2
  * Author: Dasom Web
  * Author URI: https://github.com/dasomweb
  * License: GPL v2 or later
@@ -27,7 +27,7 @@ function dwcat_get_config() {
 		'github_repo_owner'  => 'dasomweb',
 		'github_repo_name'   => 'dw-catalog-wp',
 		'plugin_slug'        => 'dw-catalog-wp',
-		'plugin_version'     => '2.0.0-rc.1',
+		'plugin_version'     => '2.0.0-rc.2',
 		'plugin_name'        => 'DW Catalog WP',
 		'plugin_text_domain' => 'dw-catalog-wp',
 		'github_branch'      => 'main',
@@ -108,6 +108,7 @@ require_once dwcat_get_path() . 'includes/class-dw-license-manager.php';
 require_once dwcat_get_path() . 'includes/license/gates.php';
 require_once dwcat_get_path() . 'includes/class-dwcat-license-rest.php';
 
+require_once dwcat_get_path() . 'includes/class-dwcat-field-presets.php';
 require_once dwcat_get_path() . 'includes/class-pc-settings.php';
 require_once dwcat_get_path() . 'includes/class-pc-post-type.php';
 require_once dwcat_get_path() . 'includes/class-pc-meta-box.php';
@@ -118,6 +119,9 @@ require_once dwcat_get_path() . 'includes/class-pc-field-reference.php';
 require_once dwcat_get_path() . 'includes/class-pc-bulk-import.php';
 require_once dwcat_get_path() . 'includes/class-dwcat-design-settings.php';
 require_once dwcat_get_path() . 'includes/class-dwcat-shortcodes.php';
+require_once dwcat_get_path() . 'includes/class-dwcat-catalog-query.php';
+require_once dwcat_get_path() . 'includes/class-dwcat-variations.php';
+require_once dwcat_get_path() . 'includes/class-dwcat-catalog.php';
 
 /**
  * DASOM-Forge License SDK.
@@ -133,8 +137,9 @@ DW_DWCAT_License_Manager::init( array(
 	'plugin_file'     => __FILE__,
 	'plugin_basename' => plugin_basename( __FILE__ ),
 	'plugin_name'     => 'DW Catalog WP',
-	'plugin_version'  => '2.0.0-rc.1',
+	'plugin_version'  => '2.0.0-rc.2',
 	'settings_page'   => 'dw-catalog-license',
+	'menu_parent'     => array( 'DWCAT_Config', 'get_primary_menu_slug' ),
 	'public_keys'     => array(
 		dwcat_get_path() . 'includes/keys/dasomforge.pub',
 		dwcat_get_path() . 'includes/keys/dasomforge.previous.pub', // 키 회전 시에만 존재
@@ -161,6 +166,10 @@ DW_DWCAT_License_Manager::init( array(
 // Initialize all components
 add_action( 'plugins_loaded', 'dwcat_init', 10 );
 function dwcat_init() {
+	if ( is_admin() ) {
+		dwcat_migrate_menu_name();
+	}
+
 	new DWCAT_Settings();
 	new DWCAT_Post_Type();
 	new DWCAT_Meta_Box();
@@ -169,7 +178,9 @@ function dwcat_init() {
 	new DWCAT_Field_Reference();
 	new DWCAT_Bulk_Import();
 	new DWCAT_Design_Settings();
-	new DWCAT_Shortcodes();
+	DWCAT_Catalog_Query::init();
+	new DWCAT_Variations();
+	new DWCAT_Catalog( new DWCAT_Shortcodes() );
 	new DWCAT_License_REST();   // §3.6 SHOULD #2 진단 엔드포인트
 
 	// DW Admin SPA Integration (optional — works without DW Admin)
@@ -252,6 +263,27 @@ function dwcat_migrate( $old_version, $new_version ) {
 			}
 		}
 	}
+}
+
+/**
+ * 메뉴 통합 — 설정용 "DW Catalog" 와 콘텐츠용 "Catalog WP" 두 최상위 메뉴를
+ * "DW Catalog" 하나로 합쳤습니다. 기존 설치는 menu_name 이 옵션에 저장돼 있으므로
+ * 기본값("Catalog WP")을 그대로 쓰던 경우에만 이름을 바꿉니다. 1회 실행.
+ *
+ * 버전 변경 없이도 돌도록 dwcat_migrate() 와 분리했습니다 — 버전을 올리면
+ * 토큰 캐시가 폐기되므로 (dwcat_check_version) 매니페스트 미등록 버전에서는
+ * 활성 라이선스가 끊깁니다.
+ */
+function dwcat_migrate_menu_name() {
+	if ( get_option( 'dwcat_menu_merged' ) ) {
+		return;
+	}
+	$types = get_option( DWCAT_Config::OPTION_POST_TYPES, null );
+	if ( is_array( $types ) && isset( $types['product']['menu_name'] ) && 'Catalog WP' === $types['product']['menu_name'] ) {
+		$types['product']['menu_name'] = 'DW Catalog';
+		update_option( DWCAT_Config::OPTION_POST_TYPES, $types, true );
+	}
+	update_option( 'dwcat_menu_merged', 1, true );
 }
 
 // Version check on every admin load — handles upgrades without re-activation

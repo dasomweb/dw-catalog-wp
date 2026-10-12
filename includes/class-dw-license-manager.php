@@ -65,6 +65,8 @@ class DW_DWCAT_License_Manager {
 	private $plugin_name;
 	private $plugin_version;
 	private $settings_page;
+	/** @var string|callable 라이선스 화면을 붙일 부모 메뉴 slug (admin_menu 시점에 해석). */
+	private $menu_parent;
 	private $public_key_paths;
 	private $client;
 
@@ -105,6 +107,7 @@ class DW_DWCAT_License_Manager {
 		$this->plugin_name      = isset( $config['plugin_name'] ) ? $config['plugin_name'] : $this->product_slug;
 		$this->plugin_version   = $config['plugin_version'];
 		$this->settings_page    = isset( $config['settings_page'] ) ? $config['settings_page'] : $this->product_slug . '-license';
+		$this->menu_parent      = isset( $config['menu_parent'] ) ? $config['menu_parent'] : 'options-general.php';
 		$this->public_key_paths = isset( $config['public_keys'] ) ? (array) $config['public_keys'] : array();
 
 		$this->opt_license  = 'dw_license_' . str_replace( '-', '_', $this->product_slug );
@@ -1143,8 +1146,9 @@ class DW_DWCAT_License_Manager {
 	}
 
 	public function add_menu_page() {
+		$parent = is_callable( $this->menu_parent ) ? call_user_func( $this->menu_parent ) : $this->menu_parent;
 		add_submenu_page(
-			'dw-catalog-settings',
+			$parent,
 			$this->plugin_name . ' License',
 			__( 'License', 'dw-catalog-wp' ),
 			'manage_options',

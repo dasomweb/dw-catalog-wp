@@ -177,6 +177,10 @@ $expected_classes = array(
 	'DWCAT_License_REST'       => 'class-dwcat-license-rest.php',
 	'DWCAT_Shortcodes'       => 'class-dwcat-shortcodes.php',
 	'DWCAT_Design_Settings'  => 'class-dwcat-design-settings.php',
+	'DWCAT_Field_Presets'    => 'class-dwcat-field-presets.php',
+	'DWCAT_Catalog_Query'    => 'class-dwcat-catalog-query.php',
+	'DWCAT_Catalog'          => 'class-dwcat-catalog.php',
+	'DWCAT_Variations'       => 'class-dwcat-variations.php',
 );
 
 foreach ( $expected_classes as $class_name => $file_name ) {
