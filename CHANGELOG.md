@@ -7,7 +7,7 @@ DW Catalog WP 의 변경 이력. [SemVer](https://semver.org/lang/ko/) 를 따�
 
 ---
 
-## [Unreleased]
+## [2.0.0-rc.3] — 2026-10-12
 
 ### Changed
 
