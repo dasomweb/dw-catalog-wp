@@ -111,7 +111,7 @@ class DWCAT_Field_Reference {
 					<h3><?php _e( 'Get Field Value (PHP)', 'dw-catalog-wp' ); ?></h3>
 					<pre><code><?php
 					foreach ( $fields as $f ) {
-						echo '$' . sanitize_key( $f['label'] ) . ' = get_post_meta( $post_id, \'' . esc_html( $f['meta_key'] ) . '\', true );' . "\n";
+						echo '$' . sanitize_key( $f['label'] ) . ' = dwcat_get_field( $post_id, \'' . esc_html( $f['meta_key'] ) . '\' );' . "\n";
 					}
 					?></code></pre>
 

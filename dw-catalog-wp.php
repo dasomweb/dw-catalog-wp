@@ -3,7 +3,7 @@
  * Plugin Name: DW Catalog WP
  * Plugin URI: https://github.com/dasomweb/dw-catalog-wp
  * Description: Product catalog with dynamic custom fields per post type.
- * Version: 2.0.0-rc.3
+ * Version: 2.0.0-rc.4
  * Author: Dasom Web
  * Author URI: https://github.com/dasomweb
  * License: GPL v2 or later
@@ -27,7 +27,7 @@ function dwcat_get_config() {
 		'github_repo_owner'  => 'dasomweb',
 		'github_repo_name'   => 'dw-catalog-wp',
 		'plugin_slug'        => 'dw-catalog-wp',
-		'plugin_version'     => '2.0.0-rc.3',
+		'plugin_version'     => '2.0.0-rc.4',
 		'plugin_name'        => 'DW Catalog WP',
 		'plugin_text_domain' => 'dw-catalog-wp',
 		'github_branch'      => 'main',
@@ -119,6 +119,8 @@ require_once dwcat_get_path() . 'includes/class-pc-field-reference.php';
 require_once dwcat_get_path() . 'includes/class-pc-bulk-import.php';
 require_once dwcat_get_path() . 'includes/class-dwcat-design-settings.php';
 require_once dwcat_get_path() . 'includes/class-dwcat-shortcodes.php';
+require_once dwcat_get_path() . 'includes/class-dwcat-store.php';
+require_once dwcat_get_path() . 'includes/class-dwcat-access-guard.php';
 require_once dwcat_get_path() . 'includes/class-dwcat-catalog-query.php';
 require_once dwcat_get_path() . 'includes/class-dwcat-variations.php';
 require_once dwcat_get_path() . 'includes/class-dwcat-catalog.php';
@@ -137,7 +139,7 @@ DW_DWCAT_License_Manager::init( array(
 	'plugin_file'     => __FILE__,
 	'plugin_basename' => plugin_basename( __FILE__ ),
 	'plugin_name'     => 'DW Catalog WP',
-	'plugin_version'  => '2.0.0-rc.3',
+	'plugin_version'  => '2.0.0-rc.4',
 	'settings_page'   => 'dw-catalog-license',
 	'menu_parent'     => array( 'DWCAT_Config', 'get_primary_menu_slug' ),
 	'public_keys'     => array(
@@ -163,6 +165,9 @@ DW_DWCAT_License_Manager::init( array(
  * @see DWCAT_GitHub_Updater — 인스턴스화하지 않음 (의도적)
  */
 
+// Catalog data store — hooks must exist before plugins_loaded (table install runs at priority 5)
+DWCAT_Store::init();
+
 // Initialize all components
 add_action( 'plugins_loaded', 'dwcat_init', 10 );
 function dwcat_init() {
@@ -179,6 +184,7 @@ function dwcat_init() {
 	new DWCAT_Bulk_Import();
 	new DWCAT_Design_Settings();
 	DWCAT_Catalog_Query::init();
+	DWCAT_Access_Guard::init();
 	new DWCAT_Variations();
 	new DWCAT_Catalog( new DWCAT_Shortcodes() );
 	new DWCAT_License_REST();   // §3.6 SHOULD #2 진단 엔드포인트
@@ -228,6 +234,9 @@ function dwcat_activate() {
 
 	// Ensure default config is seeded
 	DWCAT_Config::get_post_types();
+
+	// Catalog tables (field values, variations, search index)
+	DWCAT_Store::install();
 
 	// Migration: seed default fields for existing post types that have no field config yet
 	dwcat_migrate( $old_version, $config['plugin_version'] );

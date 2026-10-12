@@ -130,7 +130,7 @@ class DWCAT_Catalog {
 		}
 		if ( isset( $_GET[ self::P_SORT ] ) ) {
 			$sort = sanitize_text_field( wp_unslash( $_GET[ self::P_SORT ] ) );
-			if ( isset( DWCAT_Catalog_Query::get_sort_options( $pt )[ $sort ] ) ) {
+			if ( isset( DWCAT_Catalog_Query::get_sort_options( $pt, true )[ $sort ] ) ) {
 				$state['sort'] = $sort;
 			}
 		}
@@ -167,8 +167,12 @@ class DWCAT_Catalog {
 		return $params ? $base . '?' . http_build_query( $params ) : $base;
 	}
 
+	/** Sidebar filter fields — public fields only (an internal field's values must not be listed). */
 	private function filter_field_keys( $atts ) {
-		return array_values( array_filter( array_map( 'trim', explode( ',', $atts['filter_fields'] ) ) ) );
+		$public = DWCAT_Catalog_Query::allowed_fields( $atts['post_type'], true );
+		return array_values( array_filter( array_map( 'trim', explode( ',', $atts['filter_fields'] ) ), function ( $k ) use ( $public ) {
+			return isset( $public[ $k ] );
+		} ) );
 	}
 
 	// ─────────────────────────────────────────────────────────────
@@ -184,14 +188,16 @@ class DWCAT_Catalog {
 				'base_cat' => $atts['category'],
 				'meta'     => $state['meta'],
 				'sort'     => $state['sort'],
+				'public'   => true,
 			),
 			array(
-				'posts_per_page' => max( 1, (int) $atts['per_page'] ),
+				'posts_per_page' => max( 1, min( 100, (int) $atts['per_page'] ) ),
 				'paged'          => $state['page'],
 				'post_status'    => 'publish',
 			)
 		);
 		$query   = new WP_Query( $args );
+		DWCAT_Store::prime( wp_list_pluck( $query->posts, 'ID' ) );
 		$fields  = $this->card_fields( $pt, $atts['show_fields'] );
 		$columns = max( 1, min( 6, (int) $atts['columns'] ) );
 		$params  = $this->state_params( $state, $atts );
@@ -239,7 +245,7 @@ class DWCAT_Catalog {
 						<label class="dwcat-sort">
 							<span><?php esc_html_e( 'Sort by', 'dw-catalog-wp' ); ?></span>
 							<select name="<?php echo esc_attr( self::P_SORT ); ?>" form="<?php echo esc_attr( $form_id ); ?>" data-dwcat-sort data-default="<?php echo esc_attr( $atts['default_sort'] ); ?>">
-								<?php foreach ( DWCAT_Catalog_Query::get_sort_options( $pt ) as $key => $label ) : ?>
+								<?php foreach ( DWCAT_Catalog_Query::get_sort_options( $pt, true ) as $key => $label ) : ?>
 									<option value="<?php echo esc_attr( $key ); ?>" <?php selected( $state['sort'], $key ); ?>><?php echo esc_html( $label ); ?></option>
 								<?php endforeach; ?>
 							</select>
@@ -346,7 +352,7 @@ class DWCAT_Catalog {
 	}
 
 	private function render_field_filters( $pt, $atts, $state ) {
-		$fields = DWCAT_Catalog_Query::fields_by_key( $pt );
+		$fields = DWCAT_Catalog_Query::allowed_fields( $pt, true );
 		foreach ( $this->filter_field_keys( $atts ) as $key ) {
 			if ( ! isset( $fields[ $key ] ) ) {
 				continue;
@@ -372,9 +378,9 @@ class DWCAT_Catalog {
 		}
 	}
 
-	/** Card fields — explicit list, or the post type's "List" fields. */
+	/** Card fields — explicit list, or the post type's "List" fields; public fields only. */
 	private function card_fields( $pt, $show_fields ) {
-		$all = DWCAT_Config::get_fields( $pt );
+		$all = array_filter( DWCAT_Config::get_fields( $pt ), array( 'DWCAT_Config', 'is_public_field' ) );
 		if ( '' === trim( $show_fields ) ) {
 			return array_filter( $all, function ( $f ) {
 				return ! empty( $f['show_in_list'] ) && empty( $f['is_title_field'] );
@@ -439,7 +445,7 @@ class DWCAT_Catalog {
 		$title_field = DWCAT_Config::get_title_field( $pt );
 		$title       = $post->post_title;
 		if ( $title_field ) {
-			$meta_title = get_post_meta( $post_id, $title_field['meta_key'], true );
+			$meta_title = DWCAT_Store::get_value( $post_id, $title_field['meta_key'], '' );
 			if ( '' !== $meta_title ) {
 				$title = $meta_title;
 			}
@@ -543,16 +549,18 @@ class DWCAT_Catalog {
 		}
 		$query = new WP_Query( array(
 			'post_type'      => $post->post_type,
+			'ignore_sticky_posts' => true,
 			'post_status'    => 'publish',
 			'posts_per_page' => $count,
 			'post__not_in'   => array( $post->ID ),
-			'orderby'        => 'rand',
+			'orderby'        => 'date', // not 'rand': ORDER BY RAND() scans the whole table
 			'no_found_rows'  => true,
 			'tax_query'      => array( array( 'taxonomy' => $tax, 'terms' => $terms ) ),
 		) );
 		if ( ! $query->have_posts() ) {
 			return '';
 		}
+		DWCAT_Store::prime( wp_list_pluck( $query->posts, 'ID' ) );
 
 		$fields = $this->card_fields( $post->post_type, isset( $atts['show_fields'] ) ? $atts['show_fields'] : '' );
 		$params = null !== $state ? $this->state_params( $state, $atts ) : array();
@@ -583,7 +591,7 @@ class DWCAT_Catalog {
 
 	/** Detail fields — explicit list, or the fields with "Detail" checked. */
 	private function detail_fields( $pt, $detail_fields ) {
-		$all = DWCAT_Config::get_fields( $pt );
+		$all = array_filter( DWCAT_Config::get_fields( $pt ), array( 'DWCAT_Config', 'is_public_field' ) );
 		if ( '' !== trim( $detail_fields ) ) {
 			$keys = array_map( 'trim', explode( ',', $detail_fields ) );
 			return array_filter( $all, function ( $f ) use ( $keys ) {

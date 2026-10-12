@@ -127,10 +127,15 @@ class DWCAT_Config {
 	}
 
 	/**
-	 * Whether a field is shown on the item detail view.
+	 * Whether a field is public: shown on the site (detail view, cards) and usable by visitors
+	 * for search / filter / sort. Non-public fields never leave the admin.
 	 * Fields saved before the "Detail" checkbox existed: everything except the title field
 	 * and internal-note fields.
 	 */
+	public static function is_public_field( $field ) {
+		return self::shows_in_detail( $field );
+	}
+
 	public static function shows_in_detail( $field ) {
 		if ( isset( $field['show_in_detail'] ) ) {
 			return ! empty( $field['show_in_detail'] );

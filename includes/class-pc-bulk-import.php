@@ -353,16 +353,17 @@ class DWCAT_Bulk_Import {
 			return array( 'success' => false, 'skipped' => false, 'error' => $post_id->get_error_message() );
 		}
 
-		// Save meta fields
+		// Save field values (one write for the whole row)
+		$values = array();
 		foreach ( $fields as $field ) {
 			$mk = $field['meta_key'];
 			if ( isset( $data[ $mk ] ) && (string) $data[ $mk ] !== '' ) {
-				$val = $field['type'] === 'textarea'
+				$values[ $mk ] = $field['type'] === 'textarea'
 					? sanitize_textarea_field( $data[ $mk ] )
 					: sanitize_text_field( $data[ $mk ] );
-				update_post_meta( $post_id, $mk, $val );
 			}
 		}
+		DWCAT_Store::save_values( $post_id, $values );
 
 		// Category
 		if ( ! empty( $pt_config['has_category'] ) ) {

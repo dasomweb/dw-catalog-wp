@@ -18,7 +18,7 @@ class DWCAT_Product_Display {
 	 * Get a meta value with default.
 	 */
 	public static function get_product_meta( $post_id, $meta_key, $default = '' ) {
-		$value = get_post_meta( $post_id, $meta_key, true );
+		$value = DWCAT_Store::get_value( $post_id, $meta_key, '' );
 		return ( $value !== '' && $value !== false ) ? $value : $default;
 	}
 
@@ -26,7 +26,7 @@ class DWCAT_Product_Display {
 	 * Get a field value by meta key, resolving select labels.
 	 */
 	public static function get_field_value( $post_id, $meta_key ) {
-		$value = get_post_meta( $post_id, $meta_key, true );
+		$value = DWCAT_Store::get_value( $post_id, $meta_key, '' );
 		if ( $value === '' || $value === false ) {
 			return '';
 		}

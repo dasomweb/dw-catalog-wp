@@ -229,6 +229,7 @@ class DWCAT_Admin_Pages {
 			)
 		);
 		$query      = new WP_Query( $args );
+		DWCAT_Store::prime( wp_list_pluck( $query->posts, 'ID' ) );
 		$pt_has_cat = ! empty( $pt_config['has_category'] );
 
 		// Sortable column header: link toggles direction, arrow shows current state
@@ -325,7 +326,7 @@ class DWCAT_Admin_Pages {
 								$post_id = get_the_ID();
 								$display_title = get_the_title( $post_id );
 								if ( $title_field ) {
-									$meta_title = get_post_meta( $post_id, $title_field['meta_key'], true );
+									$meta_title = DWCAT_Store::get_value( $post_id, $title_field['meta_key'], '' );
 									if ( ! empty( $meta_title ) ) {
 										$display_title = $meta_title;
 									}
@@ -356,7 +357,7 @@ class DWCAT_Admin_Pages {
 										<?php if ( ! empty( $field['is_title_field'] ) ) continue; ?>
 										<td>
 											<?php
-											$val = get_post_meta( $post_id, $field['meta_key'], true );
+											$val = DWCAT_Store::get_value( $post_id, $field['meta_key'], '' );
 											if ( $field['type'] === 'select' && $val !== '' ) {
 												$opts = DWCAT_Config::parse_select_options( $field['options'] );
 												$val = isset( $opts[ $val ] ) ? $opts[ $val ] : $val;

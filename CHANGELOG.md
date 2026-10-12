@@ -7,6 +7,52 @@ DW Catalog WP 의 변경 이력. [SemVer](https://semver.org/lang/ko/) 를 따�
 
 ---
 
+## [2.0.0-rc.4] — 2026-10-12
+
+### Changed — 저장 구조 (성능)
+
+- **카탈로그 데이터를 전용 테이블로 이전** — 필드 값 · Variations · 검색 색인을 `wp_postmeta` 에서
+  인덱스가 걸린 전용 테이블 4개로 옮겼습니다 (상품 수만 개 규모 기준).
+  | 테이블 | 용도 |
+  |---|---|
+  | `{prefix}dwcat_values` | 필드 값. `(field_key, value)` · `(field_key, value_num)` 인덱스로 필터 · 정렬 |
+  | `{prefix}dwcat_variations` | Variation 1행 = 1레코드. Item Code · Price 인덱스 |
+  | `{prefix}dwcat_search` | 단어 색인 `(token, post_id, source)` — 검색이 인덱스 범위 조회 |
+  | `{prefix}dwcat_items` | 상품별 색인 상태 |
+  상품 본문 · 이미지 · 주소 · 카테고리는 `wp_posts` / 분류 테이블에 그대로 둡니다
+  (고유 주소 · 미디어 · SEO 플러그인 · 테마 호환).
+- 기존 데이터는 **업데이트 후 백그라운드로 자동 이전**되고(크론 + 관리자 화면 방문 시 200건씩),
+  검증 후 postmeta 원본을 삭제합니다. 이전 중에도 편집은 정상 동작합니다.
+- `get_post_meta()` / `update_post_meta()` 로 카탈로그 필드를 읽고 쓰는 테마 · 페이지 빌더
+  (Kadence 동적 필드 등)는 그대로 동작합니다 — 호출이 전용 테이블로 연결됩니다.
+  테마 코드용 헬퍼 `dwcat_get_field( $post_id, $key )` 추가.
+- 검색이 **단어 앞부분 일치**로 바뀌었습니다 (`miso` → "Miso Ramen" ○, `iso` → ×).
+  `WK-009` 와 `wk009` 는 같은 결과를 냅니다.
+- 목록 한 페이지의 필드 값을 쿼리 1번에 읽습니다 (상품 수와 무관하게 쿼리 수 일정).
+  관련 상품의 `ORDER BY RAND()` 제거.
+
+### Security — 데이터 노출 경로 차단
+
+- **REST API 차단** — `/wp-json/wp/v2/product`, 카테고리 · 태그 REST 는 편집 권한이 없으면 401.
+  `/wp-json/wp/v2/search` 결과에서 상품 제외. 로그인한 편집자(DW Admin SPA)는 그대로 사용.
+- **RSS 피드 차단** — `/product/feed/` 와 카테고리 피드 404.
+- **비공개 필드는 서버 밖으로 나가지 않습니다** — "Detail" 체크가 해제된 필드는 카드 · 상세 ·
+  필터 선택지 · 정렬 · **사이트 검색**에서 모두 제외됩니다. 검색 색인이 단어의 출처 필드를
+  기록하므로, 검색어를 넣어 결과 유무로 내부 값을 알아내는 방법도 막힙니다.
+  관리자 목록 검색은 모든 필드를 찾습니다.
+- **Variation 컬럼별 "Public" 플래그** — 원가 같은 내부 컬럼은 사이트 표 · 검색에서 제외.
+- 입력 상한 — 검색어 6단어 · 필터당 50개 값 · `per_page` 100.
+
+### anti-piracy 관련 변경 (§7.6 의무 표기)
+
+| 항목 | 내용 |
+|---|---|
+| 해시 변경 사유 | 신규 파일 `class-dwcat-store.php` · `class-dwcat-access-guard.php`, 데이터 접근 계층 교체로 다수 파일 수정 — 매니페스트 재등록 필요 |
+| 새 게이트 | 없음 |
+| 마이그레이션 필요 여부 | 자동 (postmeta → 전용 테이블, 백그라운드). 사용자 조치 없음 |
+
+---
+
 ## [2.0.0-rc.3] — 2026-10-12
 
 ### Changed

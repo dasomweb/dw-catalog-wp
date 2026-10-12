@@ -24,8 +24,15 @@ global $wpdb;
 $wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s", 'dw\_catalog\_fields\_%' ) );
 $wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s", 'dw\_catalog\_variation\_cols\_%' ) );
 
-// Item data stored by the plugin (variation rows)
+// Item data stored by the plugin — dedicated tables (DWCAT_Store) + any pre-migration leftovers
+foreach ( array( 'items', 'values', 'variations', 'search' ) as $dwcat_table ) {
+	$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}dwcat_{$dwcat_table}" ); // phpcs:ignore WordPress.DB.PreparedSQL — fixed names
+}
+delete_option( 'dwcat_db_version' );
+delete_option( 'dwcat_migration' );
+delete_option( 'dwcat_cache_ver' );
 $wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->postmeta} WHERE meta_key = %s", '_dwcat_variations' ) );
+$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s", '\_transient\_dwcat\_fc\_%', '\_transient\_timeout\_dwcat\_fc\_%' ) );
 
 // ── DASOM-Forge License SDK (DW_DWCAT_License_Manager) ──────────────
 // 옵션 키는 SDK 의 cache_prefix('dwcat_') + product_slug 규약을 따릅니다.
@@ -49,6 +56,7 @@ delete_transient( 'dwcat_runtime_manifest' );
 
 wp_clear_scheduled_hook( 'dw_verify_license_dw-catalog-wp' );
 wp_clear_scheduled_hook( 'dwcat_refresh_token' );
+wp_clear_scheduled_hook( 'dwcat_migrate_batch' );
 
 // v1.x 잔여물 정리
 delete_transient( 'dw_license_check_dw-catalog-wp' );

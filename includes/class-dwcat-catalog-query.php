@@ -1,15 +1,20 @@
 <?php
 /**
- * Catalog Query — shared search / filter / sort for the admin list and frontend grid.
+ * Catalog Query — shared search / filter / sort for the admin list and the frontend catalog.
  *
- * Both sides describe what they want as a normalized filter array and get WP_Query args
- * back, so search and sort behave the same in wp-admin and on the site.
+ * Runs on the indexed DWCAT_Store tables (never wp_postmeta). Callers describe what they want
+ * as a filter array; build_args() returns WP_Query args carrying it in the VAR_NAME var, and
+ * posts_clauses() turns that into indexed SQL:
  *
- *   search   string   Matches post title and every text-like custom field (item code, brand ...).
- *   cats     int[]    Category term IDs (OR).
- *   base_cat string   Shortcode-fixed category slugs/IDs, comma separated (always applied).
- *   meta     array    meta_key => string[] values (OR within a field, AND across fields).
- *   sort     string   One of get_sort_options() keys.
+ *   search   string   Word-prefix match per word (all words must match), via {prefix}dwcat_search.
+ *   cats     int[]    Category term IDs (OR, children included).
+ *   base_cat string   Shortcode-fixed category slugs/IDs (always applied).
+ *   meta     array    field_key => string[] (OR within a field, AND across fields).
+ *   sort     string   One of get_sort_options() keys, or "meta:{key}:{asc|desc}".
+ *   public   bool     Frontend: only public fields may be searched / filtered / sorted, so
+ *                     internal values cannot be probed from the site.
+ *
+ * Input limits (abuse / DoS guards): MAX_WORDS search words, MAX_VALUES values per filter.
  *
  * @package DW_Catalog_WP
  */
@@ -20,22 +25,18 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class DWCAT_Catalog_Query {
 
-	/** Query var that carries the search term into the posts_where filter. */
-	const SEARCH_VAR = 'dwcat_search';
-
-	/** Field types whose values are searched as text. */
-	const SEARCHABLE_TYPES = array( 'text', 'textarea', 'select', 'email', 'url' );
+	const VAR_NAME   = 'dwcat_filter';
+	const MAX_WORDS  = 6;
+	const MAX_VALUES = 50;
 
 	public static function init() {
-		add_filter( 'posts_where', array( __CLASS__, 'filter_search_where' ), 10, 2 );
+		add_filter( 'posts_clauses', array( __CLASS__, 'posts_clauses' ), 10, 2 );
 	}
 
 	/**
-	 * Build WP_Query args.
-	 *
 	 * @param string $post_type Our post type slug.
 	 * @param array  $filter    See class doc.
-	 * @param array  $base      Base args merged first (posts_per_page, paged, post_status ...).
+	 * @param array  $base      Base WP_Query args (posts_per_page, paged, post_status ...).
 	 * @return array
 	 */
 	public static function build_args( $post_type, $filter, $base = array() ) {
@@ -45,29 +46,23 @@ class DWCAT_Catalog_Query {
 			'base_cat' => '',
 			'meta'     => array(),
 			'sort'     => 'date_desc',
+			'public'   => false,
 		) );
 
 		$args = array_merge( array( 'post_type' => $post_type ), $base );
 
-		// Search — title + text-like custom fields (handled in filter_search_where)
-		if ( '' !== $filter['search'] ) {
-			$args[ self::SEARCH_VAR ] = $filter['search'];
+		// Categories — native taxonomy query (term tables are indexed)
+		$tax_query  = array();
+		$cat_tax    = DWCAT_Config::get_category_taxonomy( $post_type );
+		$base_terms = self::base_terms( $filter['base_cat'] );
+		if ( $base_terms ) {
+			$tax_query[] = array(
+				'taxonomy' => $cat_tax,
+				'field'    => is_numeric( reset( $base_terms ) ) ? 'term_id' : 'slug',
+				'terms'    => $base_terms,
+			);
 		}
-
-		// Categories
-		$tax_query = array();
-		$cat_tax   = DWCAT_Config::get_category_taxonomy( $post_type );
-		if ( '' !== (string) $filter['base_cat'] ) {
-			$terms = array_filter( array_map( 'trim', explode( ',', $filter['base_cat'] ) ) );
-			if ( $terms ) {
-				$tax_query[] = array(
-					'taxonomy' => $cat_tax,
-					'field'    => is_numeric( reset( $terms ) ) ? 'term_id' : 'slug',
-					'terms'    => $terms,
-				);
-			}
-		}
-		$cats = array_filter( array_map( 'intval', (array) $filter['cats'] ) );
+		$cats = array_slice( array_filter( array_map( 'intval', (array) $filter['cats'] ) ), 0, self::MAX_VALUES );
 		if ( $cats ) {
 			$tax_query[] = array(
 				'taxonomy'         => $cat_tax,
@@ -81,84 +76,95 @@ class DWCAT_Catalog_Query {
 			$args['tax_query']     = $tax_query;
 		}
 
-		// Field filters — only keys that are real fields of this post type
-		$meta_query = array();
-		$fields     = self::fields_by_key( $post_type );
+		// Everything on custom fields goes through posts_clauses()
+		$allowed = self::allowed_fields( $post_type, $filter['public'] );
+		$spec    = array(
+			'words'  => self::search_words( $filter['search'] ),
+			'meta'   => array(),
+			'sort'   => null,
+			'public' => (bool) $filter['public'],
+		);
 		foreach ( (array) $filter['meta'] as $key => $values ) {
-			$values = array_values( array_filter( array_map( 'strval', (array) $values ), 'strlen' ) );
-			if ( ! isset( $fields[ $key ] ) || ! $values ) {
-				continue;
+			$values = array_slice( array_values( array_filter( array_map( 'strval', (array) $values ), 'strlen' ) ), 0, self::MAX_VALUES );
+			if ( isset( $allowed[ $key ] ) && $values ) {
+				$spec['meta'][ $key ] = $values;
 			}
-			$meta_query[] = array(
-				'key'     => $key,
-				'value'   => $values,
-				'compare' => 'IN',
-			);
 		}
 
-		// Sort
-		$sort = self::resolve_sort( $post_type, $filter['sort'] );
+		$sort = self::resolve_sort( $post_type, $filter['sort'], $filter['public'] );
 		if ( $sort['meta_key'] ) {
-			// Named EXISTS / NOT EXISTS pair so items without a value are still listed, not dropped.
-			$meta_query['dwcat_sort'] = array(
-				'relation'        => 'OR',
-				'dwcat_sort_has'  => array( 'key' => $sort['meta_key'], 'compare' => 'EXISTS', 'type' => $sort['meta_type'] ),
-				'dwcat_sort_none' => array( 'key' => $sort['meta_key'], 'compare' => 'NOT EXISTS' ),
-			);
-			$args['orderby'] = array( 'dwcat_sort_has' => $sort['order'], 'title' => 'ASC' );
+			$spec['sort'] = $sort;
 		} else {
 			$args['orderby'] = array( $sort['orderby'] => $sort['order'] );
 		}
 
-		if ( $meta_query ) {
-			$meta_query['relation'] = 'AND';
-			$args['meta_query']     = $meta_query;
+		if ( $spec['words'] || $spec['meta'] || $spec['sort'] ) {
+			$args[ self::VAR_NAME ] = $spec;
 		}
-
 		return $args;
 	}
 
 	/**
-	 * posts_where — title OR any searchable custom field contains the term.
+	 * WP_Query SQL for search / field filters / field sort — all indexed lookups.
 	 */
-	public static function filter_search_where( $where, $query ) {
-		$term = $query->get( self::SEARCH_VAR );
-		if ( '' === (string) $term ) {
-			return $where;
+	public static function posts_clauses( $clauses, $query ) {
+		$spec = $query->get( self::VAR_NAME );
+		if ( ! is_array( $spec ) ) {
+			return $clauses;
 		}
 		global $wpdb;
+		$post_type = (string) $query->get( 'post_type' );
 
-		$like = '%' . $wpdb->esc_like( $term ) . '%';
-		$keys = self::searchable_keys( (string) $query->get( 'post_type' ) );
+		// Search: every word must prefix-match a token (from public sources only, on the site)
+		if ( ! empty( $spec['words'] ) ) {
+			$sources    = ! empty( $spec['public'] ) ? self::public_sources( $post_type ) : array();
+			$source_sql = $sources ? ' AND source IN (' . implode( ',', array_fill( 0, count( $sources ), '%s' ) ) . ')' : '';
+			foreach ( $spec['words'] as $word ) {
+				$clauses['where'] .= $wpdb->prepare(
+					" AND {$wpdb->posts}.ID IN ( SELECT post_id FROM " . DWCAT_Store::table( 'search' ) . " WHERE token LIKE %s{$source_sql} )", // phpcs:ignore
+					array_merge( array( $wpdb->esc_like( $word ) . '%' ), $sources )
+				);
+			}
+		}
 
-		$meta_clause = '';
-		if ( $keys ) {
-			$placeholders = implode( ',', array_fill( 0, count( $keys ), '%s' ) );
-			$meta_clause  = $wpdb->prepare(
-				" OR {$wpdb->posts}.ID IN ( SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key IN ( {$placeholders} ) AND meta_value LIKE %s )", // phpcs:ignore WordPress.DB.PreparedSQLPlaceholders
-				array_merge( $keys, array( $like ) )
+		// Field filters — (field_key, value_idx) index
+		foreach ( (array) $spec['meta'] as $key => $values ) {
+			$in                = implode( ',', array_fill( 0, count( $values ), '%s' ) );
+			$clauses['where'] .= $wpdb->prepare(
+				" AND {$wpdb->posts}.ID IN ( SELECT post_id FROM " . DWCAT_Store::table( 'values' ) . " WHERE field_key = %s AND value_idx IN ($in) )", // phpcs:ignore
+				array_merge( array( $key ), $values )
 			);
 		}
 
-		return $where . $wpdb->prepare( " AND ( {$wpdb->posts}.post_title LIKE %s{$meta_clause} )", $like ); // phpcs:ignore
+		// Field sort — items without a value go last in both directions
+		if ( ! empty( $spec['sort'] ) ) {
+			$col                = 'NUMERIC' === $spec['sort']['meta_type'] ? 'dwcat_sv.value_num' : 'dwcat_sv.value_idx';
+			$dir                = 'ASC' === $spec['sort']['order'] ? 'ASC' : 'DESC';
+			$clauses['join']   .= $wpdb->prepare(
+				' LEFT JOIN ' . DWCAT_Store::table( 'values' ) . " dwcat_sv ON dwcat_sv.post_id = {$wpdb->posts}.ID AND dwcat_sv.field_key = %s", // phpcs:ignore
+				$spec['sort']['meta_key']
+			);
+			$clauses['orderby'] = "{$col} IS NULL ASC, {$col} {$dir}, {$wpdb->posts}.post_title ASC";
+		}
+		return $clauses;
 	}
 
 	/**
-	 * Sort choices. Number fields get Low→High / High→Low entries.
+	 * Sort choices. Number fields get Low→High / High→Low entries (public ones only on the site).
 	 *
 	 * @return array key => label
 	 */
-	public static function get_sort_options( $post_type ) {
+	public static function get_sort_options( $post_type, $public = true ) {
 		$options = array(
 			'date_desc'  => __( 'Newest', 'dw-catalog-wp' ),
 			'date_asc'   => __( 'Oldest', 'dw-catalog-wp' ),
 			'title_asc'  => __( 'Name: A → Z', 'dw-catalog-wp' ),
 			'title_desc' => __( 'Name: Z → A', 'dw-catalog-wp' ),
 		);
-		foreach ( DWCAT_Config::get_fields( $post_type ) as $f ) {
+		foreach ( self::allowed_fields( $post_type, $public ) as $f ) {
 			if ( 'number' === $f['type'] ) {
 				/* translators: %s: field label */
-				$options[ 'meta:' . $f['meta_key'] . ':asc' ]  = sprintf( __( '%s: Low → High', 'dw-catalog-wp' ), $f['label'] );
+				$options[ 'meta:' . $f['meta_key'] . ':asc' ] = sprintf( __( '%s: Low → High', 'dw-catalog-wp' ), $f['label'] );
 				/* translators: %s: field label */
 				$options[ 'meta:' . $f['meta_key'] . ':desc' ] = sprintf( __( '%s: High → Low', 'dw-catalog-wp' ), $f['label'] );
 			}
@@ -166,18 +172,14 @@ class DWCAT_Catalog_Query {
 		return $options;
 	}
 
-	/**
-	 * Sort key → orderby parts. Accepts the get_sort_options() keys plus
-	 * "meta:{key}:{dir}" for any field (admin column headers sort text fields too).
-	 */
-	public static function resolve_sort( $post_type, $sort ) {
+	public static function resolve_sort( $post_type, $sort, $public = false ) {
 		$out = array( 'orderby' => 'date', 'order' => 'DESC', 'meta_key' => '', 'meta_type' => 'CHAR' );
 
 		if ( preg_match( '/^meta:([a-z0-9_]+):(asc|desc)$/', (string) $sort, $m ) ) {
-			$fields = self::fields_by_key( $post_type );
+			$fields = self::allowed_fields( $post_type, $public );
 			if ( isset( $fields[ $m[1] ] ) ) {
 				$out['meta_key']  = $m[1];
-				$out['meta_type'] = 'number' === $fields[ $m[1] ]['type'] ? 'NUMERIC' : ( 'date' === $fields[ $m[1] ]['type'] ? 'DATE' : 'CHAR' );
+				$out['meta_type'] = 'number' === $fields[ $m[1] ]['type'] ? 'NUMERIC' : 'CHAR';
 				$out['order']     = strtoupper( $m[2] );
 			}
 			return $out;
@@ -198,61 +200,119 @@ class DWCAT_Catalog_Query {
 	}
 
 	/**
-	 * Choices for a field filter: select options, or distinct stored values for free-text fields.
+	 * Choices for a field filter: select options, or distinct stored values (cached until the
+	 * next catalog write). Callers pass only fields they are allowed to expose.
 	 *
-	 * @param string $base_cat Limit free-text values to items in this category (shortcode "category").
 	 * @return array value => label
 	 */
-	public static function get_filter_choices( $post_type, $field, $base_cat = '', $limit = 100 ) {
+	public static function get_filter_choices( $post_type, $field, $base_cat = '', $limit = 200 ) {
 		if ( 'select' === $field['type'] ) {
 			return DWCAT_Config::parse_select_options( $field['options'] );
 		}
 
-		global $wpdb;
-		$scope = '';
-		if ( '' !== (string) $base_cat ) {
-			$ids = get_posts( array_merge(
-				self::build_args( $post_type, array( 'base_cat' => $base_cat ) ),
-				array( 'post_status' => 'publish', 'posts_per_page' => -1, 'fields' => 'ids', 'no_found_rows' => true )
-			) );
-			if ( ! $ids ) {
-				return array();
-			}
-			$scope = ' AND p.ID IN (' . implode( ',', array_map( 'intval', $ids ) ) . ')';
+		$cache_key = 'dwcat_fc_' . md5( $post_type . '|' . $field['meta_key'] . '|' . $base_cat . '|' . DWCAT_Store::cache_version() );
+		$cached    = get_transient( $cache_key );
+		if ( is_array( $cached ) ) {
+			return $cached;
 		}
 
-		$values = $wpdb->get_col( $wpdb->prepare(
-			"SELECT DISTINCT pm.meta_value FROM {$wpdb->postmeta} pm
-			 INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
-			 WHERE pm.meta_key = %s AND p.post_type = %s AND p.post_status = 'publish' AND pm.meta_value <> ''{$scope}
-			 ORDER BY pm.meta_value ASC LIMIT %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared — $scope is intval'd IDs
-			$field['meta_key'],
+		global $wpdb;
+		$join = '';
+		$tt   = self::base_term_taxonomy_ids( $post_type, $base_cat );
+		if ( null !== $tt ) {
+			if ( ! $tt ) {
+				return array();
+			}
+			$join = " INNER JOIN {$wpdb->term_relationships} tr ON tr.object_id = v.post_id AND tr.term_taxonomy_id IN (" . implode( ',', array_map( 'intval', $tt ) ) . ')';
+		}
+
+		$values  = $wpdb->get_col( $wpdb->prepare(
+			'SELECT DISTINCT v.value_idx FROM ' . DWCAT_Store::table( 'values' ) . " v
+			 INNER JOIN {$wpdb->posts} p ON p.ID = v.post_id AND p.post_type = %s AND p.post_status = 'publish'{$join}
+			 WHERE v.field_key = %s AND v.value_idx <> ''
+			 ORDER BY v.value_idx ASC LIMIT %d", // phpcs:ignore — $join holds intval'd IDs only
 			$post_type,
+			$field['meta_key'],
 			(int) $limit
 		) );
-		return $values ? array_combine( $values, $values ) : array();
+		$choices = $values ? array_combine( $values, $values ) : array();
+		set_transient( $cache_key, $choices, 12 * HOUR_IN_SECONDS );
+		return $choices;
 	}
 
 	/**
+	 * Fields a query may touch. On the site only public fields ("Detail" checked) — fields that
+	 * stay in the admin must not be filterable, sortable or searchable from outside.
+	 *
 	 * @return array meta_key => field
 	 */
-	public static function fields_by_key( $post_type ) {
+	public static function allowed_fields( $post_type, $public ) {
 		$out = array();
 		foreach ( DWCAT_Config::get_fields( $post_type ) as $f ) {
-			$out[ $f['meta_key'] ] = $f;
+			if ( ! $public || DWCAT_Config::is_public_field( $f ) ) {
+				$out[ $f['meta_key'] ] = $f;
+			}
 		}
 		return $out;
 	}
 
-	private static function searchable_keys( $post_type ) {
-		$keys = array();
+	/** Search-index sources visitors may match: title, public fields, public variation columns. */
+	public static function public_sources( $post_type ) {
+		$sources = array( '_title' );
 		foreach ( DWCAT_Config::get_fields( $post_type ) as $f ) {
-			if ( in_array( $f['type'], self::SEARCHABLE_TYPES, true ) ) {
-				$keys[] = $f['meta_key'];
+			if ( DWCAT_Config::is_public_field( $f ) ) {
+				$sources[] = $f['meta_key'];
 			}
 		}
-		// Variation item codes / option names (serialized array — substring match is enough)
-		$keys[] = DWCAT_Variations::META_KEY;
-		return $keys;
+		foreach ( DWCAT_Config::get_variation_columns( $post_type ) as $c ) {
+			if ( DWCAT_Variations::is_public_column( $c ) ) {
+				$sources[] = '_var_' . $c['key'];
+			}
+		}
+		return $sources;
+	}
+
+	/** Visitor search text → at most MAX_WORDS words (1-letter words dropped when others exist). */
+	public static function search_words( $search ) {
+		$words = DWCAT_Store::tokenize( substr( (string) $search, 0, 200 ) );
+		if ( count( $words ) > 1 ) {
+			$words = array_values( array_filter( $words, function ( $w ) {
+				return ( function_exists( 'mb_strlen' ) ? mb_strlen( $w, 'UTF-8' ) : strlen( $w ) ) > 1;
+			} ) );
+		}
+		return array_slice( $words, 0, self::MAX_WORDS );
+	}
+
+	private static function base_terms( $base_cat ) {
+		return array_values( array_filter( array_map( 'trim', explode( ',', (string) $base_cat ) ) ) );
+	}
+
+	/** term_taxonomy_ids of the fixed category and its children; null when none is fixed. */
+	private static function base_term_taxonomy_ids( $post_type, $base_cat ) {
+		$terms = self::base_terms( $base_cat );
+		if ( ! $terms ) {
+			return null;
+		}
+		$tax = DWCAT_Config::get_category_taxonomy( $post_type );
+		$ids = array();
+		foreach ( $terms as $t ) {
+			$term = is_numeric( $t ) ? get_term( (int) $t, $tax ) : get_term_by( 'slug', $t, $tax );
+			if ( ! $term || is_wp_error( $term ) ) {
+				continue;
+			}
+			$ids[] = (int) $term->term_taxonomy_id;
+			foreach ( (array) get_term_children( $term->term_id, $tax ) as $child_id ) {
+				$child = get_term( $child_id, $tax );
+				if ( $child && ! is_wp_error( $child ) ) {
+					$ids[] = (int) $child->term_taxonomy_id;
+				}
+			}
+		}
+		return array_values( array_unique( $ids ) );
+	}
+
+	/** @return array meta_key => field (all fields — admin use). */
+	public static function fields_by_key( $post_type ) {
+		return self::allowed_fields( $post_type, false );
 	}
 }

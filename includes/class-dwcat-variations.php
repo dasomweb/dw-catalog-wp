@@ -56,6 +56,7 @@ class DWCAT_Variations {
 				'label'   => $label,
 				'type'    => $type,
 				'options' => 'select' === $type && isset( $c['options'] ) ? sanitize_text_field( $c['options'] ) : '',
+				'public'  => ! isset( $c['public'] ) || ! empty( $c['public'] ),
 			);
 			$seen[ $key ] = true;
 		}
@@ -69,8 +70,12 @@ class DWCAT_Variations {
 
 	/** @return array[] Variation rows. */
 	public static function get( $post_id ) {
-		$rows = get_post_meta( $post_id, self::META_KEY, true );
-		return is_array( $rows ) ? $rows : array();
+		return DWCAT_Store::get_variations( $post_id );
+	}
+
+	/** Columns without the flag (saved before it existed) are public. */
+	public static function is_public_column( $col ) {
+		return ! isset( $col['public'] ) || ! empty( $col['public'] );
 	}
 
 	// ─────────────────────────────────────────────────────────────
@@ -200,11 +205,7 @@ class DWCAT_Variations {
 			}
 		}
 
-		if ( $rows ) {
-			update_post_meta( $post_id, self::META_KEY, $rows );
-		} else {
-			delete_post_meta( $post_id, self::META_KEY );
-		}
+		DWCAT_Store::save_variations( $post_id, $rows );
 	}
 
 	// ─────────────────────────────────────────────────────────────
@@ -219,6 +220,9 @@ class DWCAT_Variations {
 		}
 		$columns = array();
 		foreach ( DWCAT_Config::get_variation_columns( get_post_type( $post_id ) ) as $col ) {
+			if ( ! self::is_public_column( $col ) ) {
+				continue; // internal column (e.g. cost) — never rendered on the site
+			}
 			foreach ( $rows as $row ) {
 				if ( isset( $row[ $col['key'] ] ) && '' !== $row[ $col['key'] ] ) {
 					$columns[] = $col;

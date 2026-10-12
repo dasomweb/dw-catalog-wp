@@ -181,6 +181,8 @@ $expected_classes = array(
 	'DWCAT_Catalog_Query'    => 'class-dwcat-catalog-query.php',
 	'DWCAT_Catalog'          => 'class-dwcat-catalog.php',
 	'DWCAT_Variations'       => 'class-dwcat-variations.php',
+	'DWCAT_Store'            => 'class-dwcat-store.php',
+	'DWCAT_Access_Guard'     => 'class-dwcat-access-guard.php',
 );
 
 foreach ( $expected_classes as $class_name => $file_name ) {

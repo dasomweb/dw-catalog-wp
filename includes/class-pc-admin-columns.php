@@ -83,7 +83,7 @@ class DWCAT_Admin_Columns {
 		// Custom field columns
 		if ( strpos( $column_name, 'dw_field_' ) === 0 ) {
 			$meta_key = substr( $column_name, strlen( 'dw_field_' ) );
-			$value = get_post_meta( $post_id, $meta_key, true );
+			$value = DWCAT_Store::get_value( $post_id, $meta_key, '' );
 
 			// Check if this is a select field and resolve label
 			$fields = DWCAT_Config::get_fields( $pt_slug );

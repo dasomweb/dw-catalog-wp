@@ -67,7 +67,7 @@ class DWCAT_Meta_Box {
 	 */
 	private function render_field( $post, $field ) {
 		$meta_key = $field['meta_key'];
-		$value = get_post_meta( $post->ID, $meta_key, true );
+		$value = DWCAT_Store::get_value( $post->ID, $meta_key, '' );
 		$type = $field['type'];
 		$label = $field['label'];
 		$input_id = 'dw_field_' . sanitize_key( $meta_key );
@@ -195,6 +195,7 @@ class DWCAT_Meta_Box {
 
 		$fields = DWCAT_Config::get_fields( $pt_slug );
 		$title_value = '';
+		$values = array();
 
 		foreach ( $fields as $field ) {
 			$meta_key = $field['meta_key'];
@@ -212,16 +213,15 @@ class DWCAT_Meta_Box {
 				} else {
 					$value = sanitize_text_field( $raw_value );
 				}
-				update_post_meta( $post_id, $meta_key, $value );
+				$values[ $meta_key ] = $value;
 
 				// Track title field
 				if ( ! empty( $field['is_title_field'] ) ) {
 					$title_value = trim( $value );
 				}
-			} else {
-				delete_post_meta( $post_id, $meta_key );
 			}
 		}
+		DWCAT_Store::save_values( $post_id, $values );
 
 		// Sync title field to post_title
 		if ( $title_value !== '' ) {
@@ -280,7 +280,7 @@ class DWCAT_Meta_Box {
 	 * Static helper: get a meta value with default.
 	 */
 	public static function get_product_meta( $post_id, $meta_key, $default = '' ) {
-		$value = get_post_meta( $post_id, $meta_key, true );
+		$value = DWCAT_Store::get_value( $post_id, $meta_key, '' );
 		return ! empty( $value ) ? $value : $default;
 	}
 

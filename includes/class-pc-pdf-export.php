@@ -191,6 +191,9 @@ class DWCAT_PDF_Export {
 		) );
 		$products = $query->posts;
 		wp_reset_postdata();
+		foreach ( array_chunk( wp_list_pluck( $products, 'ID' ), 1000 ) as $chunk ) {
+			DWCAT_Store::prime( $chunk ); // one query per 1000 items, not one per field
+		}
 
 		if ( empty( $products ) ) {
 			wp_die( __( 'No items found.', 'dw-catalog-wp' ) );
@@ -270,7 +273,7 @@ class DWCAT_PDF_Export {
 			$terms = get_the_terms( $post_id, $cat_tax );
 			return ( $terms && ! is_wp_error( $terms ) ) ? implode( ', ', wp_list_pluck( $terms, 'name' ) ) : '';
 		}
-		$value = get_post_meta( $post_id, $key, true );
+		$value = DWCAT_Store::get_value( $post_id, $key, '' );
 		// Resolve select labels
 		foreach ( $all_fields as $f ) {
 			if ( $f['meta_key'] === $key && $f['type'] === 'select' && $value !== '' ) {

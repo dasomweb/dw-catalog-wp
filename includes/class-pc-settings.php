@@ -299,7 +299,7 @@ class DWCAT_Settings {
 					<li><strong><?php _e( 'Options', 'dw-catalog-wp' ); ?></strong>: <?php _e( 'For Select type. Format: value:Label,value2:Label2 (e.g., active:Active,inactive:Inactive)', 'dw-catalog-wp' ); ?></li>
 					<li><strong><?php _e( 'List', 'dw-catalog-wp' ); ?></strong>: <?php _e( 'Show this field as a column in the admin list page.', 'dw-catalog-wp' ); ?></li>
 					<li><strong><?php _e( 'Export', 'dw-catalog-wp' ); ?></strong>: <?php _e( 'Include this field in PDF export options.', 'dw-catalog-wp' ); ?></li>
-					<li><strong><?php _e( 'Detail', 'dw-catalog-wp' ); ?></strong>: <?php _e( 'Show this field on the item detail page. Uncheck for internal notes.', 'dw-catalog-wp' ); ?></li>
+					<li><strong><?php _e( 'Detail', 'dw-catalog-wp' ); ?></strong>: <?php _e( 'Public field: shown on the website (detail page, cards) and usable for site search, filters and sorting. Unchecked fields never leave the admin — use this for costs, supplier info and internal notes.', 'dw-catalog-wp' ); ?></li>
 					<li><strong><?php _e( 'Title', 'dw-catalog-wp' ); ?></strong>: <?php _e( 'Sync this field as the post title. Only ONE field should have this checked.', 'dw-catalog-wp' ); ?></li>
 				</ul>
 			</div>
@@ -352,6 +352,7 @@ class DWCAT_Settings {
 					<th><?php _e( 'Key', 'dw-catalog-wp' ); ?></th>
 					<th style="width:140px;"><?php _e( 'Type', 'dw-catalog-wp' ); ?></th>
 					<th><?php _e( 'Options (for Select)', 'dw-catalog-wp' ); ?></th>
+					<th style="width:60px;" title="<?php esc_attr_e( 'Shown on the website. Uncheck for internal columns such as cost.', 'dw-catalog-wp' ); ?>"><?php _e( 'Public', 'dw-catalog-wp' ); ?></th>
 					<th style="width:60px;"><?php _e( 'Remove', 'dw-catalog-wp' ); ?></th>
 				</tr>
 			</thead>
@@ -389,6 +390,7 @@ class DWCAT_Settings {
 				</select>
 			</td>
 			<td><input type="text" name="<?php echo esc_attr( $prefix ); ?>[options]" value="<?php echo esc_attr( isset( $col['options'] ) ? $col['options'] : '' ); ?>" class="widefat" placeholder="val:Label,val2:Label2"></td>
+			<td style="text-align:center;"><input type="hidden" name="<?php echo esc_attr( $prefix ); ?>[public]" value="0"><input type="checkbox" name="<?php echo esc_attr( $prefix ); ?>[public]" value="1" <?php checked( DWCAT_Variations::is_public_column( $col ) ); ?>></td>
 			<td style="text-align:center;"><button type="button" class="button-link dw-remove-varcol" style="color:#b32d2e;">&times;</button></td>
 		</tr>
 		<?php
@@ -476,6 +478,7 @@ class DWCAT_Settings {
 		}
 
 		DWCAT_Config::save_fields( $pt_slug, $fields );
+		DWCAT_Store::flush_field_keys();
 
 		if ( ! empty( $_POST['variation_columns_submitted'] ) ) {
 			$raw_cols = isset( $_POST['variation_columns'] ) && is_array( $_POST['variation_columns'] ) ? wp_unslash( $_POST['variation_columns'] ) : array();

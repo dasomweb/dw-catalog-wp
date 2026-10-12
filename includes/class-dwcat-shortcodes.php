@@ -71,7 +71,9 @@ class DWCAT_Shortcodes {
 			$args['orderby']  = 'post__in';
 		}
 
-		return new WP_Query( $args );
+		$query = new WP_Query( $args );
+		DWCAT_Store::prime( wp_list_pluck( $query->posts, 'ID' ) );
+		return $query;
 	}
 
 	/**
@@ -79,7 +81,8 @@ class DWCAT_Shortcodes {
 	 * $show_fields: comma-separated meta keys, or empty to use all "show_in_list" fields.
 	 */
 	private function resolve_display_fields( $post_type, $show_fields ) {
-		$all_fields = DWCAT_Config::get_fields( $post_type );
+		// Site output: public fields only, whatever the shortcode asks for
+		$all_fields = array_filter( DWCAT_Config::get_fields( $post_type ), array( 'DWCAT_Config', 'is_public_field' ) );
 		if ( empty( $show_fields ) ) {
 			return array_filter( $all_fields, function ( $f ) {
 				return ! empty( $f['show_in_list'] ) && empty( $f['is_title_field'] );
@@ -96,7 +99,7 @@ class DWCAT_Shortcodes {
 	 * Render a single field value (resolves select labels).
 	 */
 	public function get_field_value( $post_id, $field ) {
-		$value = get_post_meta( $post_id, $field['meta_key'], true );
+		$value = DWCAT_Store::get_value( $post_id, $field['meta_key'], '' );
 		if ( $value === '' || $value === false ) {
 			return '';
 		}
@@ -263,7 +266,7 @@ class DWCAT_Shortcodes {
 		$title_field = DWCAT_Config::get_title_field( get_post_type( $post_id ) );
 		$display_title = get_the_title( $post_id );
 		if ( $title_field ) {
-			$meta_title = get_post_meta( $post_id, $title_field['meta_key'], true );
+			$meta_title = DWCAT_Store::get_value( $post_id, $title_field['meta_key'], '' );
 			if ( ! empty( $meta_title ) ) {
 				$display_title = $meta_title;
 			}
@@ -336,7 +339,7 @@ class DWCAT_Shortcodes {
 		$title_field = DWCAT_Config::get_title_field( $post->post_type );
 		$display_title = $post->post_title;
 		if ( $title_field ) {
-			$meta_title = get_post_meta( $post_id, $title_field['meta_key'], true );
+			$meta_title = DWCAT_Store::get_value( $post_id, $title_field['meta_key'], '' );
 			if ( ! empty( $meta_title ) ) {
 				$display_title = $meta_title;
 			}
