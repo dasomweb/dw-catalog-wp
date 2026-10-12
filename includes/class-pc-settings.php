@@ -214,8 +214,27 @@ class DWCAT_Settings {
 					return keys;
 				}
 
+				// Presets act as an industry choice: picking another one replaces the unsaved rows the
+				// previous pick added (saved fields are never touched); clicking the active one undoes it.
+				var savedVarCols = $('#dw-varcols-body').html();
+
+				function clearPresetRows() {
+					$('#dw-fields-body tr.dw-preset-added').remove();
+					$('#dw-varcols-body').html(savedVarCols);
+					$('.dw-preset-btn').removeClass('button-primary').attr('aria-pressed', 'false');
+				}
+
 				$('.dw-preset-btn').on('click', function(){
-					var preset = presets[$(this).data('group')].presets[$(this).data('preset')];
+					var $btn = $(this);
+					var wasActive = $btn.hasClass('button-primary');
+					clearPresetRows();
+					if (wasActive) {
+						$('#dw-preset-result').text(<?php echo wp_json_encode( __( 'Preset removed. Saved fields are unchanged.', 'dw-catalog-wp' ) ); ?>).show();
+						return;
+					}
+					$btn.addClass('button-primary').attr('aria-pressed', 'true');
+
+					var preset = presets[$btn.data('group')].presets[$btn.data('preset')];
 					var keys = existingKeys(), added = 0, skipped = 0;
 
 					$.each(preset.fields, function(_, f){
@@ -247,7 +266,7 @@ class DWCAT_Settings {
 						});
 					}
 
-					var msg = <?php echo wp_json_encode( __( '%1$s: %2$d fields added, %3$d skipped (already exist), %4$d variation columns added. Click "Save Fields" to apply.', 'dw-catalog-wp' ) ); ?>;
+					var msg = <?php echo wp_json_encode( __( '%1$s: %2$d fields added, %3$d skipped (already exist), %4$d variation columns added. Pick another preset to switch, or click it again to undo. Click "Save Fields" to apply.', 'dw-catalog-wp' ) ); ?>;
 					$('#dw-preset-result')
 						.text(msg.replace('%1$s', preset.label).replace('%2$d', added).replace('%3$d', skipped).replace('%4$d', varAdded))
 						.show();
@@ -296,7 +315,7 @@ class DWCAT_Settings {
 		?>
 		<div class="dw-presets-panel" style="margin: 16px 0; padding: 12px 15px; background: #fff; border: 1px solid #ccd0d4;">
 			<h3 style="margin: 0 0 4px;"><?php _e( 'Field Presets', 'dw-catalog-wp' ); ?></h3>
-			<p class="description" style="margin-top: 0;"><?php _e( 'Add a ready-made field set for your business. Fields that already exist are skipped. Nothing is saved until you click "Save Fields".', 'dw-catalog-wp' ); ?></p>
+			<p class="description" style="margin-top: 0;"><?php _e( 'Pick your business type to add its field set. Picking another type switches the set; fields that already exist are kept. Nothing is saved until you click "Save Fields".', 'dw-catalog-wp' ); ?></p>
 			<?php foreach ( $groups as $g_key => $group ) : ?>
 				<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px;">
 					<strong style="min-width: 90px;"><?php echo esc_html( $group['label'] ); ?></strong>
