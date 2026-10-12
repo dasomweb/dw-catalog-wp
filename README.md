@@ -1,8 +1,36 @@
 # DW Catalog WP
 
-WordPress 플러그인 - 도메인 변경에 친화적인 제품 카탈로그 플러그인
+**독립 카탈로그 시스템**을 워드프레스 플러그인으로 배포합니다. 워드프레스는 디자인(테마 · 페이지)만
+맡고, 카탈로그 데이터는 플러그인 전용 테이블에만 있습니다 (`wp_posts` · `wp_postmeta` · 미디어 라이브러리 미사용).
 
-Domain-change friendly WordPress product catalog plugin
+- 코어(`core/`)는 워드프레스 코드 없는 PHP 라이브러리 — MySQL/MariaDB · PostgreSQL 지원
+- 페이지에 숏코드 하나: 목록 · 검색 · 필터 · 정렬 · 상세 (`/{page}/item/{slug}/`) · SEO 태그
+- 비공개 필드는 사이트 어디에도 나가지 않음 (출력 · 검색 · 필터 · 정렬 · API)
+- 구조: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · 숏코드: [docs/SHORTCODES.md](docs/SHORTCODES.md)
+
+### 별도 DB 사용 (선택)
+
+기본은 워드프레스 DB 안의 `{prefix}dwcat_*` 테이블입니다 (설정 불필요). 다른 DB 서버나
+PostgreSQL 을 쓰려면 `wp-config.php` 에:
+
+```php
+define( 'DWCAT_DB_DRIVER', 'pgsql' );   // 또는 'mysql'
+define( 'DWCAT_DB_HOST', '127.0.0.1' );
+define( 'DWCAT_DB_PORT', 5432 );
+define( 'DWCAT_DB_NAME', 'catalog' );
+define( 'DWCAT_DB_USER', 'catalog' );
+define( 'DWCAT_DB_PASSWORD', '…' );
+```
+
+### 테스트
+
+```bash
+php tests/test-plugin-integrity.php && php tests/test-bootstrap.php && php tests/test-license-manager.php
+# 코어 (실제 DB):
+DWC_MYSQL="mysql:host=127.0.0.1;dbname=dwc_test" DWC_MYSQL_USER=root \
+DWC_PGSQL="pgsql:host=127.0.0.1;dbname=dwc_test" DWC_PGSQL_USER=postgres \
+php -d extension=gd tests/core/run.php
+```
 
 ---
 

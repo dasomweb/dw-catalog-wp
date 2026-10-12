@@ -2,8 +2,8 @@
 /**
  * Plugin Name: DW Catalog WP
  * Plugin URI: https://github.com/dasomweb/dw-catalog-wp
- * Description: Product catalog with dynamic custom fields per post type.
- * Version: 2.0.0-rc.4
+ * Description: Independent product catalog system (own tables, search, filters, variations) placed on WordPress pages by shortcode.
+ * Version: 2.0.0-rc.5
  * Author: Dasom Web
  * Author URI: https://github.com/dasomweb
  * License: GPL v2 or later
@@ -11,7 +11,7 @@
  * Update URI: https://github.com/dasomweb/dw-catalog-wp
  * Text Domain: dw-catalog-wp
  * Domain Path: /languages
- * Requires at least: 5.0
+ * Requires at least: 5.5
  * Requires PHP: 7.4
  */
 
@@ -27,11 +27,11 @@ function dwcat_get_config() {
 		'github_repo_owner'  => 'dasomweb',
 		'github_repo_name'   => 'dw-catalog-wp',
 		'plugin_slug'        => 'dw-catalog-wp',
-		'plugin_version'     => '2.0.0-rc.4',
+		'plugin_version'     => '2.0.0-rc.5',
 		'plugin_name'        => 'DW Catalog WP',
 		'plugin_text_domain' => 'dw-catalog-wp',
 		'github_branch'      => 'main',
-		'requires_wp'        => '5.0',
+		'requires_wp'        => '5.5',
 		'requires_php'       => '7.4',
 	);
 }
@@ -48,58 +48,14 @@ function dwcat_get_file() {
 	return __FILE__;
 }
 
-/**
- * Get or create a taxonomy term by name and/or slug.
- * Generic replacement for the old dwcat_get_or_create_product_category.
- *
- * @param string $name     Term display name.
- * @param string $slug     Term slug.
- * @param string $taxonomy Taxonomy name.
- * @return int Term ID, or 0 on failure.
+/*
+ * ─── Structure ──────────────────────────────────────────────────────────────
+ * core/          DW Catalog core — standalone PHP, no WordPress code (docs/ARCHITECTURE.md)
+ * includes/wp/   WordPress adapter: DB connection, host, admin menu, shortcodes, REST
+ * includes/      DASOM-Forge license SDK + gates (WordPress distribution)
  */
-function dwcat_get_or_create_term( $name = '', $slug = '', $taxonomy = '' ) {
-	$name = trim( (string) $name );
-	$slug = trim( (string) $slug );
-	if ( ( $name === '' && $slug === '' ) || $taxonomy === '' ) {
-		return 0;
-	}
+require_once dwcat_get_path() . 'core/bootstrap.php';
 
-	if ( $slug !== '' ) {
-		$term = get_term_by( 'slug', $slug, $taxonomy );
-		if ( $term && ! is_wp_error( $term ) ) {
-			return (int) $term->term_id;
-		}
-	}
-	if ( $name !== '' ) {
-		$term = get_term_by( 'name', $name, $taxonomy );
-		if ( $term && ! is_wp_error( $term ) ) {
-			return (int) $term->term_id;
-		}
-	}
-
-	$term_name = $name !== '' ? $name : $slug;
-	$term_slug = $slug !== '' ? $slug : sanitize_title( $term_name );
-	if ( $term_name === '' ) {
-		return 0;
-	}
-
-	$result = wp_insert_term( $term_name, $taxonomy, array( 'slug' => $term_slug ) );
-	if ( is_wp_error( $result ) ) {
-		return 0;
-	}
-	return (int) $result['term_id'];
-}
-
-/**
- * Backward-compatible wrapper for the old function name.
- */
-function dwcat_get_or_create_product_category( $category_name = '', $category_slug = '' ) {
-	return dwcat_get_or_create_term( $category_name, $category_slug, 'product_category' );
-}
-
-// Load includes
-require_once dwcat_get_path() . 'includes/class-pc-url-helper.php';
-require_once dwcat_get_path() . 'includes/class-pc-config.php';
 require_once dwcat_get_path() . 'includes/class-pc-github-updater.php';
 
 // DASOM-Forge SDK — Forge Client 를 먼저 (License Manager 가 생성자에서 사용)
@@ -108,22 +64,11 @@ require_once dwcat_get_path() . 'includes/class-dw-license-manager.php';
 require_once dwcat_get_path() . 'includes/license/gates.php';
 require_once dwcat_get_path() . 'includes/class-dwcat-license-rest.php';
 
-require_once dwcat_get_path() . 'includes/class-dwcat-field-presets.php';
-require_once dwcat_get_path() . 'includes/class-pc-settings.php';
-require_once dwcat_get_path() . 'includes/class-pc-post-type.php';
-require_once dwcat_get_path() . 'includes/class-pc-meta-box.php';
-require_once dwcat_get_path() . 'includes/class-pc-product-display.php';
-require_once dwcat_get_path() . 'includes/class-pc-admin-columns.php';
-require_once dwcat_get_path() . 'includes/class-pc-admin-pages.php';
-require_once dwcat_get_path() . 'includes/class-pc-field-reference.php';
-require_once dwcat_get_path() . 'includes/class-pc-bulk-import.php';
-require_once dwcat_get_path() . 'includes/class-dwcat-design-settings.php';
-require_once dwcat_get_path() . 'includes/class-dwcat-shortcodes.php';
-require_once dwcat_get_path() . 'includes/class-dwcat-store.php';
-require_once dwcat_get_path() . 'includes/class-dwcat-access-guard.php';
-require_once dwcat_get_path() . 'includes/class-dwcat-catalog-query.php';
-require_once dwcat_get_path() . 'includes/class-dwcat-variations.php';
-require_once dwcat_get_path() . 'includes/class-dwcat-catalog.php';
+require_once dwcat_get_path() . 'includes/wp/class-dwcat-wpdb-connection.php';
+require_once dwcat_get_path() . 'includes/wp/class-dwcat-wp-host.php';
+require_once dwcat_get_path() . 'includes/wp/class-dwcat-wp-admin.php';
+require_once dwcat_get_path() . 'includes/wp/class-dwcat-wp-front.php';
+require_once dwcat_get_path() . 'includes/wp/class-dwcat-wp-rest.php';
 
 /**
  * DASOM-Forge License SDK.
@@ -139,9 +84,9 @@ DW_DWCAT_License_Manager::init( array(
 	'plugin_file'     => __FILE__,
 	'plugin_basename' => plugin_basename( __FILE__ ),
 	'plugin_name'     => 'DW Catalog WP',
-	'plugin_version'  => '2.0.0-rc.4',
+	'plugin_version'  => '2.0.0-rc.5',
 	'settings_page'   => 'dw-catalog-license',
-	'menu_parent'     => array( 'DWCAT_Config', 'get_primary_menu_slug' ),
+	'menu_parent'     => DWCAT_WP_Host::ADMIN_PAGE,
 	'public_keys'     => array(
 		dwcat_get_path() . 'includes/keys/dasomforge.pub',
 		dwcat_get_path() . 'includes/keys/dasomforge.previous.pub', // 키 회전 시에만 존재
@@ -153,146 +98,97 @@ DW_DWCAT_License_Manager::init( array(
  *
  * PLUGIN-DEV-GUIDE §7.4: "고객은 dasomforge 가 발급한 R2 signed URL 로만 다운로드
  * (GitHub 직접 다운로드 ❌)". dasomforge 가 유일한 배포 채널입니다.
- *
- * 기술적으로도 반드시 꺼야 합니다 — v2.0 부터 GitHub Release 자산은
- * **플랫폼 표준 멀티루트 ZIP** (`manifest.json` + `wp-plugin/`) 이라
- * 워드프레스가 직접 설치할 수 없습니다 (§7.2.1: 제출 ZIP ≠ 고객 설치 ZIP).
- * 그걸 WP 업그레이더에 물리면 "플러그인 헤더를 찾을 수 없음" 으로 실패합니다.
- *
- * 클래스 자체는 남겨 둡니다 — 삭제하면 무결성 매니페스트 파일 목록이 흔들리고,
- * 롤백 시나리오에서 필요할 수 있습니다.
+ * 클래스 자체는 롤백 대비로 남겨 둡니다.
  *
  * @see DWCAT_GitHub_Updater — 인스턴스화하지 않음 (의도적)
  */
 
-// Catalog data store — hooks must exist before plugins_loaded (table install runs at priority 5)
-DWCAT_Store::init();
+/**
+ * The catalog core for this site.
+ *
+ * Default: tables in the WordPress database ("{$wpdb->prefix}dwcat_*") over $wpdb — nothing to
+ * configure. A separate database (MySQL or PostgreSQL) is opt-in via wp-config.php:
+ *
+ *   define( 'DWCAT_DB_DRIVER', 'pgsql' );      // or 'mysql'
+ *   define( 'DWCAT_DB_HOST', '127.0.0.1' );
+ *   define( 'DWCAT_DB_PORT', 5432 );
+ *   define( 'DWCAT_DB_NAME', 'catalog' );
+ *   define( 'DWCAT_DB_USER', 'catalog' );
+ *   define( 'DWCAT_DB_PASSWORD', '…' );
+ *   define( 'DWCAT_DB_PREFIX', 'dwcat_' );     // optional
+ *
+ * @return \DWCatalog\Catalog
+ */
+function dwcat() {
+	static $catalog = null;
+	if ( null === $catalog ) {
+		$host = new DWCAT_WP_Host();
+		if ( defined( 'DWCAT_DB_DRIVER' ) ) {
+			$prefix = defined( 'DWCAT_DB_PREFIX' ) ? DWCAT_DB_PREFIX : 'dwcat_';
+			$db     = \DWCatalog\Db\PdoConnection::fromConfig( array(
+				'driver'   => DWCAT_DB_DRIVER,
+				'host'     => defined( 'DWCAT_DB_HOST' ) ? DWCAT_DB_HOST : 'localhost',
+				'port'     => defined( 'DWCAT_DB_PORT' ) ? DWCAT_DB_PORT : null,
+				'dbname'   => DWCAT_DB_NAME,
+				'user'     => defined( 'DWCAT_DB_USER' ) ? DWCAT_DB_USER : '',
+				'password' => defined( 'DWCAT_DB_PASSWORD' ) ? DWCAT_DB_PASSWORD : '',
+				'prefix'   => $prefix,
+			) );
+		} else {
+			global $wpdb;
+			$prefix = $wpdb->prefix . 'dwcat_';
+			$db     = new DWCAT_Wpdb_Connection( $wpdb, $prefix );
+		}
+		$catalog = new \DWCatalog\Catalog( $db, $host, $prefix );
+	}
+	return $catalog;
+}
 
-// Initialize all components
+// Initialize the WordPress adapter
 add_action( 'plugins_loaded', 'dwcat_init', 10 );
 function dwcat_init() {
-	if ( is_admin() ) {
-		dwcat_migrate_menu_name();
-	}
-
-	new DWCAT_Settings();
-	new DWCAT_Post_Type();
-	new DWCAT_Meta_Box();
-	new DWCAT_Admin_Columns();
-	new DWCAT_Admin_Pages();
-	new DWCAT_Field_Reference();
-	new DWCAT_Bulk_Import();
-	new DWCAT_Design_Settings();
-	DWCAT_Catalog_Query::init();
-	DWCAT_Access_Guard::init();
-	new DWCAT_Variations();
-	new DWCAT_Catalog( new DWCAT_Shortcodes() );
+	load_plugin_textdomain( 'dw-catalog-wp', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
+	new DWCAT_WP_Admin();
+	new DWCAT_WP_Front();
+	new DWCAT_WP_Rest();
 	new DWCAT_License_REST();   // §3.6 SHOULD #2 진단 엔드포인트
-
-	// DW Admin SPA Integration (optional — works without DW Admin)
-	// 게이트 9: 라이선스가 없으면 SPA 모듈을 노출하지 않습니다.
-	if ( function_exists( 'dw_admin' ) && dwcat_can_call_rest() ) {
-		$spa_post_types = DWCAT_Config::get_post_types();
-		foreach ( $spa_post_types as $spa_slug => $spa_config ) {
-			$spa_columns = array();
-			$spa_fields  = DWCAT_Config::get_list_fields( $spa_slug );
-			foreach ( $spa_fields as $f ) {
-				if ( empty( $f['is_title_field'] ) ) {
-					$spa_columns[] = array( 'key' => $f['meta_key'], 'label' => $f['label'] );
-				}
-			}
-			array_unshift( $spa_columns, array( 'key' => 'title', 'label' => $spa_config['singular_name'] ) );
-
-			add_filter( 'dw_spa_modules', function ( $modules ) use ( $spa_slug, $spa_config, $spa_columns ) {
-				$modules[] = array(
-					'key'       => 'dwcat-' . $spa_slug,
-					'label'     => $spa_config['menu_name'],
-					'icon'      => 'grid',
-					'post_type' => $spa_slug,
-					'rest_base' => rest_url( 'wp/v2/' . $spa_slug ),
-					'columns'   => $spa_columns,
-					'roles'     => array(),
-				);
-				return $modules;
-			} );
-		}
-	}
-
-	// PDF Export (requires composer autoload)
-	require_once dwcat_get_path() . 'includes/class-pc-pdf-export.php';
-	new DWCAT_PDF_Export();
 }
 
 // Activation hook
 register_activation_hook( __FILE__, 'dwcat_activate' );
 function dwcat_activate() {
-	$config = dwcat_get_config();
+	$config      = dwcat_get_config();
 	$old_version = get_option( 'dwcat_version', '' );
 
 	update_option( 'dwcat_version', $config['plugin_version'] );
 	update_option( 'dwcat_activated', time() );
 
-	// Ensure default config is seeded
-	DWCAT_Config::get_post_types();
-
-	// Catalog tables (field values, variations, search index)
-	DWCAT_Store::install();
-
-	// Migration: seed default fields for existing post types that have no field config yet
 	dwcat_migrate( $old_version, $config['plugin_version'] );
 
 	// 라이선스 일일 검증 cron 등록
 	DW_DWCAT_License_Manager::on_activate();
 
-	// Register post types for rewrite flush
-	$pt = new DWCAT_Post_Type();
-	$pt->register_all();
+	( new DWCAT_WP_Front() )->endpoint();
 	flush_rewrite_rules();
 }
 
 /**
- * Migration: runs on activation when upgrading from an older version.
- * Ensures hardcoded fields from pre-1.0 are migrated to the dynamic field config.
+ * Install / upgrade the catalog tables and grant the v1.x grace window when needed.
  */
 function dwcat_migrate( $old_version, $new_version ) {
 	// v1.x → v2.0 하위호환 (KICKOFF FAQ Q8) —
-	// 자동 업데이트로 올라온 기존 사이트의 카탈로그가 즉시 사라지면 안 됩니다.
 	// 업그레이드 설치에만 1회 유예를 부여하고, 신규 설치는 즉시 게이트 적용.
 	dwcat_maybe_grant_legacy_grace( $old_version );
 
-	// If upgrading from pre-1.0 (old pc_ era) or fresh install with no field config
-	$post_types = DWCAT_Config::get_post_types();
-	foreach ( $post_types as $slug => $config ) {
-		$fields = get_option( DWCAT_Config::OPTION_FIELDS_PREFIX . $slug, null );
-		if ( $fields === null || ( is_array( $fields ) && empty( $fields ) ) ) {
-			// No fields configured yet — seed defaults
-			$defaults = DWCAT_Config::get_default_fields( $slug );
-			if ( ! empty( $defaults ) ) {
-				update_option( DWCAT_Config::OPTION_FIELDS_PREFIX . $slug, $defaults, true );
-			}
+	try {
+		if ( dwcat()->needsInstall() ) {
+			dwcat()->install();
 		}
-	}
-}
-
-/**
- * 메뉴 통합 — 설정용 "DW Catalog" 와 콘텐츠용 "Catalog WP" 두 최상위 메뉴를
- * "DW Catalog" 하나로 합쳤습니다. 기존 설치는 menu_name 이 옵션에 저장돼 있으므로
- * 기본값("Catalog WP")을 그대로 쓰던 경우에만 이름을 바꿉니다. 1회 실행.
- *
- * 버전 변경 없이도 돌도록 dwcat_migrate() 와 분리했습니다 — 버전을 올리면
- * 토큰 캐시가 폐기되므로 (dwcat_check_version) 매니페스트 미등록 버전에서는
- * 활성 라이선스가 끊깁니다.
- */
-function dwcat_migrate_menu_name() {
-	if ( get_option( 'dwcat_menu_merged' ) ) {
+	} catch ( \Throwable $e ) {
+		update_option( 'dwcat_install_error', $e->getMessage(), false );
 		return;
 	}
-	$types = get_option( DWCAT_Config::OPTION_POST_TYPES, null );
-	if ( is_array( $types ) && isset( $types['product']['menu_name'] ) && 'Catalog WP' === $types['product']['menu_name'] ) {
-		$types['product']['menu_name'] = 'DW Catalog';
-		update_option( DWCAT_Config::OPTION_POST_TYPES, $types, true );
-	}
-	update_option( 'dwcat_menu_merged', 1, true );
+	delete_option( 'dwcat_install_error' );
 }
 
 // Version check on every admin load — handles upgrades without re-activation
@@ -313,22 +209,19 @@ function dwcat_check_version() {
 	}
 }
 
+/** Database problems (e.g. an external DB that cannot be reached) are shown to admins. */
+add_action( 'admin_notices', 'dwcat_install_notice' );
+function dwcat_install_notice() {
+	$err = get_option( 'dwcat_install_error' );
+	if ( $err && current_user_can( 'manage_options' ) ) {
+		echo '<div class="notice notice-error"><p><strong>DW Catalog:</strong> ' . esc_html( $err ) . '</p></div>';
+	}
+}
+
 // Deactivation hook
 register_deactivation_hook( __FILE__, 'dwcat_deactivate' );
 function dwcat_deactivate() {
 	// 라이선스 cron 해제 (라이선스 자체는 보존 — 재활성화 시 그대로 복구)
 	DW_DWCAT_License_Manager::on_deactivate_plugin();
-
-	// Unregister post types and taxonomies before flushing
-	$post_types = DWCAT_Config::get_post_types();
-	foreach ( $post_types as $slug => $config ) {
-		unregister_post_type( $slug );
-		if ( ! empty( $config['has_category'] ) ) {
-			unregister_taxonomy( DWCAT_Config::get_category_taxonomy( $slug ) );
-		}
-		if ( ! empty( $config['has_tag'] ) ) {
-			unregister_taxonomy( DWCAT_Config::get_tag_taxonomy( $slug ) );
-		}
-	}
 	flush_rewrite_rules();
 }

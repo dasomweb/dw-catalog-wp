@@ -123,7 +123,7 @@ function dwcat_is_licensed() {
 /**
  * 게이트 1 — 프런트엔드 카탈로그 렌더.
  * 경로: 토큰 존재/유효성 (grace 포함).
- * 적용: DWCAT_Shortcodes::shortcode_grid|carousel|magazine
+ * 적용: DWCAT_WP_Front 숏코드 3종 진입부 + DWCAT_WP_Host::allows('render')
  */
 function dwcat_can_render() {
 	if ( dwcat_gate_bypass() ) {
@@ -138,7 +138,7 @@ function dwcat_can_render() {
 /**
  * 게이트 2 — 프런트 CSS/JS enqueue.
  * 경로: 캐시 JWT 의 **RSA 서명을 직접 로컬 검증** (has_valid_token 과 다른 경로).
- * 적용: DWCAT_Shortcodes::register_assets 이후 실제 enqueue 지점
+ * 적용: DWCAT_WP_Front::enqueue + DWCAT_WP_Host::allows('assets')
  */
 function dwcat_can_load_assets() {
 	if ( dwcat_gate_bypass() ) {
@@ -153,7 +153,7 @@ function dwcat_can_load_assets() {
 /**
  * 게이트 3 — 커스텀 필드 값 저장.
  * 경로: 토큰 클레임의 domain 이 현재 사이트와 일치하는지 교차 확인.
- * 적용: DWCAT_Meta_Box::save
+ * 적용: DWCAT_WP_Admin::post (항목·카테고리 저장) + DWCAT_WP_Host::allows('save')
  */
 function dwcat_can_save_meta() {
 	if ( dwcat_gate_bypass() ) {
@@ -173,7 +173,7 @@ function dwcat_can_save_meta() {
 /**
  * 게이트 4 — 필드 정의(스키마) 편집. 이 플러그인의 핵심 가치 로직.
  * 경로: 라이선스 option + 토큰 클레임 aud 이중 확인.
- * 적용: DWCAT_Admin_Pages 필드 관리 저장 핸들러
+ * 적용: DWCAT_WP_Admin::post (save_fields) + DWCAT_WP_Host::allows('manage_fields')
  */
 function dwcat_can_manage_fields() {
 	if ( dwcat_gate_bypass() ) {
@@ -193,7 +193,7 @@ function dwcat_can_manage_fields() {
 /**
  * 게이트 5 — 대량 가져오기(CSV).
  * 경로: 서명 검증 + 만료 시각 직접 확인.
- * 적용: DWCAT_Bulk_Import::handle_import
+ * 적용: DWCAT_WP_Admin::post (import) + DWCAT_WP_Host::allows('import')
  */
 function dwcat_can_bulk_import() {
 	if ( dwcat_gate_bypass() ) {
@@ -212,7 +212,7 @@ function dwcat_can_bulk_import() {
 /**
  * 게이트 6 — PDF 내보내기.
  * 경로: 토큰 유효 + 서명 검증 (두 경로 모두 통과해야 함).
- * 적용: DWCAT_PDF_Export 진입점
+ * 적용: DWCAT_WP_Admin::post (export) + DWCAT_WP_Host::allows('export')
  */
 function dwcat_can_export_pdf() {
 	if ( dwcat_gate_bypass() ) {
@@ -228,7 +228,7 @@ function dwcat_can_export_pdf() {
 /**
  * 게이트 7 — 관리자 카탈로그 화면 렌더.
  * 경로: SDK 상태 문자열 (licensed | grace 만 통과).
- * 적용: DWCAT_Admin_Pages::render_list_page
+ * 적용: DWCAT_WP_Admin::page + DWCAT_WP_Host::allows('admin')
  */
 function dwcat_can_render_admin() {
 	if ( dwcat_gate_bypass() ) {
@@ -244,7 +244,7 @@ function dwcat_can_render_admin() {
  * 게이트 8 — 숏코드 출력 (렌더와 별개 지점).
  * 경로: 토큰 유효 + 로컬 매니페스트 버전이 플러그인 버전과 정합한지.
  *       (integrity.json 을 지우거나 갈아끼우면 여기서 걸린다)
- * 적용: DWCAT_Shortcodes 각 숏코드 진입부
+ * 적용: DWCAT_WP_Front 각 숏코드 진입부 + DWCAT_WP_Front::item_page
  */
 function dwcat_can_use_shortcode() {
 	if ( dwcat_gate_bypass() ) {

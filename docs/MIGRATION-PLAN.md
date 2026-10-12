@@ -147,15 +147,19 @@ v2.0.0-rc.1 을 게시한 뒤 운영자가 dasomforge 어드민의 SyncRelease �
 
 | 게이트 | 호출 위치 | 검증 경로 | 차단 효과 |
 |---|---|---|---|
-| `dwcat_can_render()` | `DWCAT_Shortcodes::shortcode_grid\|carousel\|magazine` | `has_valid_token()` | 프런트 카탈로그 전체 |
-| `dwcat_can_load_assets()` | 동 클래스 enqueue 지점 3곳 | `verify_token_signature()` (로컬 RSA) | CSS/JS 미로딩 |
-| `dwcat_can_save_meta()` | `DWCAT_Meta_Box::save_meta` | 토큰 클레임 `domain` 교차 확인 | 필드 값 저장 |
-| `dwcat_can_manage_fields()` | `DWCAT_Settings::handle_save_fields` | 라이선스 option + 클레임 `aud` | **스키마 편집 = 핵심 자산** |
-| `dwcat_can_bulk_import()` | `DWCAT_Bulk_Import::handle_import` | 서명 검증 + `exp` 직접 확인 | CSV 가져오기 |
-| `dwcat_can_export_pdf()` | `DWCAT_PDF_Export::handle_export` | `has_valid_token()` **and** `verify_token_signature()` | PDF 생성 |
-| `dwcat_can_render_admin()` | `DWCAT_Admin_Pages::render_list_page` | `get_status()` ∈ {licensed, grace} | 관리 화면 |
-| `dwcat_can_use_shortcode()` | 숏코드 3종 진입부 | 토큰 + `integrity.json` 버전 정합 | 매니페스트 제거·교체 탐지 |
-| `dwcat_can_call_rest()` | `dw_spa_modules` 필터 등록 | 토큰 option 직접 판독 (SDK 우회 경로) | SPA 모듈 노출 |
+| `dwcat_can_render()` | `DWCAT_WP_Front` 숏코드 진입부 · `item_page` · `DWCAT_WP_Host::allows('render')` | `has_valid_token()` | 프런트 카탈로그 전체 |
+| `dwcat_can_load_assets()` | `DWCAT_WP_Front::enqueue` · `allows('assets')` | `verify_token_signature()` (로컬 RSA) | CSS/JS 미로딩 |
+| `dwcat_can_save_meta()` | `DWCAT_WP_Admin::post` (항목·카테고리·디자인) · `allows('save')` | 토큰 클레임 `domain` 교차 확인 | 카탈로그 저장 |
+| `dwcat_can_manage_fields()` | `DWCAT_WP_Admin::post` (save_fields) · `allows('manage_fields')` | 라이선스 option + 클레임 `aud` | **스키마 편집 = 핵심 자산** |
+| `dwcat_can_bulk_import()` | `DWCAT_WP_Admin::post` (import) · `allows('import')` | 서명 검증 + `exp` 직접 확인 | CSV 가져오기 |
+| `dwcat_can_export_pdf()` | `DWCAT_WP_Admin::post` (export) · `allows('export')` | `has_valid_token()` **and** `verify_token_signature()` | PDF 생성 |
+| `dwcat_can_render_admin()` | `DWCAT_WP_Admin::page` · `allows('admin')` | `get_status()` ∈ {licensed, grace} | 관리 화면 |
+| `dwcat_can_use_shortcode()` | 숏코드 3종 진입부 · `allows('render')` | 토큰 + `integrity.json` 버전 정합 | 매니페스트 제거·교체 탐지 |
+| `dwcat_can_call_rest()` | `DWCAT_WP_Rest` (라우트 권한 + SPA 모듈 등록) | 토큰 option 직접 판독 (SDK 우회 경로) | SPA 모듈 · 항목 API |
+
+v2.0.0-rc.5 부터 카탈로그는 독립 코어(`core/`)가 처리하고 WordPress 쪽은 어댑터(`includes/wp/`)입니다.
+게이트는 **두 겹**으로 걸립니다 — WordPress 진입점(어댑터 각 파일)에서 한 번, 코어가 호출하는
+`DWCAT_WP_Host::allows()` 에서 기능별로 한 번. 한 곳만 무력화해서는 열리지 않습니다.
 
 **설계 의도**: 네 가지 서로 다른 검증 경로를 섞었습니다. 전부 `has_valid_token()` 한 곳을 거치면
 `return true;` 한 줄로 9개가 동시에 뚫립니다.

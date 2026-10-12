@@ -164,17 +164,17 @@ t_eq( 'dw-catalog-wp', $diag['sdk_class_loaded_from_plugin'] ?: 'dw-catalog-wp',
 
 // ── 검색 토큰화 (DWCAT_Store) — 인덱스와 질의가 같은 규칙을 써야 검색이 맞습니다 ──
 echo "\n--- search tokenizer ---\n";
-t_eq( array( 'wk', '009' ), DWCAT_Store::tokenize( 'WK-009' ), '구두점으로 분리 + 소문자' );
-t( in_array( 'wk009', DWCAT_Store::tokenize( 'WK-009', true ), true ), '색인 시 붙여쓴 코드도 저장 (wk009)' );
-t( in_array( '144lb6pkcs', DWCAT_Store::tokenize( '1/4.4lb/6pk/cs', true ), true ), '팩 규격 붙여쓰기' );
-t_eq( array( '김치', '찌개' ), DWCAT_Store::tokenize( '김치 찌개' ), '한글 단어 분리' );
-t_eq( 1, count( DWCAT_Store::tokenize( 'a a A' ) ), '중복 제거' );
-t_eq( 64, strlen( DWCAT_Store::tokenize( str_repeat( 'x', 200 ) )[0] ), '토큰 길이 상한 64' );
+t_eq( array( 'wk', '009' ), \DWCatalog\Search\Tokenizer::tokenize( 'WK-009' ), '구두점으로 분리 + 소문자' );
+t( in_array( 'wk009', \DWCatalog\Search\Tokenizer::tokenize( 'WK-009', true ), true ), '색인 시 붙여쓴 코드도 저장 (wk009)' );
+t( in_array( '144lb6pkcs', \DWCatalog\Search\Tokenizer::tokenize( '1/4.4lb/6pk/cs', true ), true ), '팩 규격 붙여쓰기' );
+t_eq( array( '김치', '찌개' ), \DWCatalog\Search\Tokenizer::tokenize( '김치 찌개' ), '한글 단어 분리' );
+t_eq( 1, count( \DWCatalog\Search\Tokenizer::tokenize( 'a a A' ) ), '중복 제거' );
+t_eq( 64, strlen( \DWCatalog\Search\Tokenizer::tokenize( str_repeat( 'x', 200 ) )[0] ), '토큰 길이 상한 64' );
 
 echo "\n--- search input limits (abuse guard) ---\n";
-t_eq( DWCAT_Catalog_Query::MAX_WORDS, count( DWCAT_Catalog_Query::search_words( 'aa bb cc dd ee ff gg hh ii jj' ) ), '검색어 단어 수 상한' );
-t_eq( array( 'miso' ), DWCAT_Catalog_Query::search_words( 'a miso' ), '다른 단어가 있으면 1글자 단어 제외' );
-t_eq( array(), DWCAT_Catalog_Query::search_words( '%%% ___' ), 'LIKE 와일드카드만 있는 입력은 무시' );
+t_eq( \DWCatalog\Query\CatalogQuery::MAX_WORDS, count( \DWCatalog\Search\Tokenizer::queryWords( 'aa bb cc dd ee ff gg hh ii jj' ) ), '검색어 단어 수 상한' );
+t_eq( array( 'miso' ), \DWCatalog\Search\Tokenizer::queryWords( 'a miso' ), '다른 단어가 있으면 1글자 단어 제외' );
+t_eq( array(), \DWCatalog\Search\Tokenizer::queryWords( '%%% ___' ), 'LIKE 와일드카드만 있는 입력은 무시' );
 
 // ── dev bypass ────────────────────────────────────────────────
 echo "\n--- dev bypass ---\n";

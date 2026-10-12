@@ -7,6 +7,55 @@ DW Catalog WP 의 변경 이력. [SemVer](https://semver.org/lang/ko/) 를 따�
 
 ---
 
+## [2.0.0-rc.5] — 2026-10-12
+
+**구조 전환 — 독립 카탈로그 시스템 + 워드프레스 어댑터.** 워드프레스는 디자인만 담당하고,
+카탈로그 데이터는 워드프레스 테이블을 전혀 쓰지 않습니다. (설치된 사이트가 없어 데이터 이전 없음)
+
+### Changed
+
+- **코어 분리** (`core/`, 네임스페이스 `DWCatalog\`) — 워드프레스 함수를 쓰지 않는 PHP 라이브러리.
+  DB 연결 · 사용자 권한 · 파일 경로 · URL · 번역은 Host 인터페이스로 받습니다. 워드프레스 어댑터는
+  `includes/wp/`. 다른 PHP 환경에 붙일 때는 Host 구현만 새로 작성합니다 ([docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)).
+- **전용 테이블 8개** — items · terms · item_terms · images · values · variations · search · settings.
+  상품 · 카테고리 · 이미지 · 필드 설정까지 모두 여기 저장되며 `wp_posts` · `wp_postmeta` · `wp_terms` ·
+  `wp_options` · 미디어 라이브러리는 사용하지 않습니다.
+- **DB: MySQL/MariaDB + PostgreSQL** — 기본은 워드프레스 DB 안(`{prefix}dwcat_`, 설정 불필요),
+  `DWCAT_DB_*` 상수로 별도 DB 서버 · PostgreSQL 선택.
+- **관리자 화면을 코어가 제공** — 항목 목록(검색 · 필터 · 정렬) · 편집(이미지 · 카테고리 · 태그 ·
+  필드 · Variations) · 카테고리 · 필드/프리셋/Variation 컬럼 · CSV 가져오기 · PDF 내보내기 · 디자인 ·
+  숏코드 안내. 워드프레스에서는 `DW Catalog` 메뉴 안에 표시됩니다.
+- **이미지는 카탈로그 전용 저장** — `uploads/dw-catalog/` 에 원본(최대 2400px) + large/medium/thumb.
+  모든 이미지를 **다시 인코딩**해 EXIF(위치정보 등)를 제거하고 이미지로 위장한 파일을 무력화합니다.
+- **상세 주소** `/{page}/item/{slug}/` (pretty permalink) — 제목 · description · canonical · Open Graph ·
+  JSON-LD 출력, 없는 항목 404, XML 사이트맵(`wp-sitemap-dwcatalog-1.xml`).
+- `[dw_catalog_magazine]` 숏코드 제거.
+
+### Security
+
+- 모든 SQL 은 파라미터 바인딩(PDO / `$wpdb->prepare`), 테이블 이름은 접두사 + 고정 이름만.
+- 관리자 작업마다 권한 + 라이선스 정책 + 사용자 · 동작에 묶인 CSRF 토큰 검증.
+- CSV 이미지 URL 가져오기: http(s) · 표준 포트만, 매 리다이렉트마다 사설 · 예약 IP 차단(SSRF), 15MB 상한.
+- 이미지 저장 폴더에 목록 노출 차단 + 스크립트 실행 차단 파일.
+- PDF 생성 시 원격 리소스 로딩 끔, 이미지는 저장 폴더 안에서만 읽음.
+- 항목 API(`/dw-catalog-wp/v1/items`)는 로그인 + `edit_posts` 필수 — 공개 데이터 API 없음.
+
+### Tests
+
+- `tests/core/run.php` — 코어를 **실제 MySQL · PostgreSQL** 에서 검증 (166개: 스키마 · 검색 · 필터 ·
+  정렬 · 비공개 필드 차단 · CSRF · 권한 · XSS 출력 이스케이프 · 이미지 처리 · 삭제 정리).
+  CI 에 MySQL 8 / PostgreSQL 16 서비스로 추가.
+
+### anti-piracy 관련 변경 (§7.6 의무 표기)
+
+| 항목 | 내용 |
+|---|---|
+| 해시 변경 사유 | 전면 재구성 — `core/` 신규, `includes/wp/` 신규, 구 클래스 다수 삭제. 매니페스트 재등록 필요 |
+| 새 게이트 | 없음 — 9개 게이트를 어댑터 진입점 + `DWCAT_WP_Host::allows()` 두 겹으로 재배치 ([MIGRATION-PLAN §5](docs/MIGRATION-PLAN.md)) |
+| 마이그레이션 필요 여부 | 없음 (운영 중인 설치 없음) |
+
+---
+
 ## [2.0.0-rc.4] — 2026-10-12
 
 ### Changed — 저장 구조 (성능)

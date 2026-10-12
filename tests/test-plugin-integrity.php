@@ -39,28 +39,33 @@ echo "--- 1. File Structure ---\n";
 $required_files = array(
 	'dw-catalog-wp.php',
 	'uninstall.php',
-	'includes/class-pc-config.php',
-	'includes/class-pc-settings.php',
-	'includes/class-pc-post-type.php',
-	'includes/class-pc-meta-box.php',
-	'includes/class-pc-admin-pages.php',
-	'includes/class-pc-admin-columns.php',
-	'includes/class-pc-bulk-import.php',
-	'includes/class-pc-pdf-export.php',
-	'includes/class-pc-field-reference.php',
-	'includes/class-pc-product-display.php',
-	'includes/class-pc-url-helper.php',
+	// Core (standalone, no WordPress code)
+	'core/bootstrap.php',
+	'core/src/Catalog.php',
+	'core/src/Db/Connection.php',
+	'core/src/Db/MysqlDialect.php',
+	'core/src/Db/PostgresDialect.php',
+	'core/src/Db/Schema.php',
+	'core/src/Admin/AdminApp.php',
+	'core/src/Front/FrontApp.php',
+	'core/src/Security/Csrf.php',
+	'core/assets/front.css',
+	'core/assets/catalog.js',
+	'core/assets/carousel.js',
+	'core/assets/admin.css',
+	'core/assets/admin.js',
+	// WordPress adapter
+	'includes/wp/class-dwcat-wpdb-connection.php',
+	'includes/wp/class-dwcat-wp-host.php',
+	'includes/wp/class-dwcat-wp-admin.php',
+	'includes/wp/class-dwcat-wp-front.php',
+	'includes/wp/class-dwcat-wp-rest.php',
 	'includes/class-pc-github-updater.php',
 	'includes/class-dw-license-manager.php',
 	'includes/class-dw-forge-client.php',
 	'includes/license/gates.php',
 	'includes/keys/dasomforge.pub',
 	'includes/class-dwcat-license-rest.php',
-	'includes/class-dwcat-shortcodes.php',
-	'includes/class-dwcat-design-settings.php',
-	'assets/css/frontend.css',
-	'assets/js/carousel.js',
-	'assets/css/admin.css',
 	// dasomforge 빌드 파이프라인 (PLUGIN-DEV-GUIDE §7.2 / §8)
 	'.gitattributes',
 	'composer.lock',
@@ -72,8 +77,10 @@ $required_files = array(
 	'tests/wp-stubs.php',
 	'tests/test-bootstrap.php',
 	'tests/test-license-manager.php',
+	'tests/core/run.php',
 	'CHANGELOG.md',
 	'docs/MIGRATION-PLAN.md',
+	'docs/ARCHITECTURE.md',
 );
 
 foreach ( $required_files as $file ) {
@@ -120,7 +127,7 @@ echo "--- 4. Prefix Compliance ---\n";
 
 $php_files = array_merge(
 	glob( "$plugin_root/includes/*.php" ),
-	glob( "$plugin_root/includes/*/*.php" )   // includes/license/gates.php
+	glob( "$plugin_root/includes/*/*.php" )   // includes/license/gates.php, includes/wp/*
 );
 $php_files[] = "$plugin_root/dw-catalog-wp.php";
 
@@ -160,29 +167,15 @@ assert_true( strpos( $uninstall, 'WP_UNINSTALL_PLUGIN' ) !== false, 'uninstall.p
 echo "--- 6. Class Definitions ---\n";
 
 $expected_classes = array(
-	'DWCAT_Config'           => 'class-pc-config.php',
-	'DWCAT_Settings'         => 'class-pc-settings.php',
-	'DWCAT_Post_Type'        => 'class-pc-post-type.php',
-	'DWCAT_Meta_Box'         => 'class-pc-meta-box.php',
-	'DWCAT_Admin_Pages'      => 'class-pc-admin-pages.php',
-	'DWCAT_Admin_Columns'    => 'class-pc-admin-columns.php',
-	'DWCAT_Bulk_Import'      => 'class-pc-bulk-import.php',
-	'DWCAT_PDF_Export'       => 'class-pc-pdf-export.php',
-	'DWCAT_Field_Reference'  => 'class-pc-field-reference.php',
-	'DWCAT_Product_Display'  => 'class-pc-product-display.php',
-	'DWCAT_URL_Helper'       => 'class-pc-url-helper.php',
-	'DWCAT_GitHub_Updater'   => 'class-pc-github-updater.php',
+	'DWCAT_GitHub_Updater'     => 'class-pc-github-updater.php',
 	'DW_DWCAT_License_Manager' => 'class-dw-license-manager.php',
 	'DW_DWCAT_Forge_Client'    => 'class-dw-forge-client.php',
 	'DWCAT_License_REST'       => 'class-dwcat-license-rest.php',
-	'DWCAT_Shortcodes'       => 'class-dwcat-shortcodes.php',
-	'DWCAT_Design_Settings'  => 'class-dwcat-design-settings.php',
-	'DWCAT_Field_Presets'    => 'class-dwcat-field-presets.php',
-	'DWCAT_Catalog_Query'    => 'class-dwcat-catalog-query.php',
-	'DWCAT_Catalog'          => 'class-dwcat-catalog.php',
-	'DWCAT_Variations'       => 'class-dwcat-variations.php',
-	'DWCAT_Store'            => 'class-dwcat-store.php',
-	'DWCAT_Access_Guard'     => 'class-dwcat-access-guard.php',
+	'DWCAT_Wpdb_Connection'    => 'wp/class-dwcat-wpdb-connection.php',
+	'DWCAT_WP_Host'            => 'wp/class-dwcat-wp-host.php',
+	'DWCAT_WP_Admin'           => 'wp/class-dwcat-wp-admin.php',
+	'DWCAT_WP_Front'           => 'wp/class-dwcat-wp-front.php',
+	'DWCAT_WP_Rest'            => 'wp/class-dwcat-wp-rest.php',
 );
 
 foreach ( $expected_classes as $class_name => $file_name ) {
@@ -196,43 +189,34 @@ foreach ( $expected_classes as $class_name => $file_name ) {
 	}
 }
 
+// ─── 6b. Core independence ─────────────────────────────────
+
+echo "--- 6b. Core has no WordPress code ---\n";
+
+$core_php = array();
+$it       = new RecursiveIteratorIterator( new RecursiveDirectoryIterator( "$plugin_root/core", FilesystemIterator::SKIP_DOTS ) );
+foreach ( $it as $f ) {
+	if ( 'php' === $f->getExtension() ) {
+		$core_php[] = $f->getPathname();
+	}
+}
+$wp_calls = '/\b(\$wpdb|add_action|add_filter|get_option|update_option|esc_html|esc_attr|esc_url|wp_[a-z_]+\(|__\(|_e\(|current_user_can|get_post|WP_Query)/';
+foreach ( $core_php as $f ) {
+	$code = preg_replace( '#/\*.*?\*/|//[^\n]*#s', '', file_get_contents( $f ) ); // ignore comments
+	assert_false( preg_match( $wp_calls, $code, $m ), 'core is WordPress-free: ' . str_replace( $plugin_root . DIRECTORY_SEPARATOR, '', $f ) . ( $m ? " (found {$m[0]})" : '' ) );
+}
+
 // ─── 7. Nonce Patterns ─────────────────────────────────────
 
 echo "--- 7. Security Patterns (Nonce + Sanitize) ---\n";
 
 // All admin_post handlers should have nonce verification
-$handlers_with_nonces = array(
-	'class-pc-settings.php'    => 'dw_catalog_fields_nonce',
-	'class-pc-admin-pages.php' => 'dw_catalog_delete_',
-	'class-pc-bulk-import.php' => 'dw_catalog_import_nonce',
-	'class-pc-pdf-export.php'  => 'dw_catalog_pdf_nonce',
-	// SDK 는 nonce action 을 cache_prefix + 'license_action' 으로 조합하므로
-	// 리터럴 전체가 아니라 조합 조각을 확인한다 (check_admin_referer 자체는 §10 에서 검증).
-	'class-dw-license-manager.php' => "'license_action'",
-);
-
-foreach ( $handlers_with_nonces as $file => $nonce_name ) {
-	$content = file_get_contents( "$plugin_root/includes/$file" );
-	assert_true(
-		strpos( $content, $nonce_name ) !== false,
-		"Nonce '$nonce_name' used in $file"
-	);
-}
-
-// Meta box save must verify nonce
-$meta_box = file_get_contents( "$plugin_root/includes/class-pc-meta-box.php" );
-assert_true(
-	strpos( $meta_box, 'wp_verify_nonce' ) !== false,
-	'Meta box save_meta verifies nonce'
-);
-assert_true(
-	strpos( $meta_box, 'DOING_AUTOSAVE' ) !== false,
-	'Meta box save_meta checks DOING_AUTOSAVE'
-);
-assert_true(
-	strpos( $meta_box, 'current_user_can' ) !== false,
-	'Meta box save_meta checks capabilities'
-);
+$admin_app = file_get_contents( "$plugin_root/core/src/Admin/AdminApp.php" );
+assert_true( strpos( $admin_app, 'csrf()->verify' ) !== false, 'Core admin verifies CSRF token on every POST' );
+assert_true( strpos( $admin_app, 'host()->can(' ) !== false, 'Core admin checks capabilities' );
+assert_true( strpos( $admin_app, 'host()->allows(' ) !== false, 'Core admin checks host policy (license)' );
+$license_mgr = file_get_contents( "$plugin_root/includes/class-dw-license-manager.php" );
+assert_true( strpos( $license_mgr, "'license_action'" ) !== false, "License SDK nonce action present" );
 
 // ─── 8. SQL Safety ──────────────────────────────────────────
 
@@ -248,11 +232,8 @@ assert_true(
 echo "--- 9. Input Sanitization ---\n";
 
 $files_with_get_page = array(
-	'class-pc-settings.php',
-	'class-pc-admin-pages.php',
-	'class-pc-bulk-import.php',
-	'class-pc-field-reference.php',
-	'class-pc-pdf-export.php',
+	'wp/class-dwcat-wp-admin.php',
+	'wp/class-dwcat-wp-front.php',
 );
 
 foreach ( $files_with_get_page as $file ) {
@@ -336,8 +317,9 @@ assert_true( strpos( $main_file, 'license/gates.php' ) !== false, 'Main file loa
 assert_true( strpos( $main_file, 'DW_DWCAT_License_Manager::init' ) !== false, 'Main file calls DW_DWCAT_License_Manager::init()' );
 
 // SPA Integration
-assert_true( strpos( $main_file, 'dw_spa_modules' ) !== false, 'Main file registers dw_spa_modules filter' );
-assert_true( strpos( $main_file, 'function_exists' ) !== false, 'SPA integration checks function_exists (no hard dependency)' );
+$spa_file = file_get_contents( "$plugin_root/includes/wp/class-dwcat-wp-rest.php" );
+assert_true( strpos( $spa_file, 'dw_spa_modules' ) !== false, 'Adapter registers dw_spa_modules filter' );
+assert_true( strpos( $spa_file, "function_exists( 'dw_admin' )" ) !== false, 'SPA integration checks function_exists (no hard dependency)' );
 
 // ─── 10a. 라이선스 게이트 분산 (PLUGIN-DEV-GUIDE §6) ─────────
 
@@ -384,16 +366,16 @@ assert_true( strpos( $main_file, 'dwcat_maybe_grant_legacy_grace' ) !== false, '
 
 // 게이트가 실제 호출 지점에 적용되었는가
 $gate_sites = array(
-	'class-dwcat-shortcodes.php' => 'dwcat_can_render',
-	'class-pc-meta-box.php'      => 'dwcat_can_save_meta',
-	'class-pc-bulk-import.php'   => 'dwcat_can_bulk_import',
-	'class-pc-pdf-export.php'    => 'dwcat_can_export_pdf',
-	'class-pc-settings.php'      => 'dwcat_can_manage_fields',
-	'class-pc-admin-pages.php'   => 'dwcat_can_render_admin',
+	'wp/class-dwcat-wp-front.php' => array( 'dwcat_can_render', 'dwcat_can_use_shortcode', 'dwcat_can_load_assets' ),
+	'wp/class-dwcat-wp-admin.php' => array( 'dwcat_can_render_admin', 'dwcat_can_save_meta', 'dwcat_can_manage_fields', 'dwcat_can_bulk_import', 'dwcat_can_export_pdf' ),
+	'wp/class-dwcat-wp-host.php'  => array( 'dwcat_can_render', 'dwcat_can_save_meta', 'dwcat_can_manage_fields', 'dwcat_can_bulk_import', 'dwcat_can_export_pdf', 'dwcat_can_render_admin', 'dwcat_can_load_assets' ),
+	'wp/class-dwcat-wp-rest.php'  => array( 'dwcat_can_call_rest' ),
 );
-foreach ( $gate_sites as $gs_file => $gs_gate ) {
+foreach ( $gate_sites as $gs_file => $gs_gates ) {
 	$gs_content = file_get_contents( "$plugin_root/includes/$gs_file" );
-	assert_true( strpos( $gs_content, $gs_gate . '()' ) !== false, "Gate applied: $gs_gate() in $gs_file" );
+	foreach ( $gs_gates as $gs_gate ) {
+		assert_true( strpos( $gs_content, $gs_gate ) !== false, "Gate applied: $gs_gate in $gs_file" );
+	}
 }
 
 // ─── 10c. 릴리스 패키징 계약 (§7.2 / §7.3 / §11.2.b) ─────────
@@ -473,47 +455,44 @@ assert_false( strpos( $pub, 'PRIVATE KEY' ) !== false, 'dasomforge.pub 에 비�
 
 // ─── 11. Deactivation Hook ─────────────────────────────────
 
-echo "--- 10b. Frontend Shortcodes ---\n";
+echo "--- 10b. Frontend + data exposure ---\n";
 
-$sc_file = file_get_contents( "$plugin_root/includes/class-dwcat-shortcodes.php" );
-assert_true( strpos( $sc_file, "add_shortcode( 'dw_catalog_grid'" ) !== false, 'Shortcode: dw_catalog_grid registered' );
-assert_true( strpos( $sc_file, "add_shortcode( 'dw_catalog_carousel'" ) !== false, 'Shortcode: dw_catalog_carousel registered' );
-assert_true( strpos( $sc_file, "add_shortcode( 'dw_catalog_magazine'" ) !== false, 'Shortcode: dw_catalog_magazine registered' );
-assert_true( strpos( $sc_file, 'shortcode_atts' ) !== false, 'Shortcodes use shortcode_atts() for defaults' );
-assert_true( strpos( $sc_file, 'wp_enqueue_style' ) !== false, 'Shortcodes enqueue frontend.css' );
-assert_true( strpos( $sc_file, 'wp_enqueue_script' ) !== false, 'Shortcodes enqueue carousel.js' );
-assert_true( strpos( $sc_file, 'esc_url' ) !== false, 'Shortcodes escape URLs' );
-assert_true( strpos( $sc_file, 'esc_html' ) !== false, 'Shortcodes escape HTML output' );
-assert_true( strpos( $main_file, 'new DWCAT_Shortcodes()' ) !== false, 'Main file initializes DWCAT_Shortcodes' );
+$front = file_get_contents( "$plugin_root/includes/wp/class-dwcat-wp-front.php" );
+foreach ( array( 'dw_catalog', 'dw_catalog_grid', 'dw_catalog_carousel' ) as $sc ) {
+	assert_true( strpos( $front, "add_shortcode( '$sc'" ) !== false, "Shortcode registered: $sc" );
+}
+assert_true( strpos( $front, 'shortcode_atts' ) !== false, 'Shortcodes use shortcode_atts()' );
+assert_true( strpos( $front, 'add_rewrite_endpoint' ) !== false, 'Pretty item URLs (rewrite endpoint)' );
+assert_true( strpos( $front, 'application/ld+json' ) !== false, 'Item pages print JSON-LD' );
+assert_true( strpos( $front, 'WP_Sitemaps_Provider' ) !== false, 'Items in the XML sitemap' );
 
-// Design Settings
-$design_file = file_get_contents( "$plugin_root/includes/class-dwcat-design-settings.php" );
-assert_true( strpos( $design_file, 'admin_post_dwcat_save_design' ) !== false, 'Design: save handler registered' );
-assert_true( strpos( $design_file, 'dwcat_save_design' ) !== false, 'Design: nonce action present' );
-assert_true( strpos( $design_file, 'get_css_vars' ) !== false, 'Design: get_css_vars() method' );
-assert_true( strpos( $design_file, 'get_inline_style' ) !== false, 'Design: get_inline_style() method' );
-assert_true( strpos( $design_file, 'wp-color-picker' ) !== false, 'Design: uses wp-color-picker' );
+$rest = file_get_contents( "$plugin_root/includes/wp/class-dwcat-wp-rest.php" );
+assert_true( strpos( $rest, "current_user_can( 'edit_posts' )" ) !== false, 'Item REST route requires edit_posts' );
+assert_false( preg_match( "/'permission_callback'\s*=>\s*'?__return_true/", $rest ), 'No public REST route for items' );
 
-// Shortcodes use design settings
-$sc2 = file_get_contents( "$plugin_root/includes/class-dwcat-shortcodes.php" );
-assert_true( strpos( $sc2, 'DWCAT_Design_Settings::get_inline_style' ) !== false, 'Shortcodes inject design CSS vars' );
+$front_app = file_get_contents( "$plugin_root/core/src/Front/FrontApp.php" );
+assert_true( strpos( $front_app, "'public'   => true" ) !== false, 'Visitor queries run with public=true (non-public fields excluded)' );
+assert_true( strpos( $front_app, 'FieldConfig::isPublic' ) !== false, 'Visitor output filters non-public fields' );
 
-// CSS uses variables
-$css = file_get_contents( "$plugin_root/assets/css/frontend.css" );
+// No catalog data in WordPress content tables
+$all_wp_side = '';
+foreach ( glob( "$plugin_root/includes/wp/*.php" ) as $f ) {
+	$all_wp_side .= file_get_contents( $f );
+}
+assert_false( preg_match( '/register_post_type|register_taxonomy|update_post_meta|wp_insert_post|media_handle_/', $all_wp_side ), 'Adapter stores no catalog data in WordPress tables' );
+
+$css = file_get_contents( "$plugin_root/core/assets/front.css" );
 assert_true( strpos( $css, 'var(--dwcat-title-size' ) !== false, 'CSS uses --dwcat-title-size variable' );
 assert_true( strpos( $css, 'var(--dwcat-card-bg' ) !== false, 'CSS uses --dwcat-card-bg variable' );
-assert_true( strpos( $css, 'var(--dwcat-mag-title-size' ) !== false, 'CSS uses --dwcat-mag-title-size variable' );
 
-// uninstall cleans design option
 $uninstall2 = file_get_contents( "$plugin_root/uninstall.php" );
-assert_true( strpos( $uninstall2, 'dwcat_design_settings' ) !== false, 'uninstall.php removes design settings option' );
+assert_true( strpos( $uninstall2, 'Schema::drop' ) !== false, 'uninstall.php drops the catalog tables' );
+assert_true( strpos( $uninstall2, 'dw-catalog' ) !== false, 'uninstall.php removes catalog image files' );
 
 echo "--- 11. Activation/Deactivation Hooks ---\n";
 
 assert_true( strpos( $main_file, 'register_activation_hook' ) !== false, 'Activation hook registered' );
 assert_true( strpos( $main_file, 'register_deactivation_hook' ) !== false, 'Deactivation hook registered' );
-assert_true( strpos( $main_file, 'unregister_post_type' ) !== false, 'Deactivation unregisters post types' );
-assert_true( strpos( $main_file, 'unregister_taxonomy' ) !== false, 'Deactivation unregisters taxonomies' );
 assert_true( strpos( $main_file, 'flush_rewrite_rules' ) !== false, 'Activation/deactivation flushes rewrite rules' );
 
 // ─── 12. Migration Logic ────────────────────────────────────
