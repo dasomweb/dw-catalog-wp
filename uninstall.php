@@ -58,6 +58,7 @@ if ( $dwcat_dir && 'dw-catalog' === basename( $dwcat_dir ) && is_dir( $dwcat_dir
 delete_option( 'dwcat_version' );
 delete_option( 'dwcat_activated' );
 delete_option( 'dwcat_install_error' );
+delete_option( 'dwcat_schema' );
 delete_transient( 'dwcat_catalog_page' );
 $wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s", '\_transient\_dwcat\_fc\_%', '\_transient\_timeout\_dwcat\_fc\_%' ) );
 

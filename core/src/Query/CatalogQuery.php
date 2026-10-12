@@ -140,7 +140,7 @@ class CatalogQuery {
 			$join         = ' LEFT JOIN ' . $t( 'values' ) . ' sv ON sv.item_id = i.id AND sv.field_key = ?';
 			$joinParams[] = $sort['field'];
 			$col          = $sort['numeric'] ? 'sv.value_num' : 'sv.value_idx';
-			$order        = "($col IS NULL) ASC, $col {$sort['dir']}, i.title ASC";
+			$order        = "($col IS NULL) ASC, $col {$sort['dir']}, i.sort_title ASC";
 		} else {
 			$order = 'i.' . $sort['column'] . ' ' . $sort['dir'] . ', i.id ' . $sort['dir'];
 		}
@@ -187,8 +187,8 @@ class CatalogQuery {
 		$map = array(
 			'date_desc'     => array( 'created_at', 'DESC' ),
 			'date_asc'      => array( 'created_at', 'ASC' ),
-			'title_asc'     => array( 'title', 'ASC' ),
-			'title_desc'    => array( 'title', 'DESC' ),
+			'title_asc'     => array( 'sort_title', 'ASC' ),
+			'title_desc'    => array( 'sort_title', 'DESC' ),
 			'modified_desc' => array( 'updated_at', 'DESC' ),
 			'modified_asc'  => array( 'updated_at', 'ASC' ),
 		);

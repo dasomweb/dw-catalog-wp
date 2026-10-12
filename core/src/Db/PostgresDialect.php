@@ -29,6 +29,14 @@ class PostgresDialect implements Dialect {
 		return $sql;
 	}
 
+	public function addColumn( string $table, string $column, array $spec ): array {
+		return array( "ALTER TABLE $table ADD COLUMN IF NOT EXISTS " . $this->quoteIdent( $column ) . ' ' . $this->columnType( $spec ) );
+	}
+
+	public function addIndex( string $table, string $rawName, string $index, array $cols ): array {
+		return array( 'CREATE INDEX IF NOT EXISTS ' . $this->quoteIdent( $rawName . '_' . $index ) . " ON $table (" . $this->indexCols( $cols ) . ')' );
+	}
+
 	/** PostgreSQL has no index prefix lengths — "slug(100)" indexes the whole column. */
 	private function indexCols( array $cols ): string {
 		return implode( ', ', array_map( function ( $c ) {

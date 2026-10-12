@@ -95,6 +95,7 @@ class Items {
 			'type'       => $type,
 			'slug'       => $slug,
 			'title'      => $title,
+			'sort_title' => Text::sortKey( $title ),
 			'content'    => isset( $data['content'] ) ? (string) $data['content'] : '',
 			'excerpt'    => Text::block( isset( $data['excerpt'] ) ? $data['excerpt'] : '', 1000 ),
 			'status'     => $status,

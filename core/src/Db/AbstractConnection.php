@@ -40,6 +40,14 @@ abstract class AbstractConnection implements Connection {
 		);
 	}
 
+	public function columnExists( string $table, string $column ): bool {
+		$schema = 'pgsql' === $this->dialect->name() ? 'current_schema()' : 'DATABASE()';
+		return (bool) $this->selectValue(
+			"SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = $schema AND table_name = ? AND column_name = ?",
+			array( $this->prefix . $table, $column )
+		);
+	}
+
 	public function selectRow( string $sql, array $params = array() ): ?array {
 		$rows = $this->select( $sql, $params );
 		return $rows ? $rows[0] : null;

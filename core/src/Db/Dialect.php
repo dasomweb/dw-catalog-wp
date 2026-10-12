@@ -20,4 +20,10 @@ interface Dialect {
 	 * @return string[]
 	 */
 	public function createTable( string $table, string $rawName, array $def ): array;
+
+	/** Statements adding a column (spec as in Schema::tables()). */
+	public function addColumn( string $table, string $column, array $spec ): array;
+
+	/** Statements adding a (non-unique) index. */
+	public function addIndex( string $table, string $rawName, string $index, array $cols ): array;
 }

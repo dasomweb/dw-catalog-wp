@@ -37,6 +37,17 @@ final class Text {
 		return trim( self::cut( trim( (string) $value, '-' ), $max ), '-' );
 	}
 
+	/**
+	 * Name sort key: lowercase letters/digits separated by single spaces — "(Somi) Miso" → "somi miso".
+	 * Sorting on this gives the same order on every database, whatever its collation does with
+	 * punctuation.
+	 */
+	public static function sortKey( string $value ): string {
+		$value = self::lower( $value );
+		$value = trim( preg_replace( '/[^\p{L}\p{N}]+/u', ' ', $value ) );
+		return self::cut( $value, 191 );
+	}
+
 	public static function lower( string $value ): string {
 		return function_exists( 'mb_strtolower' ) ? mb_strtolower( $value, 'UTF-8' ) : strtolower( $value );
 	}

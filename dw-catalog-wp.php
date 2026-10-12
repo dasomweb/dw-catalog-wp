@@ -3,7 +3,7 @@
  * Plugin Name: DW Catalog WP
  * Plugin URI: https://github.com/dasomweb/dw-catalog-wp
  * Description: Independent product catalog system (own tables, search, filters, variations) placed on WordPress pages by shortcode.
- * Version: 2.0.0-rc.5
+ * Version: 2.0.0-rc.6
  * Author: Dasom Web
  * Author URI: https://github.com/dasomweb
  * License: GPL v2 or later
@@ -27,7 +27,7 @@ function dwcat_get_config() {
 		'github_repo_owner'  => 'dasomweb',
 		'github_repo_name'   => 'dw-catalog-wp',
 		'plugin_slug'        => 'dw-catalog-wp',
-		'plugin_version'     => '2.0.0-rc.5',
+		'plugin_version'     => '2.0.0-rc.6',
 		'plugin_name'        => 'DW Catalog WP',
 		'plugin_text_domain' => 'dw-catalog-wp',
 		'github_branch'      => 'main',
@@ -84,7 +84,7 @@ DW_DWCAT_License_Manager::init( array(
 	'plugin_file'     => __FILE__,
 	'plugin_basename' => plugin_basename( __FILE__ ),
 	'plugin_name'     => 'DW Catalog WP',
-	'plugin_version'  => '2.0.0-rc.5',
+	'plugin_version'  => '2.0.0-rc.6',
 	'settings_page'   => 'dw-catalog-license',
 	'menu_parent'     => DWCAT_WP_Host::ADMIN_PAGE,
 	'public_keys'     => array(
@@ -184,6 +184,7 @@ function dwcat_migrate( $old_version, $new_version ) {
 		if ( dwcat()->needsInstall() ) {
 			dwcat()->install();
 		}
+		update_option( 'dwcat_schema', \DWCatalog\Db\Schema::VERSION, true );
 	} catch ( \Throwable $e ) {
 		update_option( 'dwcat_install_error', $e->getMessage(), false );
 		return;
@@ -196,6 +197,18 @@ add_action( 'admin_init', 'dwcat_check_version' );
 function dwcat_check_version() {
 	$config = dwcat_get_config();
 	$stored = get_option( 'dwcat_version', '' );
+
+	// Catalog schema upgrades are tracked separately (cheap autoloaded option, no DB query).
+	if ( (int) get_option( 'dwcat_schema', 0 ) !== \DWCatalog\Db\Schema::VERSION ) {
+		try {
+			dwcat()->install();
+			update_option( 'dwcat_schema', \DWCatalog\Db\Schema::VERSION, true );
+			delete_option( 'dwcat_install_error' );
+		} catch ( \Throwable $e ) {
+			update_option( 'dwcat_install_error', $e->getMessage(), false );
+		}
+	}
+
 	if ( $stored !== $config['plugin_version'] ) {
 		dwcat_migrate( $stored, $config['plugin_version'] );
 		update_option( 'dwcat_version', $config['plugin_version'] );

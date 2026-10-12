@@ -10,7 +10,7 @@ namespace DWCatalog\Db;
  */
 class Schema {
 
-	const VERSION = 1;
+	const VERSION = 2;
 
 	/** Tables whose primary key is an auto-increment "id". */
 	const AUTO_ID = array( 'items', 'terms', 'images', 'variations' );
@@ -34,6 +34,7 @@ class Schema {
 					'type'       => array( 'string:20' ),
 					'slug'       => array( 'string:200' ),
 					'title'      => array( 'string:255' ),
+					'sort_title' => array( 'string:191' ),
 					'content'    => array( 'text' ),
 					'excerpt'    => array( 'text' ),
 					'status'     => array( 'string:20', 'default' => "'draft'" ),
@@ -46,6 +47,7 @@ class Schema {
 				'index'   => array(
 					'type_status_created' => array( 'type', 'status', 'created_at' ),
 					'type_status_title'   => array( 'type', 'status', 'title(100)' ),
+					'type_status_sort'    => array( 'type', 'status', 'sort_title(100)' ),
 				),
 			),
 			'terms'      => array(
@@ -127,8 +129,14 @@ class Schema {
 		);
 	}
 
-	/** Create missing tables / indexes; record the schema version. Safe to run repeatedly. */
+	/** Create missing tables / indexes, apply upgrades, record the schema version. Idempotent. */
 	public static function install( Connection $db, string $prefix ): void {
+		// Upgrade existing tables first: PostgreSQL creates indexes separately, and those may
+		// reference columns that only an upgrade adds.
+		$from = self::installedVersion( $db );
+		if ( $from > 0 && $from < 2 ) {
+			self::upgradeTo2( $db, $prefix );
+		}
 		foreach ( self::tables() as $name => $def ) {
 			foreach ( $db->dialect()->createTable( $db->table( $name ), $prefix . $name, $def ) as $sql ) {
 				$db->execute( $sql );
@@ -136,6 +144,22 @@ class Schema {
 		}
 		$db->execute( 'DELETE FROM ' . $db->table( 'settings' ) . ' WHERE name = ?', array( 'schema_version' ) );
 		$db->insert( 'settings', array( 'name' => 'schema_version', 'value' => (string) self::VERSION ) );
+	}
+
+	/** v2: items.sort_title (punctuation-free name sort key, same order on every database). */
+	private static function upgradeTo2( Connection $db, string $prefix ): void {
+		$table = $db->table( 'items' );
+		if ( ! $db->columnExists( 'items', 'sort_title' ) ) {
+			foreach ( $db->dialect()->addColumn( $table, 'sort_title', array( 'string:191' ) ) as $sql ) {
+				$db->execute( $sql );
+			}
+			foreach ( $db->dialect()->addIndex( $table, $prefix . 'items', 'type_status_sort', array( 'type', 'status', 'sort_title(100)' ) ) as $sql ) {
+				$db->execute( $sql );
+			}
+		}
+		foreach ( $db->select( 'SELECT id, title FROM ' . $table ) as $row ) {
+			$db->execute( 'UPDATE ' . $table . ' SET sort_title = ? WHERE id = ?', array( \DWCatalog\Support\Text::sortKey( (string) $row['title'] ), (int) $row['id'] ) );
+		}
 	}
 
 	public static function installedVersion( Connection $db ): int {

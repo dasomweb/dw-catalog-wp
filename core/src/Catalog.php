@@ -40,6 +40,10 @@ class Catalog {
 		$this->prefix = $prefix;
 	}
 
+	public function prefix(): string {
+		return $this->prefix;
+	}
+
 	public function db(): Connection {
 		return $this->db;
 	}

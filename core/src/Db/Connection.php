@@ -42,4 +42,6 @@ interface Connection {
 
 	/** Whether a core table exists (no error logged when it does not). */
 	public function tableExists( string $name ): bool;
+
+	public function columnExists( string $table, string $column ): bool;
 }

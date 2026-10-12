@@ -33,6 +33,14 @@ class MysqlDialect implements Dialect {
 		return array( "CREATE TABLE IF NOT EXISTS $table (\n  " . implode( ",\n  ", $lines ) . "\n) " . $this->tableOptions );
 	}
 
+	public function addColumn( string $table, string $column, array $spec ): array {
+		return array( "ALTER TABLE $table ADD COLUMN " . $this->quoteIdent( $column ) . ' ' . $this->columnType( $spec ) );
+	}
+
+	public function addIndex( string $table, string $rawName, string $index, array $cols ): array {
+		return array( "ALTER TABLE $table ADD KEY " . $this->quoteIdent( $index ) . ' (' . $this->indexCols( $cols ) . ')' );
+	}
+
 	/** Columns with optional MySQL prefix length: "slug(100)". Keeps keys under 767 bytes. */
 	private function indexCols( array $cols ): string {
 		return implode( ', ', array_map( function ( $c ) {

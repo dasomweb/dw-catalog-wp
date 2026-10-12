@@ -76,6 +76,18 @@ function run_suite( Catalog $c, TestHost $host, string $driver ) {
 	$c->install();
 	$c->install(); // idempotent
 	ok( ! $c->needsInstall(), 'installed (twice, idempotent)' );
+	// v1 → v2 upgrade path: drop the column, mark v1, reinstall
+	$db = $c->db();
+	if ( 'pgsql' === $driver ) {
+		$db->execute( 'DROP INDEX IF EXISTS ' . $db->dialect()->quoteIdent( $c->prefix() . 'items_type_status_sort' ) );
+	} else {
+		$db->execute( 'ALTER TABLE ' . $db->table( 'items' ) . ' DROP INDEX type_status_sort' );
+	}
+	$db->execute( 'ALTER TABLE ' . $db->table( 'items' ) . ' DROP COLUMN sort_title' );
+	$db->execute( 'UPDATE ' . $db->table( 'settings' ) . ' SET value = ? WHERE name = ?', array( '1', 'schema_version' ) );
+	ok( $c->needsInstall() && ! $db->columnExists( 'items', 'sort_title' ), 'simulated v1 schema' );
+	$c->install();
+	ok( ! $c->needsInstall() && $db->columnExists( 'items', 'sort_title' ), 'upgrade to v2 adds sort_title' );
 
 	echo "--- fields ---\n";
 	$type = $c->fields()->primaryType();
@@ -157,7 +169,7 @@ function run_suite( Catalog $c, TestHost $host, string $driver ) {
 	echo "--- sort ---\n";
 	eq( array( 'Firm Tofu', '(Wakou#1) Tonkotsu Ramen Soup', '(Wakou#9) Spicy Miso Ramen Soup', 'Black Tiger Shrimp', '(Somi) Miso Ramen Soup' ), $run( array( 'sort' => 'field:dw_pc_price:asc', 'public' => true ) ), 'numeric asc, empty last' );
 	eq( array( 'Black Tiger Shrimp', '(Wakou#9) Spicy Miso Ramen Soup', '(Wakou#1) Tonkotsu Ramen Soup', 'Firm Tofu', '(Somi) Miso Ramen Soup' ), $run( array( 'sort' => 'field:dw_pc_price:desc', 'public' => true ) ), 'numeric desc, empty last' );
-	eq( '(Somi) Miso Ramen Soup', $run( array( 'sort' => 'title_asc', 'public' => true ) )[0], 'title sort' );
+	eq( array( 'Black Tiger Shrimp', 'Firm Tofu', '(Somi) Miso Ramen Soup', '(Wakou#1) Tonkotsu Ramen Soup', '(Wakou#9) Spicy Miso Ramen Soup' ), $run( array( 'sort' => 'title_asc', 'public' => true ) ), 'title sort ignores punctuation (same on every database)' );
 	ok( ! isset( $q->sortOptions( $type, true )['field:dw_pc_cost:asc'] ), 'non-public number field not offered for sorting' );
 	eq( 'date_desc', $q->resolveSort( $type, 'field:dw_pc_cost:asc', true )['column'] === 'created_at' ? 'date_desc' : 'x', 'non-public sort falls back' );
 	eq( array( 'Firm Tofu', '(Somi) Miso Ramen Soup' ), $run( array( 'ids' => array( $e, $d ), 'sort' => 'ids' ) ), 'explicit id order' );
