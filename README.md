@@ -6,7 +6,7 @@
 - 코어(`core/`)는 워드프레스 코드 없는 PHP 라이브러리 — MySQL/MariaDB · PostgreSQL 지원
 - 페이지에 숏코드 하나: 목록 · 검색 · 필터 · 정렬 · 상세 (`/{page}/item/{slug}/`) · SEO 태그
 - 비공개 필드는 사이트 어디에도 나가지 않음 (출력 · 검색 · 필터 · 정렬 · API)
-- 구조: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · 숏코드: [docs/SHORTCODES.md](docs/SHORTCODES.md)
+- 구조: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · 독립 시스템과 커넥터: [docs/CONNECTORS.md](docs/CONNECTORS.md) · 숏코드: [docs/SHORTCODES.md](docs/SHORTCODES.md)
 
 ### 별도 DB 사용 (선택)
 
