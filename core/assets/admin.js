@@ -84,6 +84,113 @@
 		}
 	}, true);
 
+	// ── Photos: shrink in the browser before uploading ─────────
+	//
+	// The website never shows more than 1200px (detail page on a 2× PC / 3× phone screen), so a
+	// 12 MP phone photo is reduced to MAX_EDGE before it leaves the device: uploads are ~10–20×
+	// smaller and faster. The server still re-encodes whatever arrives (security), and if the
+	// browser cannot resize, the original is sent and the server shrinks it.
+
+	var MAX_EDGE = 1600;
+	var QUALITY = 0.85;
+
+	function loadBitmap(file) {
+		if (window.createImageBitmap) {
+			return createImageBitmap(file, { imageOrientation: 'from-image' });
+		}
+		return new Promise(function (resolve, reject) {
+			var img = new Image();
+			img.onload = function () { resolve(img); };
+			img.onerror = reject;
+			img.src = URL.createObjectURL(file);
+		});
+	}
+
+	function encode(canvas, type) {
+		return new Promise(function (resolve) {
+			canvas.toBlob(resolve, type, QUALITY);
+		});
+	}
+
+	function shrink(file) {
+		if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
+			return Promise.resolve(file); // GIF etc.: let the server handle it
+		}
+		return loadBitmap(file).then(function (bmp) {
+			var w = bmp.width;
+			var h = bmp.height;
+			var scale = Math.min(1, MAX_EDGE / Math.max(w, h));
+			if (scale === 1 && file.size <= 1.5 * 1048576) {
+				return file; // already web-sized
+			}
+			var canvas = document.createElement('canvas');
+			canvas.width = Math.round(w * scale);
+			canvas.height = Math.round(h * scale);
+			var ctx = canvas.getContext('2d');
+			ctx.imageSmoothingQuality = 'high';
+			ctx.drawImage(bmp, 0, 0, canvas.width, canvas.height);
+			return encode(canvas, 'image/webp').then(function (blob) {
+				if (blob && blob.type === 'image/webp') {
+					return blob;
+				}
+				// No WebP encoder (older Safari): JPEG on white so transparency does not turn black
+				ctx.globalCompositeOperation = 'destination-over';
+				ctx.fillStyle = '#fff';
+				ctx.fillRect(0, 0, canvas.width, canvas.height);
+				return encode(canvas, 'image/jpeg');
+			}).then(function (blob) {
+				if (!blob || blob.size >= file.size) {
+					return file;
+				}
+				var ext = blob.type === 'image/webp' ? '.webp' : '.jpg';
+				return new File([blob], file.name.replace(/\.[^.]+$/, '') + ext, { type: blob.type, lastModified: Date.now() });
+			});
+		}).catch(function () {
+			return file;
+		});
+	}
+
+	function mb(bytes) {
+		return (bytes / 1048576).toFixed(bytes < 1048576 ? 2 : 1) + ' MB';
+	}
+
+	document.addEventListener('change', function (e) {
+		var input = e.target;
+		if (!input.matches || !input.matches('input[type=file][data-dwc-resize]') || !input.files.length) {
+			return;
+		}
+		if (!window.DataTransfer || !HTMLCanvasElement.prototype.toBlob) {
+			return;
+		}
+		var files = Array.prototype.slice.call(input.files);
+		var status = document.querySelector('[data-dwc-resize-status]');
+		var buttons = input.form ? input.form.querySelectorAll('button[type=submit]') : [];
+		Array.prototype.forEach.call(buttons, function (b) { b.disabled = true; });
+		if (status) {
+			status.textContent = 'Optimizing photos…';
+		}
+		Promise.all(files.map(shrink)).then(function (out) {
+			var dt = new DataTransfer();
+			var before = 0;
+			var after = 0;
+			out.forEach(function (f, i) {
+				dt.items.add(f);
+				before += files[i].size;
+				after += f.size;
+			});
+			input.files = dt.files;
+			if (status) {
+				status.textContent = out.length + ' photo(s): ' + mb(before) + ' → ' + mb(after);
+			}
+		}).catch(function () {
+			if (status) {
+				status.textContent = '';
+			}
+		}).then(function () {
+			Array.prototype.forEach.call(buttons, function (b) { b.disabled = false; });
+		});
+	});
+
 	// ── Presets ────────────────────────────────────────────────
 
 	var colsSnapshot = null;

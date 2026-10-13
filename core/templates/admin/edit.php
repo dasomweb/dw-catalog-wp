@@ -171,8 +171,9 @@ $varRow = function ( $i, array $row ) use ( $cols, $varCell, $app ) {
 						</li>
 					<?php endforeach; ?>
 				</ul>
-				<input type="file" name="images[]" accept="image/jpeg,image/png,image/gif,image/webp" multiple>
-				<p class="dwc-muted"><?php echo Html::e( $app->t( 'JPEG, PNG, GIF or WebP, up to 15 MB each.' ) ); ?></p>
+				<input type="file" name="images[]" accept="image/jpeg,image/png,image/gif,image/webp" multiple data-dwc-resize>
+				<p class="dwc-muted" data-dwc-resize-status></p>
+				<p class="dwc-muted"><?php echo Html::e( $app->t( 'JPEG, PNG, GIF or WebP. Photos are resized for the web before uploading (max 1200px is shown on the site).' ) ); ?></p>
 			</div>
 		</aside>
 	</div>

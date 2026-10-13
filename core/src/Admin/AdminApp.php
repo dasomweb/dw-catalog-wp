@@ -14,7 +14,7 @@ use DWCatalog\Support\Text;
  *
  *   GET  render( $query )            view = items | edit | categories | fields | import | export | design | reference
  *   POST handle( $post, $files )     do   = save_item | delete_item | bulk_items | save_term | delete_term |
- *                                           save_fields | import | export | save_design
+ *                                           save_fields | import | export | export_csv | save_design
  *
  * Every POST: capability check → host policy (license) → CSRF token bound to user + action.
  * Input arrives unslashed from the host (no magic quotes).
@@ -44,6 +44,7 @@ class AdminApp {
 		'save_fields' => array( 'catalog.manage', 'manage_fields' ),
 		'import'      => array( 'catalog.import', 'import' ),
 		'export'      => array( 'catalog.export', 'export' ),
+		'export_csv'  => array( 'catalog.export', 'export' ),
 		'save_design' => array( 'catalog.manage', 'save' ),
 	);
 
@@ -199,6 +200,8 @@ class AdminApp {
 				return $this->redirect( array( 'view' => 'import', 'type' => $type, 'msg' => 'imported' ) );
 			case 'export':
 				return ( new PdfExporter( $this->c ) )->run( $type, $post );
+			case 'export_csv':
+				return ( new CsvExporter( $this->c ) )->run( $type, $post );
 			case 'save_design':
 				Design::save( $this->c->settings(), isset( $post['design'] ) && is_array( $post['design'] ) ? $post['design'] : array() );
 				return $this->redirect( array( 'view' => 'design', 'type' => $type, 'msg' => 'saved' ) );

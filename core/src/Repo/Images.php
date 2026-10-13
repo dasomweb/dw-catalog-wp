@@ -10,7 +10,13 @@ use DWCatalog\Support\Text;
  * Item images: files under the host's storage dir, records in the images table.
  * The first image (lowest position) is the main image.
  *
- * Stored per upload: "full" (≤ 2400px, re-encoded), "large" 1200, "medium" 600, "thumb" 300² crop.
+ * Sized for the web, not for print: the largest file is 1200px — what a detail page needs on a
+ * 2× PC screen or a 3× phone. Per upload (WebP when the server can, else JPEG):
+ *   large  ≤ 1200px  detail page          (also the record's main file)
+ *   medium ≤ 600px   catalog cards
+ *   thumb  300×300   thumbnails / admin
+ * The admin shrinks photos in the browser before uploading (core/assets/admin.js), so a 12 MP
+ * phone photo goes up as a few hundred KB; the server still re-encodes whatever arrives.
  */
 class Images {
 
@@ -20,6 +26,8 @@ class Images {
 		'medium' => array( 600, 600, false ),
 		'thumb'  => array( 300, 300, true ),
 	);
+	/** Bumped when the storage .htaccess changes. */
+	const GUARD_VERSION = '2';
 
 	/** @var Connection */
 	private $db;
@@ -95,7 +103,10 @@ class Images {
 		if ( ! $info ) {
 			return 'Not a supported image (JPEG, PNG, GIF, WebP).';
 		}
-		list( $mime, $ext ) = $info;
+		if ( ! ImageProcessor::ensureMemory( $info[2], $info[3] ) ) {
+			return 'Image is too large for this server\'s memory — upload a smaller photo.';
+		}
+		list( $mime, $ext ) = ImageProcessor::outputFormat();
 
 		$sub  = gmdate( 'Y' ) . '/' . gmdate( 'm' );
 		$dir  = $this->host->storageDir() . '/' . $sub;
@@ -105,23 +116,27 @@ class Images {
 		$base = Text::slug( pathinfo( $originalName, PATHINFO_FILENAME ), 60 );
 		$base = ( '' !== $base ? $base : 'image' ) . '-' . bin2hex( random_bytes( 4 ) );
 
-		$full = ImageProcessor::resize( $tmp, "$dir/$base.$ext", $mime, 2400, 2400 );
-		if ( ! $full ) {
-			return 'Could not process the image.';
-		}
+		// Each size is made from the previous one: only the first step decodes the upload.
 		$sizes = array();
+		$from  = $tmp;
 		foreach ( self::SIZES as $size => list( $w, $h, $crop ) ) {
-			$dims = ImageProcessor::resize( "$dir/$base.$ext", "$dir/$base-$size.$ext", $mime, $w, $h, $crop );
-			if ( $dims ) {
-				$sizes[ $size ] = array( 'file' => "$sub/$base-$size.$ext", 'width' => $dims[0], 'height' => $dims[1] );
+			$path = "$dir/$base-$size.$ext";
+			$dims = ImageProcessor::resize( $from, $path, $mime, $w, $h, $crop );
+			if ( ! $dims ) {
+				return 'Could not process the image.';
+			}
+			$sizes[ $size ] = array( 'file' => "$sub/$base-$size.$ext", 'width' => $dims[0], 'height' => $dims[1] );
+			if ( ! $crop ) {
+				$from = $path;
 			}
 		}
+		$full = array( $sizes['large']['width'], $sizes['large']['height'] );
 
 		$position = (int) $this->db->selectValue( 'SELECT COUNT(*) FROM ' . $this->db->table( 'images' ) . ' WHERE item_id = ?', array( $itemId ) );
 		$id       = $this->db->insert( 'images', array(
 			'item_id'    => $itemId,
 			'position'   => $position,
-			'file'       => "$sub/$base.$ext",
+			'file'       => $sizes['large']['file'],
 			'mime'       => $mime,
 			'width'      => $full[0],
 			'height'     => $full[1],
@@ -183,15 +198,20 @@ class Images {
 		return $this->host->storageDir() . '/' . $file;
 	}
 
-	/** <img> with srcset over the stored sizes. */
+	/**
+	 * <img> with srcset (medium + large) so phones and PCs each download the size they need.
+	 * $lazy = false for the first visible image (main detail image): eager + high fetch priority.
+	 */
 	public function tag( array $row, string $size, string $sizesAttr = '(max-width: 600px) 100vw, 600px', bool $lazy = true ): string {
 		$srcset = array();
-		foreach ( $row['sizes'] as $name => $s ) {
-			if ( 'thumb' !== $name ) {
-				$srcset[] = $this->url( $row, $name ) . ' ' . (int) $s['width'] . 'w';
+		foreach ( array( 'medium', 'large' ) as $name ) {
+			if ( isset( $row['sizes'][ $name ] ) ) {
+				$srcset[] = $this->url( $row, $name ) . ' ' . (int) $row['sizes'][ $name ]['width'] . 'w';
 			}
 		}
-		$srcset[] = $this->url( $row ) . ' ' . (int) $row['width'] . 'w';
+		if ( ! $srcset ) {
+			$srcset[] = $this->url( $row ) . ' ' . (int) $row['width'] . 'w';
+		}
 		$w        = isset( $row['sizes'][ $size ] ) ? $row['sizes'][ $size ]['width'] : $row['width'];
 		$h        = isset( $row['sizes'][ $size ] ) ? $row['sizes'][ $size ]['height'] : $row['height'];
 		return sprintf(
@@ -201,7 +221,7 @@ class Images {
 			(int) $w,
 			(int) $h,
 			htmlspecialchars( (string) $row['alt'], ENT_QUOTES, 'UTF-8' ),
-			$lazy ? ' loading="lazy"' : ''
+			$lazy ? ' loading="lazy"' : ' fetchpriority="high"'
 		);
 	}
 
@@ -230,8 +250,15 @@ class Images {
 		if ( ! is_file( $root . '/index.html' ) ) {
 			@file_put_contents( $root . '/index.html', '' );
 		}
-		if ( ! is_file( $root . '/.htaccess' ) ) {
-			@file_put_contents( $root . '/.htaccess', "Options -Indexes\n<FilesMatch \"\\.(php|phtml|phar|pl|py|cgi|sh)$\">\n  Require all denied\n</FilesMatch>\n" );
+		$guard = $root . '/.htaccess';
+		if ( ! is_file( $guard ) || false === strpos( (string) file_get_contents( $guard ), '# dwcat-guard ' . self::GUARD_VERSION ) ) {
+			// File names are unique per upload, so browsers may cache them for a year.
+			@file_put_contents( $guard, '# dwcat-guard ' . self::GUARD_VERSION . "\n"
+				. "Options -Indexes\n"
+				. "<FilesMatch \"\\.(php|phtml|phar|pl|py|cgi|sh)$\">\n  Require all denied\n</FilesMatch>\n"
+				. "<IfModule mod_headers.c>\n  <FilesMatch \"\\.(webp|jpe?g|png|gif)$\">\n    Header set Cache-Control \"public, max-age=31536000, immutable\"\n  </FilesMatch>\n</IfModule>\n"
+				. "<IfModule mod_expires.c>\n  ExpiresActive On\n  ExpiresByType image/webp \"access plus 1 year\"\n  ExpiresByType image/jpeg \"access plus 1 year\"\n  ExpiresByType image/png \"access plus 1 year\"\n</IfModule>\n"
+				. "<IfModule mod_mime.c>\n  AddType image/webp .webp\n</IfModule>\n" );
 		}
 		return ( is_dir( $dir ) || @mkdir( $dir, 0755, true ) ) && is_writable( $dir );
 	}

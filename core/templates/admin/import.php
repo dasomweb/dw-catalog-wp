@@ -6,15 +6,13 @@
  * @var DWCatalog\Catalog $c
  * @var string $type
  */
+use DWCatalog\Admin\CsvFormat;
 use DWCatalog\Support\Html;
 
 $current = 'import';
-$fields  = $c->fields()->fields( $type );
-$cols    = array_merge( array( 'title', 'content', 'excerpt', 'status', 'category', 'tags', 'image_url' ), array_column( array_filter( $fields, function ( $f ) {
-	return empty( $f['is_title_field'] );
-} ), 'meta_key' ) );
+$header  = CsvFormat::header( $c, $type );
 ?>
-<div class="dwc-head"><h1><?php echo Html::e( $app->t( 'Import CSV' ) ); ?></h1></div>
+<div class="dwc-head"><h1><?php echo Html::e( $app->t( 'Import' ) ); ?></h1></div>
 <?php include __DIR__ . '/_nav.php'; ?>
 
 <div class="dwc-cols">
@@ -22,29 +20,49 @@ $cols    = array_merge( array( 'title', 'content', 'excerpt', 'status', 'categor
 		<?php echo $app->form( 'import', $type, true ); ?>
 			<table class="dwc-form">
 				<tr><th><?php echo Html::e( $app->t( 'CSV file' ) ); ?></th><td><input type="file" name="csv" accept=".csv,text/csv" required></td></tr>
-				<tr><th><?php echo Html::e( $app->t( 'Delimiter' ) ); ?></th><td>
-					<select name="delimiter">
-						<option value="semicolon"><?php echo Html::e( $app->t( 'Semicolon (;)' ) ); ?></option>
-						<option value="comma"><?php echo Html::e( $app->t( 'Comma (,)' ) ); ?></option>
-						<option value="tab"><?php echo Html::e( $app->t( 'Tab' ) ); ?></option>
+				<tr><th><?php echo Html::e( $app->t( 'Existing items' ) ); ?></th><td>
+					<select name="existing">
+						<option value="update"><?php echo Html::e( $app->t( 'Update (match by slug)' ) ); ?></option>
+						<option value="skip"><?php echo Html::e( $app->t( 'Skip' ) ); ?></option>
 					</select>
+					<p class="dwc-muted"><?php echo Html::e( $app->t( 'Update changes only the columns in the file — a file with just slug and price updates prices.' ) ); ?></p>
 				</td></tr>
-				<tr><th><?php echo Html::e( $app->t( 'Default status' ) ); ?></th><td>
+				<tr><th><?php echo Html::e( $app->t( 'Status for new items' ) ); ?></th><td>
 					<select name="status">
 						<option value="publish"><?php echo Html::e( $app->t( 'Published' ) ); ?></option>
 						<option value="draft"><?php echo Html::e( $app->t( 'Draft' ) ); ?></option>
 					</select>
+					<p class="dwc-muted"><?php echo Html::e( $app->t( 'Used when the file has no status column.' ) ); ?></p>
 				</td></tr>
-				<tr><th><?php echo Html::e( $app->t( 'Duplicates' ) ); ?></th><td><label><input type="checkbox" name="skip_duplicates" value="1" checked> <?php echo Html::e( $app->t( 'Skip rows whose name already exists' ) ); ?></label></td></tr>
+				<tr><th><?php echo Html::e( $app->t( 'Delimiter' ) ); ?></th><td>
+					<select name="delimiter">
+						<option value="auto"><?php echo Html::e( $app->t( 'Detect automatically' ) ); ?></option>
+						<option value="comma"><?php echo Html::e( $app->t( 'Comma (,)' ) ); ?></option>
+						<option value="semicolon"><?php echo Html::e( $app->t( 'Semicolon (;)' ) ); ?></option>
+						<option value="tab"><?php echo Html::e( $app->t( 'Tab' ) ); ?></option>
+					</select>
+				</td></tr>
 			</table>
 			<p><button type="submit" class="dwc-btn dwc-btn-primary"><?php echo Html::e( $app->t( 'Import' ) ); ?></button></p>
 		</form>
 	</div>
 	<aside class="dwc-side">
 		<div class="dwc-box">
-			<h2><?php echo Html::e( $app->t( 'Columns' ) ); ?></h2>
-			<p class="dwc-muted"><?php echo Html::e( $app->t( 'First row = headers. "title" is required. Category accepts "Parent > Child"; several image URLs are separated by "|".' ) ); ?></p>
-			<pre class="dwc-code"><?php echo Html::e( implode( ';', $cols ) ); ?></pre>
+			<h2><?php echo Html::e( $app->t( 'File format' ) ); ?></h2>
+			<p class="dwc-muted"><?php echo Html::e( $app->t( 'Same layout as the CSV export: export, edit in a spreadsheet, import.' ) ); ?></p>
+			<ul class="dwc-muted">
+				<li><?php echo Html::e( $app->t( 'One row per variation. Rows with the same slug are one item; the first row carries the item columns.' ) ); ?></li>
+				<li><?php echo Html::e( $app->t( 'var_… columns are the variation columns.' ) ); ?></li>
+				<li><?php echo Html::e( $app->t( 'category: "Parent > Child"; several categories or image URLs separated by " | ".' ) ); ?></li>
+				<li><?php echo Html::e( $app->t( 'New image URLs are downloaded; images already in the catalog are kept.' ) ); ?></li>
+			</ul>
+			<pre class="dwc-code"><?php echo Html::e( implode( ',', $header ) ); ?></pre>
+			<?php if ( $c->host()->can( 'catalog.export' ) ) : ?>
+				<?php echo $app->form( 'export_csv', $type ); ?>
+					<input type="hidden" name="template" value="1">
+					<button type="submit" class="dwc-btn"><?php echo Html::e( $app->t( 'Download template CSV' ) ); ?></button>
+				</form>
+			<?php endif; ?>
 		</div>
 	</aside>
 </div>

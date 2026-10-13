@@ -13,8 +13,8 @@ $tabs = array(
 	'edit'       => array( 'Add New', 'catalog.edit' ),
 	'categories' => array( 'Categories', 'catalog.terms' ),
 	'fields'     => array( 'Fields', 'catalog.manage' ),
-	'import'     => array( 'Import CSV', 'catalog.import' ),
-	'export'     => array( 'Export PDF', 'catalog.export' ),
+	'import'     => array( 'Import', 'catalog.import' ),
+	'export'     => array( 'Export', 'catalog.export' ),
 	'design'     => array( 'Design', 'catalog.manage' ),
 	'reference'  => array( 'Shortcodes', 'catalog.edit' ),
 );

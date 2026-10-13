@@ -221,8 +221,8 @@ class FrontApp {
 
 				<?php if ( $result['rows'] ) : ?>
 					<div class="dwcat-grid" style="--dwcat-cols: <?php echo max( 1, min( 6, (int) $a['columns'] ) ); ?>;">
-						<?php foreach ( $result['rows'] as $item ) : ?>
-							<div class="dwcat-card"><?php echo $this->card( $item, $fields, $ctx->itemUrl( $item['slug'], $params ), 'yes' === $a['show_category'] ); ?></div>
+						<?php foreach ( $result['rows'] as $i => $item ) : ?>
+							<div class="dwcat-card"><?php echo $this->card( $item, $fields, $ctx->itemUrl( $item['slug'], $params ), 'yes' === $a['show_category'], $i < (int) $a['columns'] ); ?></div>
 						<?php endforeach; ?>
 					</div>
 					<?php echo $this->pagination( $result, $params, $ctx ); ?>
@@ -349,11 +349,13 @@ class FrontApp {
 		} ) );
 	}
 
-	private function card( array $item, array $fields, string $url, bool $showCategory ): string {
+	/** $eager: first row — load immediately (it is what the visitor sees first). */
+	private function card( array $item, array $fields, string $url, bool $showCategory, bool $eager = false ): string {
 		$id   = (int) $item['id'];
 		$img  = $this->c->images()->main( $id );
+		// Cards are ~300px on PC, ~half the screen on phones → the 600px file covers both at 2×.
 		$html = '<a href="' . Html::url( $url ) . '" class="dwcat-card-link"><div class="dwcat-card-image">'
-			. ( $img ? $this->c->images()->tag( $img, 'medium', '(max-width: 600px) 50vw, 300px' ) : '<div class="dwcat-no-image">—</div>' )
+			. ( $img ? $this->c->images()->tag( $img, 'medium', '(max-width: 600px) 50vw, 300px', ! $eager ) : '<div class="dwcat-no-image">—</div>' )
 			. '</div>';
 		if ( $showCategory ) {
 			$terms = $this->c->terms()->ofItem( $item['type'], $id );

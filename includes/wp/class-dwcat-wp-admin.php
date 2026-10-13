@@ -17,8 +17,8 @@ class DWCAT_WP_Admin {
 		'edit'       => array( 'Add New', 'edit_posts' ),
 		'categories' => array( 'Categories', 'manage_categories' ),
 		'fields'     => array( 'Fields', 'manage_options' ),
-		'import'     => array( 'Import CSV', 'edit_posts' ),
-		'export'     => array( 'Export PDF', 'edit_posts' ),
+		'import'     => array( 'Import', 'edit_posts' ),
+		'export'     => array( 'Export', 'edit_posts' ),
 		'design'     => array( 'Design', 'manage_options' ),
 		'reference'  => array( 'Shortcodes', 'edit_posts' ),
 	);
@@ -33,6 +33,7 @@ class DWCAT_WP_Admin {
 		'save_fields' => 'dwcat_can_manage_fields',
 		'import'      => 'dwcat_can_bulk_import',
 		'export'      => 'dwcat_can_export_pdf',
+		'export_csv'  => 'dwcat_can_export_pdf',
 		'save_design' => 'dwcat_can_save_meta',
 	);
 

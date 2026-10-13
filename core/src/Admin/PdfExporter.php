@@ -57,12 +57,20 @@ class PdfExporter {
 		$this->c->terms()->primeItems( $type, $ids );
 
 		$cards = array();
+		$temps = array();
 		foreach ( $rows as $item ) {
 			$id   = (int) $item['id'];
 			$html = '<div class="card">';
 			if ( $withImage ) {
 				$img   = $this->c->images()->main( $id );
 				$path  = $img ? $this->c->images()->path( $img, 'thumb' ) : '';
+				if ( $path && is_file( $path ) && 'webp' === strtolower( pathinfo( $path, PATHINFO_EXTENSION ) ) ) {
+					$jpg = \DWCatalog\Media\ImageProcessor::toJpeg( $path ); // Dompdf reads JPEG/PNG reliably
+					if ( $jpg ) {
+						$temps[] = $jpg;
+						$path    = $jpg;
+					}
+				}
 				$html .= $path && is_file( $path )
 					? '<div class="img"><img src="' . Html::attr( $path ) . '"></div>'
 					: '<div class="img none">—</div>';
@@ -94,11 +102,14 @@ class PdfExporter {
 
 		$dompdf = new \Dompdf\Dompdf( array(
 			'isRemoteEnabled' => false,
-			'chroot'          => array( $this->c->host()->storageDir() ),
+			'chroot'          => array( $this->c->host()->storageDir(), sys_get_temp_dir() ),
 		) );
 		$dompdf->setPaper( 'letter', 'portrait' );
 		$dompdf->loadHtml( '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' . $css . '</style></head><body>' . $body . '</body></html>' );
 		$dompdf->render();
+		foreach ( $temps as $tmp ) {
+			@unlink( $tmp );
+		}
 		return array( 'download' => array( $type . '-catalog-' . gmdate( 'Y-m-d-His' ) . '.pdf', 'application/pdf', $dompdf->output() ) );
 	}
 }

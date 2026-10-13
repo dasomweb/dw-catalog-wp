@@ -256,6 +256,55 @@ function run_suite( Catalog $c, TestHost $host, string $driver ) {
 	$grid = $c->front()->grid( array( 'category' => 'refrigerated', 'per_page' => 2 ), $ctx );
 	ok( 2 === substr_count( $grid, 'dwcat-card-title' ), 'grid block' );
 
+	echo "--- csv export / import ---\n";
+	$items->saveValues( $d, array_merge( $items->values( $d ), array( 'dw_pc_pack_size_raw' => '=SUM(A1)' ) ) );
+	$exp  = ( new \DWCatalog\Admin\CsvExporter( $c ) )->run( $type, array( 'status' => 'any' ) );
+	$body = $exp['download'][2];
+	ok( "\xEF\xBB\xBF" === substr( $body, 0, 3 ), 'CSV has UTF-8 BOM (Excel)' );
+	$lines = array_map( function ( $l ) { return str_getcsv( $l, ',', '"', '' ); }, array_values( array_filter( explode( "\n", substr( $body, 3 ) ), 'strlen' ) ) );
+	$head  = $lines[0];
+	ok( in_array( 'var_item_code', $head, true ) && in_array( 'dw_pc_cost', $head, true ) && in_array( 'category', $head, true ), 'header: fields (incl. internal), category, var_ columns' );
+	$slugA = $items->get( $a )['slug'];
+	$rowsA = array_values( array_filter( $lines, function ( $l ) use ( $slugA ) { return $l[0] === $slugA; } ) );
+	eq( 2, count( $rowsA ), 'one row per variation' );
+	eq( '', $rowsA[1][ array_search( 'title', $head, true ) ], 'continuation row carries only slug + var_' );
+	eq( 'Refrigerated > Ramen Soup Base', $rowsA[0][ array_search( 'category', $head, true ) ], 'category exported as path' );
+	ok( false !== strpos( $body, "'=SUM(A1)" ), 'formula-looking cell neutralised' );
+
+	$tmpCsv = tempnam( sys_get_temp_dir(), 'csv' );
+	// round trip: re-import the export unchanged → everything updated, nothing duplicated
+	file_put_contents( $tmpCsv, $body );
+	$before = $q->run( $type, array( 'status' => 'any' ) )['total'];
+	$rep    = ( new \DWCatalog\Admin\Importer( $c ) )->importFile( $type, $tmpCsv, array( 'existing' => 'update' ) );
+	ok( false !== strpos( $rep[0], '0 created' ), 're-import of export creates nothing: ' . $rep[0] );
+	eq( $before, $q->run( $type, array( 'status' => 'any' ) )['total'], 'no duplicates after round trip' );
+	$fresh = ( new Catalog( $c->db(), $host, '' ) )->items();
+	eq( 2, count( $fresh->variations( $a ) ), 'variations survive round trip' );
+	eq( '=SUM(A1)', $fresh->value( $d, 'dw_pc_pack_size_raw' ), 'formula guard undone on import' );
+	eq( 'SECRETNOTE', $fresh->value( $a, 'dw_pc_internal_note' ), 'internal field round-trips' );
+
+	// partial update: only slug + price
+	file_put_contents( $tmpCsv, "slug,dw_pc_price\n" . $items->get( $e )['slug'] . ",19.5\n" );
+	( new \DWCatalog\Admin\Importer( $c ) )->importFile( $type, $tmpCsv, array( 'existing' => 'update' ) );
+	$fresh = ( new Catalog( $c->db(), $host, '' ) )->items();
+	eq( '19.5', $fresh->value( $e, 'dw_pc_price' ), 'partial update changes the given column' );
+	eq( 'TF-100', $fresh->value( $e, 'dw_pc_item_code' ), 'partial update keeps other columns' );
+
+	// new item with variations + new category path, semicolon file
+	file_put_contents( $tmpCsv, "slug;title;category;dw_pc_brand_raw;var_name;var_price;var_stock\nking-crab;King Crab;Frozen > Crab;Sea Jem;Small;30;in_stock\nking-crab;;;;Large;55;out_of_stock\n" );
+	$rep  = ( new \DWCatalog\Admin\Importer( $c ) )->importFile( $type, $tmpCsv, array( 'existing' => 'update', 'delimiter' => 'auto' ) );
+	$fresh = new Catalog( $c->db(), $host, '' );
+	$crab  = $fresh->items()->getBySlug( $type, 'king-crab' );
+	ok( $crab && false !== strpos( $rep[0], '1 created' ), 'new item created from CSV' );
+	eq( array( 'Small', 'Large' ), array_column( $fresh->items()->variations( (int) $crab['id'] ), 'name' ), 'variations from continuation rows' );
+	eq( 'Crab', $fresh->terms()->ofItem( $type, (int) $crab['id'] )[0]['name'], 'category path created' );
+	$rep = ( new \DWCatalog\Admin\Importer( $c ) )->importFile( $type, $tmpCsv, array( 'existing' => 'skip' ) );
+	ok( false !== strpos( $rep[0], '1 skipped' ), 'skip mode leaves existing items: ' . $rep[0] );
+
+	$tpl = ( new \DWCatalog\Admin\CsvExporter( $c ) )->run( $type, array( 'template' => 1 ) );
+	eq( 3, count( array_filter( explode( "\n", $tpl['download'][2] ), 'strlen' ) ), 'template = header + 2 example rows' );
+	@unlink( $tmpCsv );
+
 	echo "--- images ---\n";
 	if ( ! function_exists( 'imagecreatetruecolor' ) ) {
 		echo "  (GD not loaded — run with -d extension=gd)\n";
@@ -267,7 +316,10 @@ function run_suite( Catalog $c, TestHost $host, string $driver ) {
 		$id = $c->images()->store( $e, $tmp, 'Firm Tofu Front.JPG' );
 		ok( is_int( $id ), 'jpeg stored' );
 		$img = $c->images()->main( $e );
-		ok( preg_match( '#^\d{4}/\d{2}/firm-tofu-front-[0-9a-f]{8}\.jpg$#', $img['file'] ) === 1, 'safe generated file name' );
+		ok( preg_match( '#^\d{4}/\d{2}/firm-tofu-front-[0-9a-f]{8}-large\.(webp|jpg)$#', $img['file'] ) === 1, 'safe generated file name' );
+		eq( function_exists( 'imagewebp' ) ? 'image/webp' : 'image/jpeg', $img['mime'], 'web format (WebP when available)' );
+		ok( $img['width'] <= 1200 && $img['height'] <= 1200, 'largest stored size is 1200px (web, not print)' );
+		ok( false !== strpos( $c->images()->tag( $img, 'large', '100vw', false ), 'fetchpriority="high"' ), 'priority image tag' );
 		eq( array( 'large', 'medium', 'thumb' ), array_keys( $img['sizes'] ), 'sizes generated' );
 		eq( array( 300, 300 ), array( $img['sizes']['thumb']['width'], $img['sizes']['thumb']['height'] ), 'thumb is a 300² crop' );
 		eq( 1200, $img['sizes']['large']['width'], 'large fits 1200' );
