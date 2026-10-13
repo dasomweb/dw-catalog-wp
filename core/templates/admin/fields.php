@@ -62,7 +62,7 @@ $colRow = function ( $i, array $col ) use ( $app ) {
 	return $h . '<td class="dwc-c"><button type="button" class="dwc-icon dwc-danger" data-dwc-remove>×</button></td></tr>';
 };
 ?>
-<div class="dwc-head"><h1><?php echo Html::e( $app->t( 'Fields' ) ); ?></h1></div>
+<?php echo $app->head( $app->t( 'Fields' ) ); ?>
 <?php include __DIR__ . '/_nav.php'; ?>
 
 <?php echo $app->form( 'save_fields', $type, false, 'class="dwc-fields"' ); ?>

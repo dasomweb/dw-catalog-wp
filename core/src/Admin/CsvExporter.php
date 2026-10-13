@@ -16,7 +16,7 @@ class CsvExporter {
 		$this->c = $c;
 	}
 
-	/** @param array $post cats[] (optional), status (any|publish|draft), delimiter, template (1 = header + example only) */
+	/** @param array $post cats[] (optional), status (any|publish|draft), ids[] (selected items, max 100), delimiter, template (1 = header + example only) */
 	public function run( string $type, array $post ): array {
 		$delim  = CsvFormat::delimiter( isset( $post['delimiter'] ) ? $post['delimiter'] : 'comma' );
 		$header = CsvFormat::header( $this->c, $type );
@@ -39,13 +39,14 @@ class CsvExporter {
 
 	private function rows( $out, string $type, array $header, string $delim, array $post ): void {
 		$cats   = array_values( array_filter( array_map( 'intval', isset( $post['cats'] ) ? (array) $post['cats'] : array() ) ) );
+		$ids    = array_values( array_filter( array_map( 'intval', isset( $post['ids'] ) ? (array) $post['ids'] : array() ) ) );
 		$status = isset( $post['status'] ) && in_array( $post['status'], array( 'publish', 'draft' ), true ) ? $post['status'] : 'any';
 		$fields = $this->c->fields()->fieldsByKey( $type );
 		$cols   = $this->c->fields()->variationColumns( $type );
 		$terms  = $this->c->terms();
 
 		for ( $page = 1; ; $page++ ) {
-			$r = $this->c->query()->run( $type, array( 'cats' => $cats, 'status' => $status, 'sort' => 'title_asc', 'page' => $page, 'per_page' => 100 ) );
+			$r = $this->c->query()->run( $type, array( 'cats' => $cats, 'ids' => $ids, 'status' => $status, 'sort' => 'title_asc', 'page' => $page, 'per_page' => 100 ) );
 			if ( ! $r['rows'] ) {
 				break;
 			}

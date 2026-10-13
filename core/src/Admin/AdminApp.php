@@ -6,6 +6,7 @@ use DWCatalog\Fields\FieldConfig;
 use DWCatalog\Fields\VariationColumns;
 use DWCatalog\Front\Design;
 use DWCatalog\Security\Csrf;
+use DWCatalog\Query\CatalogQuery;
 use DWCatalog\Support\Html;
 use DWCatalog\Support\Text;
 
@@ -38,7 +39,7 @@ class AdminApp {
 	const ACTIONS = array(
 		'save_item'   => array( 'catalog.edit', 'save' ),
 		'delete_item' => array( 'catalog.delete', 'save' ),
-		'bulk_items'  => array( 'catalog.delete', 'save' ),
+		'bulk_items'  => array( 'catalog.edit', 'save' ),
 		'save_term'   => array( 'catalog.terms', 'save' ),
 		'delete_term' => array( 'catalog.terms', 'save' ),
 		'save_fields' => array( 'catalog.manage', 'manage_fields' ),
@@ -86,12 +87,15 @@ class AdminApp {
 					return $this->wrap( $this->notice( 'not_found', 'error' ) );
 				}
 				$vars['item'] = $item;
+				$vars        += $this->editData( $type, $item );
 				break;
 		}
 		$notice = isset( $q['msg'] ) && isset( self::NOTICES[ $q['msg'] ] ) ? $this->notice( $q['msg'], 'invalid' === $q['msg'] ? 'error' : 'success' ) : '';
 		$flash  = $this->takeFlash();
 		return $this->wrap( $notice . $flash . $this->template( $view, $vars ) );
 	}
+
+	const PER_PAGE = array( 10, 20, 50, 100 );
 
 	private function itemsData( string $type, array $q ): array {
 		$fields = $this->c->fields()->fieldsByKey( $type );
@@ -110,20 +114,56 @@ class AdminApp {
 		} else {
 			$sort = 'date_desc';
 		}
-		$status = isset( $q['status'] ) && in_array( $q['status'], array( 'publish', 'draft' ), true ) ? $q['status'] : 'any';
-		$result = $this->c->query()->run( $type, array(
+		$status  = isset( $q['status'] ) && in_array( $q['status'], array( 'publish', 'draft' ), true ) ? $q['status'] : 'any';
+		$perPage = isset( $q['n'] ) && in_array( (int) $q['n'], self::PER_PAGE, true ) ? (int) $q['n'] : 20;
+		$code    = $this->c->fields()->roleField( $type, 'code', false );
+		$brand   = $this->c->fields()->roleField( $type, 'brand', false );
+		$stats   = new ItemStats( $this->c );
+		$shared  = $code ? $stats->shared( $type, $code['meta_key'] ) : array();
+		$dup     = $code && ! empty( $q['dup'] );
+		$result  = $this->c->query()->run( $type, array(
 			'search'   => isset( $q['s'] ) ? (string) $q['s'] : '',
 			'cats'     => ! empty( $q['cat'] ) ? array( (int) $q['cat'] ) : array(),
 			'meta'     => $meta,
 			'sort'     => $sort,
 			'status'   => $status,
+			'shared'   => $dup ? $code['meta_key'] : '',
 			'page'     => isset( $q['paged'] ) ? (int) $q['paged'] : 1,
-			'per_page' => 20,
+			'per_page' => $perPage,
 		) );
 		$ids = array_map( 'intval', array_column( $result['rows'], 'id' ) );
 		$this->c->images()->primeItems( $ids );
 		$this->c->terms()->primeItems( $type, $ids );
-		return array( 'result' => $result, 'orderby' => $orderby, 'order' => $order, 'status' => $status, 'meta' => $meta );
+		$this->c->items()->primeValues( $ids );
+		return array(
+			'result'  => $result,
+			'orderby' => $orderby,
+			'order'   => $order,
+			'status'  => $status,
+			'meta'    => $meta,
+			'perPage' => $perPage,
+			'dup'     => $dup,
+			'code'    => $code,
+			'brand'   => $brand,
+			'shared'  => $shared,
+			'counts'  => $stats->counts( $type ),
+			'catStat' => $stats->categoryCounts( $type ),
+			'brands'  => $brand && 'select' !== $brand['type'] ? $stats->distinct( $type, $brand['meta_key'] ) : array(),
+		);
+	}
+
+	private function editData( string $type, ?array $item ): array {
+		$code   = $this->c->fields()->roleField( $type, 'code', false );
+		$brand  = $this->c->fields()->roleField( $type, 'brand', false );
+		$stats  = new ItemStats( $this->c );
+		$id     = $item ? (int) $item['id'] : 0;
+		$value  = $code && $id ? $this->c->items()->value( $id, $code['meta_key'] ) : '';
+		return array(
+			'code'     => $code,
+			'brand'    => $brand,
+			'codeUsed' => $code ? $stats->usedBy( $type, $code['meta_key'], $value, $id ) : array(),
+			'brands'   => $brand && 'select' !== $brand['type'] ? $stats->distinct( $type, $brand['meta_key'] ) : array(),
+		);
 	}
 
 	// ─────────────────────────────────────────────────────────────
@@ -161,15 +201,7 @@ class AdminApp {
 				}
 				return $this->redirect( array( 'view' => 'items', 'type' => $type, 'msg' => 'deleted' ) );
 			case 'bulk_items':
-				if ( isset( $post['bulk'] ) && 'delete' === $post['bulk'] ) {
-					foreach ( array_slice( (array) ( isset( $post['ids'] ) ? $post['ids'] : array() ), 0, 200 ) as $id ) {
-						$item = $this->c->items()->get( (int) $id );
-						if ( $item && $item['type'] === $type ) {
-							$this->c->deleteItem( (int) $id );
-						}
-					}
-				}
-				return $this->redirect( array( 'view' => 'items', 'type' => $type, 'msg' => 'deleted' ) );
+				return $this->bulk( $type, $post );
 			case 'save_term':
 				try {
 					$this->c->terms()->save(
@@ -209,6 +241,80 @@ class AdminApp {
 		throw new Forbidden( 'Unknown action.' );
 	}
 
+	/** Bulk / row actions on the item list: publish, draft, move, export, delete. */
+	private function bulk( string $type, array $post ): array {
+		$action = isset( $post['bulk'] ) ? (string) $post['bulk'] : '';
+		$ids    = isset( $post['ids'] ) ? (array) $post['ids'] : array();
+		if ( ! empty( $post['one'] ) && preg_match( '/^(\w+):(\d+)$/', (string) $post['one'], $m ) ) {
+			$action = $m[1];
+			$ids    = array( $m[2] );
+		}
+		$valid = array();
+		foreach ( array_slice( $ids, 0, CatalogQuery::MAX_PER_PAGE ) as $id ) {
+			$item = $this->c->items()->get( (int) $id );
+			if ( $item && $item['type'] === $type ) {
+				$valid[] = (int) $id;
+			}
+		}
+		$back = $this->listState( isset( $post['back'] ) ? (string) $post['back'] : '', $type );
+		$msg  = 'saved';
+		switch ( $action ) {
+			case 'publish':
+			case 'draft':
+				$this->c->items()->setStatus( $valid, $action );
+				break;
+			case 'move':
+				$term = $this->c->terms()->get( $type, isset( $post['move_cat'] ) ? (int) $post['move_cat'] : 0 );
+				if ( ! $term ) {
+					$msg = 'invalid';
+					break;
+				}
+				foreach ( $valid as $id ) {
+					$this->c->terms()->setItem( $type, $id, 'category', array( (int) $term['id'] ) );
+				}
+				break;
+			case 'export':
+				if ( ! $this->c->host()->can( 'catalog.export' ) || ! $this->c->host()->allows( 'export' ) ) {
+					throw new Forbidden( $this->t( 'You do not have permission to do that.' ) );
+				}
+				if ( $valid ) {
+					return ( new CsvExporter( $this->c ) )->run( $type, array( 'ids' => $valid ) );
+				}
+				break;
+			case 'delete':
+				if ( ! $this->c->host()->can( 'catalog.delete' ) ) {
+					throw new Forbidden( $this->t( 'You do not have permission to do that.' ) );
+				}
+				foreach ( $valid as $id ) {
+					$this->c->deleteItem( $id );
+				}
+				$msg = 'deleted';
+				break;
+			default:
+				$msg = 'invalid';
+		}
+		return $this->redirect( array_merge( $back, array( 'msg' => $msg ) ) );
+	}
+
+	/** The list URL the user came from (query string), reduced to known list parameters. */
+	private function listState( string $qs, string $type ): array {
+		parse_str( $qs, $in );
+		$out = array( 'view' => 'items', 'type' => $type );
+		foreach ( array( 's', 'cat', 'status', 'orderby', 'order', 'n', 'paged', 'dup' ) as $k ) {
+			if ( isset( $in[ $k ] ) && is_scalar( $in[ $k ] ) && '' !== (string) $in[ $k ] ) {
+				$out[ $k ] = Text::line( (string) $in[ $k ], 100 );
+			}
+		}
+		if ( isset( $in['f'] ) && is_array( $in['f'] ) ) {
+			foreach ( $in['f'] as $k => $v ) {
+				if ( is_scalar( $v ) && '' !== (string) $v ) {
+					$out['f'][ Text::key( $k ) ] = Text::line( (string) $v, 100 );
+				}
+			}
+		}
+		return $out;
+	}
+
 	// ─────────────────────────────────────────────────────────────
 	// Helpers used by templates
 	// ─────────────────────────────────────────────────────────────
@@ -223,6 +329,12 @@ class AdminApp {
 
 	public function redirect( array $params ): array {
 		return array( 'redirect' => $this->url( $params ) );
+	}
+
+	/** Page header: kicker, title, action buttons (already-escaped HTML). */
+	public function head( string $title, string $actions = '', string $before = '' ): string {
+		return '<div class="dwc-head"><div class="dwc-head-title">' . ( '' !== $before ? $before : '<span class="dwc-kicker">DW CATALOG</span>' )
+			. '<h1>' . Html::e( $title ) . '</h1></div>' . ( '' !== $actions ? '<div class="dwc-head-actions">' . $actions . '</div>' : '' ) . '</div>';
 	}
 
 	/** <form> opening + hidden action/type/CSRF fields. */

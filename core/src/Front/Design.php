@@ -11,22 +11,22 @@ final class Design {
 
 	public static function defaults(): array {
 		return array(
-			'accent'            => '#1e5bb8',
-			'font_family'       => '',
+			'accent'            => '#1466d6',
+			'font_family'       => 'IBM Plex Sans',
 			'title_size'        => 16,
 			'title_weight'      => 600,
-			'title_color'       => '#1f2937',
-			'field_label_size'  => 12,
-			'field_label_color' => '#9ca3af',
+			'title_color'       => '#0f1b2d',
+			'field_label_size'  => 13,
+			'field_label_color' => '#5b6b82',
 			'field_value_size'  => 13,
-			'field_value_color' => '#1f2937',
+			'field_value_color' => '#0f1b2d',
 			'card_bg'           => '#ffffff',
-			'card_border_color' => '#e5e7eb',
+			'card_border_color' => '#e3e8ef',
 			'card_border_width' => 1,
-			'card_radius'       => 8,
-			'card_shadow'       => 'sm',
+			'card_radius'       => 12,
+			'card_shadow'       => 'none',
 			'card_padding'      => 0,
-			'grid_gap'          => 20,
+			'grid_gap'          => 18,
 			'columns'           => 4,
 		);
 	}
@@ -55,6 +55,18 @@ final class Design {
 		$s->set( 'design', $out );
 	}
 
+	/**
+	 * Web fonts the design ships with (loaded from Google Fonts). Any other family name is used
+	 * as-is from the theme / system. @return string stylesheet URL or ''
+	 */
+	public static function fontUrl( Settings $s ): string {
+		$known = array(
+			'IBM Plex Sans' => 'family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700',
+		);
+		$family = self::get( $s )['font_family'];
+		return isset( $known[ $family ] ) ? 'https://fonts.googleapis.com/css2?' . $known[ $family ] . '&display=swap' : '';
+	}
+
 	public static function color( string $v ): bool {
 		return (bool) preg_match( '/^#[0-9a-fA-F]{3,8}$/', $v )
 			|| (bool) preg_match( '/^rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*(,\s*(0|1|0?\.\d+)\s*)?\)$/', $v );
@@ -71,7 +83,8 @@ final class Design {
 		);
 		$vars   = array(
 			'--dwcat-accent'            => $d['accent'],
-			'--dwcat-font-family'       => '' !== $d['font_family'] ? "'" . $d['font_family'] . "', inherit" : 'inherit',
+			'--dwcat-font-family'       => '' !== $d['font_family'] ? "'" . $d['font_family'] . "', system-ui, sans-serif" : 'inherit',
+			'--dwcat-mono'              => 'IBM Plex Sans' === $d['font_family'] ? "'IBM Plex Mono', ui-monospace, monospace" : 'ui-monospace, SFMono-Regular, Menlo, monospace',
 			'--dwcat-title-size'        => $d['title_size'] . 'px',
 			'--dwcat-title-weight'      => $d['title_weight'],
 			'--dwcat-title-color'       => $d['title_color'],

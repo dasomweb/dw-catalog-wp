@@ -12,7 +12,7 @@ use DWCatalog\Support\Html;
 $current = 'import';
 $header  = CsvFormat::header( $c, $type );
 ?>
-<div class="dwc-head"><h1><?php echo Html::e( $app->t( 'Import' ) ); ?></h1></div>
+<?php echo $app->head( $app->t( 'Import / Export' ) ); ?>
 <?php include __DIR__ . '/_nav.php'; ?>
 
 <div class="dwc-cols">

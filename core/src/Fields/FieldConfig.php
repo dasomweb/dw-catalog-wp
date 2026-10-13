@@ -79,6 +79,28 @@ class FieldConfig {
 		return $out;
 	}
 
+	/**
+	 * The field playing a role, found by key: 'brand' → *brand*, 'code' → *item_code* / *sku*.
+	 * $publicOnly: visitors only ever see public fields.
+	 */
+	public function roleField( string $type, string $role, bool $publicOnly = true ): ?array {
+		$patterns = array( 'brand' => '/brand/', 'code' => '/item_code|sku/' );
+		if ( ! isset( $patterns[ $role ] ) ) {
+			return null;
+		}
+		foreach ( $this->fieldsByKey( $type, $publicOnly ) as $key => $f ) {
+			if ( empty( $f['is_title_field'] ) && preg_match( $patterns[ $role ], $key ) ) {
+				return $f;
+			}
+		}
+		return null;
+	}
+
+	/** Codes, pack sizes and SKUs read best in a monospace face. */
+	public static function mono( array $f ): bool {
+		return (bool) preg_match( '/code|sku|pack|size/', $f['meta_key'] );
+	}
+
 	public function titleField( string $type ): ?array {
 		foreach ( $this->fields( $type ) as $f ) {
 			if ( ! empty( $f['is_title_field'] ) ) {

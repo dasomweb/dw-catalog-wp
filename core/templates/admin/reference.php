@@ -26,7 +26,7 @@ $examples = array(
 	'Carousel of one category'     => '[dw_catalog_carousel category="' . $first . '"]',
 );
 ?>
-<div class="dwc-head"><h1><?php echo Html::e( $app->t( 'Shortcodes' ) ); ?></h1></div>
+<?php echo $app->head( $app->t( 'Settings' ) ); ?>
 <?php include __DIR__ . '/_nav.php'; ?>
 
 <div class="dwc-box">

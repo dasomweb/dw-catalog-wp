@@ -4,7 +4,8 @@
  * data-dwc-add="x"        clone <template data-dwc-template="x"> into table[data-dwc-rows="x"]
  * data-dwc-remove         remove the row
  * data-dwc-up / -down     move the row (or image) up / down — form order = saved order
- * data-dwc-checkall       toggle all row checkboxes
+ * data-dwc-checkall       toggle all row checkboxes (selection bar shows the count)
+ * data-dwc-autosubmit     GET filter form: a changed select applies at once
  * data-dwc-confirm="msg"  confirm before submitting
  * data-dwc-preset="g.k"   business-type preset: switch field + variation column set
  */
@@ -59,13 +60,136 @@
 		}
 	});
 
-	document.addEventListener('change', function (e) {
-		if (e.target.matches('[data-dwc-checkall]')) {
-			var form = e.target.closest('form');
-			form.querySelectorAll('input[name="ids[]"]').forEach(function (cb) {
-				cb.checked = e.target.checked;
-			});
+	// ── Item list: instant filters, selection bar, row menus ───
+
+	document.querySelectorAll('.dwc-admin').forEach(function (el) { el.classList.add('dwc-js'); });
+
+	function syncSelection(form) {
+		var boxes = form.querySelectorAll('input[name="ids[]"]');
+		var n = 0;
+		boxes.forEach(function (cb) {
+			var tr = cb.closest('tr');
+			if (tr) {
+				tr.classList.toggle('is-selected', cb.checked);
+			}
+			n += cb.checked ? 1 : 0;
+		});
+		var bar = form.querySelector('[data-dwc-selbar]');
+		if (bar) {
+			bar.hidden = n === 0;
+			bar.querySelector('[data-dwc-selcount]').textContent = n;
 		}
+		var all = form.querySelector('[data-dwc-checkall]');
+		if (all) {
+			all.checked = n > 0 && n === boxes.length;
+			all.indeterminate = n > 0 && n < boxes.length;
+		}
+	}
+
+	document.addEventListener('change', function (e) {
+		var t = e.target;
+		if (t.matches('[data-dwc-checkall]')) {
+			t.closest('form').querySelectorAll('input[name="ids[]"]').forEach(function (cb) {
+				cb.checked = t.checked;
+			});
+			syncSelection(t.closest('form'));
+		} else if (t.matches('input[name="ids[]"]') && t.closest('[data-dwc-bulk]')) {
+			syncSelection(t.closest('form'));
+		} else if (t.matches('[data-dwc-move]') && t.value) {
+			var go = t.form.querySelector('[data-dwc-move-submit]');
+			if (go) {
+				t.form.requestSubmit ? t.form.requestSubmit(go) : go.click();
+			}
+		} else if (t.tagName === 'SELECT' && t.form && t.form.hasAttribute('data-dwc-autosubmit')) {
+			t.form.submit(); // filters apply at once (page resets: paged is not part of the form)
+		}
+	});
+
+	document.addEventListener('click', function (e) {
+		var clear = e.target.closest('[data-dwc-clearsel]');
+		if (clear) {
+			var form = clear.closest('form');
+			form.querySelectorAll('input[name="ids[]"]').forEach(function (cb) { cb.checked = false; });
+			syncSelection(form);
+		}
+		// One row menu open at a time; click outside closes
+		document.querySelectorAll('.dwc-menu[open]').forEach(function (d) {
+			if (!d.contains(e.target)) {
+				d.removeAttribute('open');
+			}
+		});
+	});
+
+	document.addEventListener('keydown', function (e) {
+		if (e.key === 'Escape') {
+			document.querySelectorAll('.dwc-menu[open]').forEach(function (d) { d.removeAttribute('open'); });
+		}
+	});
+
+	// ── Editor: category finder, drop zone, card preview ───────
+
+	document.addEventListener('input', function (e) {
+		var t = e.target;
+		if (t.matches('[data-dwc-catfind]')) {
+			var q = t.value.trim().toLowerCase();
+			var list = t.closest('.dwc-card-body').querySelector('[data-dwc-catlist]');
+			// Show a category when it or any child matches
+			(function walk(ul) {
+				var any = false;
+				Array.prototype.forEach.call(ul.children, function (li) {
+					var label = li.querySelector(':scope > label');
+					var child = li.querySelector(':scope > ul');
+					var hit = !q || (label && label.textContent.toLowerCase().indexOf(q) !== -1);
+					var sub = child ? walk(child) : false;
+					li.classList.toggle('is-hidden', !(hit || sub));
+					any = any || hit || sub;
+				});
+				return any;
+			})(list.querySelector('ul'));
+		}
+		if (t.closest('[data-dwc-editor]')) {
+			updatePreview(t.closest('[data-dwc-editor]'));
+		}
+	});
+
+	function updatePreview(form) {
+		var card = document.querySelector('[data-dwc-previewcard]');
+		if (!card) {
+			return;
+		}
+		var val = function (role) {
+			var el = form.querySelector('[data-dwc-preview="' + role + '"]');
+			return el ? el.value.trim() : '';
+		};
+		var cat = form.querySelector('[data-dwc-preview-cat]:checked');
+		var kicker = [cat ? cat.getAttribute('data-dwc-preview-cat') : '', val('brand')].filter(Boolean).join(' · ');
+		var meta = [val('code') ? '#' + val('code') : '', val('pack')].filter(Boolean).join(' · ');
+		card.querySelector('[data-dwc-out="title"]').textContent = val('title') || '—';
+		card.querySelector('[data-dwc-out="kicker"]').textContent = kicker;
+		card.querySelector('[data-dwc-out="meta"]').textContent = meta;
+	}
+
+	document.addEventListener('change', function (e) {
+		if (e.target.matches('[data-dwc-preview-cat]') || e.target.matches('select[data-dwc-preview]')) {
+			updatePreview(e.target.closest('[data-dwc-editor]'));
+		}
+	});
+
+	['dragenter', 'dragover'].forEach(function (ev) {
+		document.addEventListener(ev, function (e) {
+			var drop = e.target.closest && e.target.closest('[data-dwc-drop]');
+			if (drop) {
+				drop.classList.add('is-over');
+			}
+		});
+	});
+	['dragleave', 'drop'].forEach(function (ev) {
+		document.addEventListener(ev, function (e) {
+			var drop = e.target.closest && e.target.closest('[data-dwc-drop]');
+			if (drop) {
+				drop.classList.remove('is-over');
+			}
+		});
 	});
 
 	document.addEventListener('input', function (e) {

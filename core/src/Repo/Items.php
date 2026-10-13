@@ -118,6 +118,19 @@ class Items {
 		return $id;
 	}
 
+	/** Set the status of many items at once (bulk action). */
+	public function setStatus( array $ids, string $status ): void {
+		$ids = array_values( array_filter( array_map( 'intval', $ids ) ) );
+		if ( ! $ids || ! in_array( $status, self::STATUSES, true ) ) {
+			return;
+		}
+		$this->db->execute( 'UPDATE ' . $this->db->table( 'items' ) . ' SET status = ?, updated_at = ? WHERE id IN (?)', array( $status, Text::now(), $ids ) );
+		foreach ( $ids as $id ) {
+			unset( $this->items[ $id ] );
+		}
+		$this->settings->bumpCacheVersion();
+	}
+
 	public function delete( int $id ): void {
 		foreach ( array( 'values', 'variations', 'search', 'item_terms' ) as $t ) {
 			$this->db->execute( 'DELETE FROM ' . $this->db->table( $t ) . ' WHERE item_id = ?', array( $id ) );

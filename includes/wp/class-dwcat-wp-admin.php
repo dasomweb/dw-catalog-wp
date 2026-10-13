@@ -12,15 +12,20 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class DWCAT_WP_Admin {
 
+	/** Submenu → core view. Import/Export and Settings each group two core screens (section tabs). */
 	const SUBMENU = array(
 		'items'      => array( 'All Items', 'edit_posts' ),
 		'edit'       => array( 'Add New', 'edit_posts' ),
 		'categories' => array( 'Categories', 'manage_categories' ),
 		'fields'     => array( 'Fields', 'manage_options' ),
-		'import'     => array( 'Import', 'edit_posts' ),
-		'export'     => array( 'Export', 'edit_posts' ),
-		'design'     => array( 'Design', 'manage_options' ),
-		'reference'  => array( 'Shortcodes', 'edit_posts' ),
+		'import'     => array( 'Import / Export', 'edit_posts' ),
+		'design'     => array( 'Settings', 'manage_options' ),
+	);
+
+	/** Core views reached through another submenu entry. */
+	const SECTION_OF = array(
+		'export'    => 'import',
+		'reference' => 'design',
 	);
 
 	/** Per-action license gate, checked here before the core sees the request. */
@@ -42,6 +47,15 @@ class DWCAT_WP_Admin {
 		add_action( 'admin_post_dwcat', array( $this, 'post' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'assets' ) );
 		add_filter( 'submenu_file', array( $this, 'highlight' ), 10, 2 );
+		add_filter( 'admin_body_class', array( $this, 'body_class' ) );
+	}
+
+	/** The submenu lists the screens, so the core's own tab bar is hidden (.dwc-host-nav). */
+	public function body_class( $classes ) {
+		if ( isset( $_GET['page'] ) && DWCAT_WP_Host::ADMIN_PAGE === $_GET['page'] ) { // phpcs:ignore WordPress.Security.NonceVerification
+			$classes .= ' dwc-host-nav';
+		}
+		return $classes;
 	}
 
 	public function menu() {
@@ -66,6 +80,9 @@ class DWCAT_WP_Admin {
 		if ( 'edit' === $view && ! empty( $_GET['id'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification
 			$view = 'items';
 		}
+		if ( isset( self::SECTION_OF[ $view ] ) ) {
+			$view = self::SECTION_OF[ $view ];
+		}
 		return ( 'items' === $view || ! isset( self::SUBMENU[ $view ] ) ) ? DWCAT_WP_Host::ADMIN_PAGE : 'admin.php?page=' . DWCAT_WP_Host::ADMIN_PAGE . '&view=' . $view;
 	}
 
@@ -75,6 +92,7 @@ class DWCAT_WP_Admin {
 		}
 		$host = new DWCAT_WP_Host();
 		wp_enqueue_style( 'dwcat-admin', $host->assetUrl( 'admin.css' ), array(), $host->version() );
+		wp_enqueue_style( 'dwcat-admin-mono', 'https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap', array(), null ); // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.MissingVersion — Google Fonts URL
 		wp_enqueue_script( 'dwcat-admin', $host->assetUrl( 'admin.js' ), array(), $host->version(), true );
 	}
 

@@ -122,7 +122,9 @@ DW Catalog는 **독립된 카탈로그 시스템**입니다. 워드프레스 플
    (로그인 사용자 · 권한 · 파일 위치 · 주소 · 번역 · 캐시 · 편집기 등)
 2. **DB 연결** — `PdoConnection::fromConfig()` 로 MySQL/PostgreSQL 연결 (대부분 그대로 사용)
 3. **관리자 화면 자리** — 그 환경의 관리자 페이지에 `$catalog->admin()->render( $_GET )` 출력,
-   폼 전송은 `$catalog->admin()->handle( $_POST, $_FILES )` 로 전달
+   폼 전송은 `$catalog->admin()->handle( $_POST, $_FILES )` 로 전달.
+   그 환경의 메뉴에 화면 목록(All Items · Add New · Categories · Fields · Import / Export · Settings)을
+   직접 넣었다면 상위 요소에 `dwc-host-nav` 클래스를 붙여 코어의 탭 줄을 숨깁니다 (WordPress 는 body 에 붙임)
 4. **카탈로그 페이지 자리** — 원하는 페이지에 `$catalog->front()->catalog( $옵션, $context )` 출력
 5. **주소 연결** — `/{페이지}/item/{slug}/` 같은 상세 주소를 받아 `Context` 에 넘김
 6. **라이선스** — 그 환경용 라이선스 방식을 `allows()` 에 연결

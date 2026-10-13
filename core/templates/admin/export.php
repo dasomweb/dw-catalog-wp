@@ -31,7 +31,7 @@ $catList = function ( $parent ) use ( &$catList, $tree ) {
 	echo '</ul>';
 };
 ?>
-<div class="dwc-head"><h1><?php echo Html::e( $app->t( 'Export' ) ); ?></h1></div>
+<?php echo $app->head( $app->t( 'Import / Export' ) ); ?>
 <?php include __DIR__ . '/_nav.php'; ?>
 
 <h2><?php echo Html::e( $app->t( 'CSV (spreadsheet)' ) ); ?></h2>

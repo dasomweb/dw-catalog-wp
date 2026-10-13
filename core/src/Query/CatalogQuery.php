@@ -53,7 +53,8 @@ class CatalogQuery {
 
 	/**
 	 * @param array $f search, cats[], base_cat, meta[key => values[]], sort, public, status
-	 *                 ('publish' | 'draft' | 'any'), page, per_page, ids[]
+	 *                 ('publish' | 'draft' | 'any'), page, per_page, ids[],
+	 *                 shared (admin only: field key — items whose value is used by another item too)
 	 * @return array rows, total, pages, page
 	 */
 	public function run( string $type, array $f ): array {
@@ -68,6 +69,7 @@ class CatalogQuery {
 			'page'     => 1,
 			'per_page' => 20,
 			'ids'      => array(),
+			'shared'   => '',
 		), $f );
 
 		$public  = (bool) $f['public'];
@@ -121,6 +123,16 @@ class CatalogQuery {
 				$params[] = $key;
 				$params[] = $values;
 			}
+		}
+
+		// Values shared by several items of this type (e.g. duplicate item codes) — admin review
+		if ( ! $public && '' !== (string) $f['shared'] && isset( $allowed[ $f['shared'] ] ) ) {
+			$where[]  = 'i.id IN (SELECT v.item_id FROM ' . $t( 'values' ) . ' v WHERE v.field_key = ? AND v.value_idx IN ('
+				. 'SELECT d.value_idx FROM ' . $t( 'values' ) . ' d INNER JOIN ' . $t( 'items' ) . ' di ON di.id = d.item_id AND di.type = ?'
+				. ' WHERE d.field_key = ? GROUP BY d.value_idx HAVING COUNT(*) > 1))';
+			$params[] = $f['shared'];
+			$params[] = $type;
+			$params[] = $f['shared'];
 		}
 
 		$whereSql = ' WHERE ' . implode( ' AND ', $where );

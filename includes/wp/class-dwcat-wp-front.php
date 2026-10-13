@@ -150,6 +150,13 @@ class DWCAT_WP_Front {
 		}
 		$host = new DWCAT_WP_Host();
 		wp_enqueue_style( 'dwcat-front', $host->assetUrl( 'front.css' ), array(), $host->version() );
+		try {
+			$font = \DWCatalog\Front\Design::fontUrl( dwcat()->settings() );
+			if ( '' !== $font ) {
+				wp_enqueue_style( 'dwcat-font', $font, array(), null ); // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.MissingVersion — Google Fonts URL
+			}
+		} catch ( \Throwable $e ) { // phpcs:ignore — catalog DB unavailable: theme font
+		}
 		if ( $catalog ) {
 			wp_enqueue_script( 'dwcat-catalog', $host->assetUrl( 'catalog.js' ), array(), $host->version(), true );
 		}

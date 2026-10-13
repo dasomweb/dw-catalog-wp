@@ -29,7 +29,7 @@ $parentSelect = function ( $selected, $exclude ) use ( $tree, $app, $c, $type ) 
 	return $h . '</select>';
 };
 ?>
-<div class="dwc-head"><h1><?php echo Html::e( $app->t( 'Categories' ) ); ?></h1></div>
+<?php echo $app->head( $app->t( 'Categories' ) ); ?>
 <?php include __DIR__ . '/_nav.php'; ?>
 
 <div class="dwc-cols">

@@ -231,6 +231,36 @@ function run_suite( Catalog $c, TestHost $host, string $driver ) {
 	}
 	$host->denied = array();
 
+	// List: shared item codes, bulk + row actions
+	$items->saveValues( $g, array_merge( $items->values( $g ), array( 'dw_pc_item_code' => 'TF-100' ) ) );
+	eq( array( 'TF-100' => 2 ), ( new \DWCatalog\Admin\ItemStats( $c ) )->shared( $type, 'dw_pc_item_code' ), 'shared item codes detected' );
+	$html = $admin->render( array( 'view' => 'items', 'dup' => 1 ) );
+	ok( false !== strpos( $html, 'Firm Tofu' ) && false !== strpos( $html, 'Draft Miso' ) && false === strpos( $html, 'Spicy Miso' ), 'needs-review filter lists only shared codes' );
+	ok( false !== strpos( $html, 'dwc-shared' ), 'shared badge shown' );
+	ok( false !== strpos( $admin->render( array( 'view' => 'edit', 'id' => $e ) ), 'Draft Miso' ), 'editor names the other item using the code' );
+	$bulk = function ( array $extra ) use ( $admin, $c, $type ) {
+		return $admin->handle( array_merge( array( 'do' => 'bulk_items', 'type' => $type, 'back' => 's=tofu&n=50&evil=1', Csrf::FIELD => $c->csrf()->token( 'bulk_items' ) ), $extra ) );
+	};
+	$res = $bulk( array( 'bulk' => 'draft', 'ids' => array( $e, 999999 ) ) );
+	ok( false !== strpos( $res['redirect'], 's=tofu' ) && false !== strpos( $res['redirect'], 'n=50' ) && false === strpos( $res['redirect'], 'evil' ), 'bulk keeps list state, drops unknown params' );
+	eq( 'draft', ( new Catalog( $c->db(), $host, '' ) )->items()->get( $e )['status'], 'bulk set inactive' );
+	$bulk( array( 'one' => 'publish:' . $e ) );
+	eq( 'publish', ( new Catalog( $c->db(), $host, '' ) )->items()->get( $e )['status'], 'row action set active' );
+	$bulk( array( 'bulk' => 'move', 'move_cat' => $ramen, 'ids' => array( $e ) ) );
+	eq( array( $ramen ), array_map( 'intval', array_column( ( new Catalog( $c->db(), $host, '' ) )->terms()->ofItem( $type, $e ), 'id' ) ), 'bulk move to category' );
+	$res = $bulk( array( 'bulk' => 'export', 'ids' => array( $e ) ) );
+	ok( isset( $res['download'] ) && false !== strpos( $res['download'][2], 'TF-100' ) && false === strpos( $res['download'][2], 'WK-009' ), 'export selected = only those items' );
+	$host->caps = array( 'catalog.edit' );
+	try {
+		$bulk( array( 'bulk' => 'delete', 'ids' => array( $e ) ) );
+		ok( false, 'bulk delete needs catalog.delete' );
+	} catch ( Forbidden $ex ) {
+		ok( true, 'bulk delete needs catalog.delete' );
+	}
+	$host->caps = null;
+	$c->terms()->setItem( $type, $e, 'category', array( $tofu ) );
+	$items->saveValues( $g, array_merge( $items->values( $g ), array( 'dw_pc_item_code' => 'DR-1' ) ) );
+
 	echo "--- front ---\n";
 	$ctx  = new Context( 'https://site.test/refrigerated/', 'https://site.test/refrigerated/item/', array() );
 	$html = $c->front()->catalog( array( 'category' => 'refrigerated', 'filter_fields' => 'dw_pc_brand_raw,dw_pc_cost' ), $ctx );

@@ -12,9 +12,13 @@ in WordPress as usual.
 [dw_catalog category="refrigerated" filter_fields="dw_pc_brand_raw"]
 ```
 
-- **List**: left sidebar (search · sub-category checkboxes · field filters · reset), sort menu,
-  card grid, pagination. Filter changes update in place and keep the URL shareable; without
-  JavaScript the same links and forms work as normal pages.
+- **List**: header (title, item count, large search box, top-category tabs), left sidebar
+  (category groups with counts · field filters, applied instantly), toolbar ("Showing a–b of N",
+  sort, grid / list view), card grid or table, pagination with a rows-per-page menu. Filter changes
+  update in place and keep the URL shareable; without JavaScript the same links and forms work as
+  normal pages. On phones the sidebar becomes a "Filters" panel and cards become compact rows.
+- **Item drawer**: clicking an item opens it in a side panel over the list; its URL is the item's
+  own page (reload or share = full item page). Esc / Back closes it.
 - **Item page**: `/{page}/item/{slug}/` on the same page (or `?dw_item={slug}` without pretty
   permalinks) — image gallery, public fields, variations table, description, related items,
   "Back to list" keeping the filters. Title, meta description, canonical URL, Open Graph and
@@ -28,6 +32,9 @@ in WordPress as usual.
 | Option | Default | |
 |---|---|---|
 | `category` | — | Category slug(s) the page shows; the sidebar lists its sub-categories |
+| `title` | — | Heading above the search box |
+| `tabs` | `yes` | Top-level category tabs under the search box |
+| `default_view` | `grid` | `grid` or `list` (visitors can switch) |
 | `filter_fields` | — | Field keys offered as sidebar filters (public fields only) |
 | `columns` | Design setting | Maximum columns (fewer on narrow screens) |
 | `per_page` | `20` | Items per page (max 100) |
@@ -38,6 +45,9 @@ in WordPress as usual.
 | `show_category` | `yes` | Category name on cards |
 | `related` | `4` | Related items on item pages (`0` = off) |
 | `inquiry_url` / `inquiry_label` | — | "Inquire" button on item pages (`?item=` carries the name) |
+
+URL parameters (shareable): `dwq` search · `dwt` tab · `dwc[]` categories · `dwf[key][]` field
+filters · `dws` sort · `dwv` view · `dwn` per page · `dwp` page.
 
 > One `[dw_catalog]` per page. Items reached from several pages share one canonical URL —
 > the main catalog page (the first page with `[dw_catalog]` and no `category`), which is also
