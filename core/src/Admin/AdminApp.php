@@ -14,7 +14,7 @@ use DWCatalog\Support\Text;
  * The one admin UI of the catalog — server-rendered pages, embedded by the host.
  *
  *   GET  render( $query )            view = items | edit | categories | fields | import | export | design | reference
- *   POST handle( $post, $files )     do   = save_item | delete_item | bulk_items | save_term | delete_term |
+ *   POST handle( $post, $files )     do   = save_item | delete_item | bulk_items | save_term | delete_term | save_tree |
  *                                           save_fields | import | export | export_csv | save_design
  *
  * Every POST: capability check → host policy (license) → CSRF token bound to user + action.
@@ -42,6 +42,7 @@ class AdminApp {
 		'bulk_items'  => array( 'catalog.edit', 'save' ),
 		'save_term'   => array( 'catalog.terms', 'save' ),
 		'delete_term' => array( 'catalog.terms', 'save' ),
+		'save_tree'   => array( 'catalog.terms', 'save' ),
 		'save_fields' => array( 'catalog.manage', 'manage_fields' ),
 		'import'      => array( 'catalog.import', 'import' ),
 		'export'      => array( 'catalog.export', 'export' ),
@@ -218,6 +219,13 @@ class AdminApp {
 					$msg = 'invalid';
 				}
 				return $this->redirect( array( 'view' => 'categories', 'type' => $type, 'msg' => $msg ) );
+			case 'save_tree':
+				$nodes = json_decode( isset( $post['tree'] ) ? (string) $post['tree'] : '', true );
+				if ( ! is_array( $nodes ) ) {
+					return $this->redirect( array( 'view' => 'categories', 'type' => $type, 'msg' => 'invalid' ) );
+				}
+				$this->c->terms()->arrange( $type, $nodes );
+				return $this->redirect( array( 'view' => 'categories', 'type' => $type, 'msg' => 'saved' ) );
 			case 'delete_term':
 				$this->c->terms()->delete( $type, isset( $post['id'] ) ? (int) $post['id'] : 0 );
 				return $this->redirect( array( 'view' => 'categories', 'type' => $type, 'msg' => 'deleted' ) );

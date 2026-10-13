@@ -35,6 +35,7 @@ class DWCAT_WP_Admin {
 		'bulk_items'  => 'dwcat_can_save_meta',
 		'save_term'   => 'dwcat_can_save_meta',
 		'delete_term' => 'dwcat_can_save_meta',
+		'save_tree'   => 'dwcat_can_save_meta',
 		'save_fields' => 'dwcat_can_manage_fields',
 		'import'      => 'dwcat_can_bulk_import',
 		'export'      => 'dwcat_can_export_pdf',

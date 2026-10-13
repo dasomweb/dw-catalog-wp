@@ -315,6 +315,244 @@
 		});
 	});
 
+	// ── Category tree: drag & drop (order + parent) ────────────
+	//
+	// Drag the ⠿ handle. Over another category: top quarter = before it, bottom quarter = after it,
+	// middle = inside it (last child). The arrow buttons do the same from the keyboard.
+	// Nothing is saved until "Save order" — the whole tree is sent as [{id, parent}] in order.
+
+	var drag = null;
+
+	function treeRoot() {
+		return document.querySelector('[data-dwc-tree]');
+	}
+
+	function childList(li, create) {
+		var ol = li.querySelector(':scope > ol');
+		if (!ol && create) {
+			ol = document.createElement('ol');
+			ol.className = 'dwc-tree';
+			li.appendChild(ol);
+		}
+		return ol;
+	}
+
+	function refreshTree() {
+		var root = treeRoot();
+		root.querySelectorAll('li').forEach(function (li) {
+			var ol = childList(li, false);
+			var has = !!(ol && ol.children.length);
+			var caret = li.querySelector(':scope > .dwc-node [data-dwc-caret]');
+			if (caret) {
+				caret.hidden = !has;
+			}
+			if (!has) {
+				li.classList.remove('is-collapsed');
+			}
+		});
+		var nodes = [];
+		(function walk(ol, parent) {
+			Array.prototype.forEach.call(ol.children, function (li) {
+				var id = parseInt(li.getAttribute('data-id'), 10);
+				nodes.push({ id: id, parent: parent });
+				var sub = childList(li, false);
+				if (sub) {
+					walk(sub, id);
+				}
+			});
+		})(root, 0);
+		var form = document.querySelector('[data-dwc-tree-form]');
+		var json = JSON.stringify(nodes);
+		if (form.getAttribute('data-initial') === null) {
+			form.setAttribute('data-initial', json);
+		}
+		var dirty = json !== form.getAttribute('data-initial');
+		form.querySelector('input[name="tree"]').value = json;
+		form.querySelector('[data-dwc-tree-submit]').disabled = !dirty;
+		form.querySelector('[data-dwc-tree-undo]').hidden = !dirty;
+		form.classList.toggle('is-dirty', dirty);
+		var status = form.querySelector('[data-dwc-tree-status]');
+		status.textContent = dirty ? status.getAttribute('data-dirty') : '';
+	}
+
+	function flash(li) {
+		li.classList.remove('is-moved');
+		void li.offsetWidth;
+		li.classList.add('is-moved');
+	}
+
+	function dropSpot(x, y) {
+		var el = document.elementFromPoint(x, y);
+		var node = el && el.closest && el.closest('.dwc-node');
+		if (!node || !treeRoot().contains(node)) {
+			return null;
+		}
+		var li = node.parentNode;
+		if (li === drag.li || drag.li.contains(li)) {
+			return null; // not into itself
+		}
+		var r = node.getBoundingClientRect();
+		var rel = (y - r.top) / r.height;
+		return { li: li, where: rel < 0.25 ? 'before' : rel > 0.75 ? 'after' : 'inside' };
+	}
+
+	function placeMarker(spot) {
+		document.querySelectorAll('.dwc-node.is-target').forEach(function (n) { n.classList.remove('is-target'); });
+		if (!drag) {
+			return;
+		}
+		var m = drag.marker;
+		if (!spot || spot.where === 'inside') {
+			m.hidden = true;
+			if (spot) {
+				spot.li.querySelector(':scope > .dwc-node').classList.add('is-target');
+			}
+			return;
+		}
+		var r = spot.li.querySelector(':scope > .dwc-node').getBoundingClientRect();
+		m.hidden = false;
+		m.style.left = r.left + 'px';
+		m.style.width = r.width + 'px';
+		m.style.top = (spot.where === 'before' ? r.top - 2 : spot.li.getBoundingClientRect().bottom - 1) + 'px';
+	}
+
+	function moveGhost(x, y) {
+		drag.ghost.style.transform = 'translate(' + (x + 14) + 'px,' + (y + 10) + 'px)';
+	}
+
+	document.addEventListener('pointerdown', function (e) {
+		var handle = e.target.closest && e.target.closest('[data-dwc-handle]');
+		if (!handle || e.button !== 0) {
+			return;
+		}
+		e.preventDefault();
+		var li = handle.closest('li');
+		var marker = document.createElement('div');
+		marker.className = 'dwc-tree-marker';
+		marker.hidden = true;
+		document.body.appendChild(marker);
+		var ghost = document.createElement('div');
+		ghost.className = 'dwc-tree-ghost';
+		ghost.textContent = li.querySelector('.dwc-node-name').textContent;
+		document.body.appendChild(ghost);
+		drag = { li: li, marker: marker, ghost: ghost, spot: null, id: e.pointerId };
+		handle.setPointerCapture(e.pointerId);
+		li.classList.add('is-dragging');
+		document.documentElement.classList.add('dwc-dragging');
+		moveGhost(e.clientX, e.clientY);
+	});
+
+	document.addEventListener('pointermove', function (e) {
+		if (!drag || e.pointerId !== drag.id) {
+			return;
+		}
+		moveGhost(e.clientX, e.clientY);
+		if (e.clientY < 60) {
+			window.scrollBy(0, -12);
+		} else if (e.clientY > window.innerHeight - 60) {
+			window.scrollBy(0, 12);
+		}
+		drag.spot = dropSpot(e.clientX, e.clientY);
+		placeMarker(drag.spot);
+	});
+
+	function endDrag(apply) {
+		var d = drag;
+		placeMarker(null);
+		drag = null;
+		d.marker.remove();
+		d.ghost.remove();
+		d.li.classList.remove('is-dragging');
+		document.documentElement.classList.remove('dwc-dragging');
+		if (!apply || !d.spot) {
+			return;
+		}
+		var t = d.spot.li;
+		if (d.spot.where === 'inside') {
+			childList(t, true).appendChild(d.li);
+			t.classList.remove('is-collapsed');
+		} else {
+			t.parentNode.insertBefore(d.li, d.spot.where === 'before' ? t : t.nextSibling);
+		}
+		refreshTree();
+		flash(d.li);
+	}
+
+	document.addEventListener('pointerup', function (e) {
+		if (drag && e.pointerId === drag.id) {
+			endDrag(true);
+		}
+	});
+	document.addEventListener('pointercancel', function (e) {
+		if (drag && e.pointerId === drag.id) {
+			endDrag(false);
+		}
+	});
+	document.addEventListener('keydown', function (e) {
+		if (drag && e.key === 'Escape') {
+			endDrag(false);
+		}
+	});
+
+	document.addEventListener('click', function (e) {
+		var t = e.target;
+		var key = t.closest('[data-dwc-key]');
+		if (key) {
+			var li = key.closest('li');
+			var how = key.getAttribute('data-dwc-key');
+			var prev = li.previousElementSibling;
+			var next = li.nextElementSibling;
+			if (how === 'up' && prev) {
+				li.parentNode.insertBefore(li, prev);
+			} else if (how === 'down' && next) {
+				li.parentNode.insertBefore(next, li);
+			} else if (how === 'out' && li.parentNode !== treeRoot()) {
+				var parentLi = li.parentNode.closest('li');
+				parentLi.parentNode.insertBefore(li, parentLi.nextSibling);
+			} else if (how === 'in' && prev) {
+				childList(prev, true).appendChild(li);
+				prev.classList.remove('is-collapsed');
+			} else {
+				return;
+			}
+			refreshTree();
+			flash(li);
+			key.focus();
+			return;
+		}
+		var caret = t.closest('[data-dwc-caret]');
+		if (caret) {
+			var closed = caret.closest('li').classList.toggle('is-collapsed');
+			caret.setAttribute('aria-expanded', closed ? 'false' : 'true');
+			return;
+		}
+		var all = t.closest('[data-dwc-tree-all]');
+		if (all) {
+			var close = all.getAttribute('data-dwc-tree-all') === 'close';
+			treeRoot().querySelectorAll('li').forEach(function (li) {
+				var ol = childList(li, false);
+				li.classList.toggle('is-collapsed', close && !!(ol && ol.children.length));
+			});
+		}
+	});
+
+	window.addEventListener('beforeunload', function (e) {
+		var form = document.querySelector('[data-dwc-tree-form].is-dirty');
+		if (form && !form.hasAttribute('data-submitting')) {
+			e.preventDefault();
+			e.returnValue = '';
+		}
+	});
+	document.addEventListener('submit', function (e) {
+		if (e.target.matches('[data-dwc-tree-form]')) {
+			e.target.setAttribute('data-submitting', '1');
+		}
+	});
+
+	if (treeRoot()) {
+		refreshTree();
+	}
+
 	// ── Presets ────────────────────────────────────────────────
 
 	var colsSnapshot = null;

@@ -135,6 +135,59 @@ class Terms {
 		return $id;
 	}
 
+	/**
+	 * Re-arrange the whole tree at once (drag & drop): $nodes = [ [ id, parent ], ... ] in display
+	 * order. Unknown ids are ignored, a parent that is not a known term (or would create a cycle)
+	 * becomes top level, positions are renumbered per parent in the given order. Terms not listed
+	 * keep their place. @return int number of terms changed
+	 */
+	public function arrange( string $type, array $nodes, string $taxonomy = 'category' ): int {
+		$all    = $this->all( $type, $taxonomy );
+		$parent = array();
+		$order  = array();
+		foreach ( array_slice( $nodes, 0, 5000 ) as $n ) {
+			$id = is_array( $n ) && isset( $n['id'] ) ? (int) $n['id'] : 0;
+			if ( isset( $all[ $id ] ) && ! isset( $parent[ $id ] ) ) {
+				$p             = isset( $n['parent'] ) ? (int) $n['parent'] : 0;
+				$parent[ $id ] = ( $p !== $id && isset( $all[ $p ] ) ) ? $p : 0;
+				$order[]       = $id;
+			}
+		}
+		// Effective parent: the new one if listed, else the stored one
+		$parentOf = function ( $id ) use ( $parent, $all ) {
+			return isset( $parent[ $id ] ) ? $parent[ $id ] : (int) $all[ $id ]['parent'];
+		};
+		foreach ( $order as $id ) {
+			$seen = array( $id => true );
+			for ( $p = $parentOf( $id ); $p; $p = $parentOf( $p ) ) {
+				if ( isset( $seen[ $p ] ) ) {
+					$parent[ $id ] = 0; // cycle → top level
+					break;
+				}
+				$seen[ $p ] = true;
+			}
+		}
+		$pos     = array();
+		$changes = array();
+		foreach ( $order as $id ) {
+			$p   = $parent[ $id ];
+			$at  = isset( $pos[ $p ] ) ? $pos[ $p ] : 0;
+			$pos[ $p ] = $at + 1;
+			if ( (int) $all[ $id ]['parent'] !== $p || (int) $all[ $id ]['position'] !== $at ) {
+				$changes[ $id ] = array( $p, $at );
+			}
+		}
+		if ( $changes ) {
+			$this->db->transaction( function () use ( $changes ) {
+				foreach ( $changes as $id => $c ) {
+					$this->db->execute( 'UPDATE ' . $this->db->table( 'terms' ) . ' SET parent = ?, position = ? WHERE id = ?', array( $c[0], $c[1], $id ) );
+				}
+			} );
+			$this->flush( $type );
+		}
+		return count( $changes );
+	}
+
 	/** Find by name/slug or create (CSV import). Supports "Parent > Child". */
 	public function ensure( string $type, string $path, string $taxonomy = 'category', string $slug = '' ): int {
 		$parent = 0;

@@ -261,6 +261,29 @@ function run_suite( Catalog $c, TestHost $host, string $driver ) {
 	$c->terms()->setItem( $type, $e, 'category', array( $tofu ) );
 	$items->saveValues( $g, array_merge( $items->values( $g ), array( 'dw_pc_item_code' => 'DR-1' ) ) );
 
+	// Category tree: drag & drop save (order + parent)
+	$tree = function ( array $nodes ) use ( $admin, $c, $type ) {
+		return $admin->handle( array( 'do' => 'save_tree', 'type' => $type, 'tree' => json_encode( $nodes ), Csrf::FIELD => $c->csrf()->token( 'save_tree' ) ) );
+	};
+	$fresh = function () use ( $c, $host ) {
+		return ( new Catalog( $c->db(), $host, '' ) )->terms();
+	};
+	// Tofu → under Frozen, first; Ramen stays under Refrigerated; Frozen before Refrigerated
+	$tree( array( array( 'id' => $froz, 'parent' => 0 ), array( 'id' => $tofu, 'parent' => $froz ), array( 'id' => $ref, 'parent' => 0 ), array( 'id' => $ramen, 'parent' => $ref ), array( 'id' => 999999, 'parent' => 0 ) ) );
+	$tt = $fresh()->all( $type );
+	eq( array( $froz, 0 ), array( (int) $tt[ $tofu ]['parent'], (int) $tt[ $tofu ]['position'] ), 'tree: moved into another parent' );
+	eq( array( 0, 1 ), array( (int) $tt[ $froz ]['position'], (int) $tt[ $ref ]['position'] ), 'tree: top-level order renumbered' );
+	ok( false !== strpos( implode( ',', $fresh()->resolve( $type, 'frozen' ) ), (string) $froz ) && in_array( $tofu, $fresh()->withDescendants( $type, array( $froz ) ), true ), 'tree: descendants follow the new parent' );
+	// A cycle (Refrigerated inside Ramen, its own child) is refused → top level
+	$tree( array( array( 'id' => $ref, 'parent' => $ramen ), array( 'id' => $ramen, 'parent' => $ref ) ) );
+	$tt = $fresh()->all( $type );
+	ok( 0 === (int) $tt[ $ref ]['parent'] || 0 === (int) $tt[ $ramen ]['parent'], 'tree: cycle broken' );
+	$res = $admin->handle( array( 'do' => 'save_tree', 'type' => $type, 'tree' => 'not json', Csrf::FIELD => $c->csrf()->token( 'save_tree' ) ) );
+	ok( false !== strpos( $res['redirect'], 'msg=invalid' ), 'tree: bad payload rejected' );
+	ok( false !== strpos( $admin->render( array( 'view' => 'categories' ) ), 'data-dwc-tree' ), 'tree: categories screen renders the tree' );
+	// Restore the fixture
+	$tree( array( array( 'id' => $ref, 'parent' => 0 ), array( 'id' => $ramen, 'parent' => $ref ), array( 'id' => $tofu, 'parent' => $ref ), array( 'id' => $froz, 'parent' => 0 ) ) );
+
 	echo "--- front ---\n";
 	$ctx  = new Context( 'https://site.test/refrigerated/', 'https://site.test/refrigerated/item/', array() );
 	$html = $c->front()->catalog( array( 'category' => 'refrigerated', 'filter_fields' => 'dw_pc_brand_raw,dw_pc_cost' ), $ctx );
